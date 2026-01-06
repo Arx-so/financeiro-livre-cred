@@ -17,7 +17,8 @@ import {
   Settings,
   User,
   Menu,
-  X
+  X,
+  HelpCircle
 } from 'lucide-react';
 import { useAuthStore, useBranchStore } from '@/stores';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -94,16 +95,28 @@ export function Header() {
     <header className="sticky top-0 z-50 bg-card border-b border-border shadow-sm">
       <div className="mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          {/* Logo */}
-          <Link to="/dashboard" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <Wallet className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <div className="hidden sm:block">
-              <h1 className="text-lg font-bold text-foreground">FinControl</h1>
-              <p className="text-xs text-muted-foreground">Gestão Financeira</p>
-            </div>
-          </Link>
+          {/* Logo and Help */}
+          <div className="flex items-center gap-4">
+            <Link to="/dashboard" className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+                <Wallet className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <div className="hidden sm:block">
+                <h1 className="text-lg font-bold text-foreground">FinControl</h1>
+                <p className="text-xs text-muted-foreground">Gestão Financeira</p>
+              </div>
+            </Link>
+            
+            {/* Help Button */}
+            <Link 
+              to="/docs" 
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors text-muted-foreground hover:text-foreground"
+              title="Documentação e Ajuda"
+            >
+              <HelpCircle className="w-4 h-4" />
+              <span className="hidden md:inline text-sm">Ajuda</span>
+            </Link>
+          </div>
 
           {/* Right Section */}
           <div className="flex items-center gap-3">

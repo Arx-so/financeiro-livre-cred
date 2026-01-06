@@ -2,7 +2,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   getFinancialEntries, 
   getFinancialEntry,
-  createFinancialEntry, 
+  createFinancialEntry,
+  createFinancialEntries,
+  calculateRecurringDates,
   updateFinancialEntry,
   deleteFinancialEntry,
   deleteFinancialEntries,
@@ -17,6 +19,9 @@ import {
 } from '@/services/financeiro';
 import type { FinancialEntryInsert, FinancialEntryUpdate } from '@/types/database';
 import { useBranchStore } from '@/stores';
+
+// Re-export helper functions for use in components
+export { calculateRecurringDates } from '@/services/financeiro';
 
 // Query keys
 export const financialKeys = {
@@ -100,6 +105,17 @@ export function useCreateFinancialEntry() {
 
   return useMutation({
     mutationFn: (entry: FinancialEntryInsert) => createFinancialEntry(entry),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: financialKeys.all });
+    },
+  });
+}
+
+export function useCreateFinancialEntries() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (entries: FinancialEntryInsert[]) => createFinancialEntries(entries),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: financialKeys.all });
     },

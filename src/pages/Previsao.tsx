@@ -5,9 +5,9 @@ import {
   TrendingDown, 
   Calendar, 
   DollarSign,
-  Download,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Upload
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -106,7 +106,7 @@ export default function Previsao() {
             <p className="text-muted-foreground">Projeção financeira baseada em lançamentos futuros</p>
           </div>
           <button className="btn-primary" onClick={handleExport} disabled={!projection?.length}>
-            <Download className="w-4 h-4" />
+            <Upload className="w-4 h-4" />
             Exportar Excel
           </button>
         </div>

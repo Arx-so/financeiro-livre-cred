@@ -9,7 +9,8 @@ import {
   TrendingDown,
   PieChart,
   BarChart3,
-  Loader2
+  Loader2,
+  Upload
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -211,7 +212,7 @@ export default function Relatorios() {
               />
             </div>
             <button className="btn-primary" onClick={handleGenerateFullReport}>
-              <Download className="w-4 h-4" />
+              <Upload className="w-4 h-4" />
               Exportar Completo
             </button>
           </div>
@@ -238,7 +239,7 @@ export default function Relatorios() {
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold text-foreground">Demonstrativo de Resultado do Exercício</h2>
               <button className="btn-secondary" onClick={handleExportDRE}>
-                <Download className="w-4 h-4" />
+                <Upload className="w-4 h-4" />
                 Exportar PDF
               </button>
             </div>
@@ -411,7 +412,7 @@ export default function Relatorios() {
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold text-foreground">Comparativo Mensal - {currentYear}</h2>
               <button className="btn-secondary" onClick={handleExportMonthly}>
-                <Download className="w-4 h-4" />
+                <Upload className="w-4 h-4" />
                 Exportar Excel
               </button>
             </div>

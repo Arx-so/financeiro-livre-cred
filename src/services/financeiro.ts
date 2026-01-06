@@ -121,6 +121,62 @@ export async function createFinancialEntry(entry: FinancialEntryInsert): Promise
   return data;
 }
 
+// Create multiple financial entries (for recurring entries)
+export async function createFinancialEntries(entries: FinancialEntryInsert[]): Promise<FinancialEntry[]> {
+  if (entries.length === 0) return [];
+  
+  const { data, error } = await supabase
+    .from('financial_entries')
+    .insert(entries)
+    .select();
+
+  if (error) {
+    console.error('Error creating financial entries:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+// Helper function to calculate next recurrence dates
+export function calculateRecurringDates(
+  startDate: string,
+  recurrenceType: 'diario' | 'semanal' | 'mensal' | 'anual',
+  recurrenceDay: number | null,
+  count: number = 12
+): string[] {
+  const dates: string[] = [];
+  const start = new Date(startDate);
+  
+  for (let i = 1; i <= count; i++) {
+    const nextDate = new Date(start);
+    
+    switch (recurrenceType) {
+      case 'diario':
+        nextDate.setDate(start.getDate() + i);
+        break;
+      case 'semanal':
+        nextDate.setDate(start.getDate() + (i * 7));
+        break;
+      case 'mensal':
+        nextDate.setMonth(start.getMonth() + i);
+        // If recurrenceDay is set, use that day
+        if (recurrenceDay) {
+          const lastDayOfMonth = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
+          nextDate.setDate(Math.min(recurrenceDay, lastDayOfMonth));
+        }
+        break;
+      case 'anual':
+        nextDate.setFullYear(start.getFullYear() + i);
+        break;
+    }
+    
+    dates.push(nextDate.toISOString().split('T')[0]);
+  }
+  
+  return dates;
+}
+
 // Update financial entry
 export async function updateFinancialEntry(id: string, entry: FinancialEntryUpdate): Promise<FinancialEntry> {
   const { data, error } = await supabase

@@ -238,17 +238,31 @@ export async function deleteReconciliation(id: string): Promise<void> {
 
 // Get unreconciled entries for matching
 export async function getUnreconciledEntries(branchId: string): Promise<FinancialEntry[]> {
-  const { data, error } = await supabase
+  // First, get all reconciled entry IDs
+  const { data: reconciledData, error: reconciledError } = await supabase
+    .from('reconciliations')
+    .select('financial_entry_id');
+
+  if (reconciledError) {
+    console.error('Error fetching reconciled entries:', reconciledError);
+    throw reconciledError;
+  }
+
+  const reconciledIds = (reconciledData || []).map(r => r.financial_entry_id).filter(Boolean);
+
+  // Now get entries that are not in the reconciled list
+  let query = supabase
     .from('financial_entries')
     .select('*')
     .eq('branch_id', branchId)
-    .in('status', ['pago', 'pendente'])
-    .not('id', 'in', 
-      supabase
-        .from('reconciliations')
-        .select('financial_entry_id')
-    )
-    .order('due_date', { ascending: false });
+    .in('status', ['pago', 'pendente']);
+
+  // Only apply the filter if there are reconciled IDs
+  if (reconciledIds.length > 0) {
+    query = query.not('id', 'in', `(${reconciledIds.join(',')})`);
+  }
+
+  const { data, error } = await query.order('due_date', { ascending: false });
 
   if (error) {
     console.error('Error fetching unreconciled entries:', error);

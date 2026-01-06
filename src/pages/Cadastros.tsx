@@ -19,7 +19,11 @@ import {
   RotateCcw,
   FileText,
   Download,
-  X
+  X,
+  Landmark,
+  CreditCard,
+  DollarSign,
+  Repeat
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -60,12 +64,21 @@ import {
   useDeleteBranch,
   useReactivateBranch
 } from '@/hooks/useBranches';
-import { useAuthStore } from '@/stores';
-import type { FavorecidoTipo, FavorecidoInsert, BranchInsert } from '@/types/database';
+import {
+  useAllBankAccounts,
+  useCreateBankAccount,
+  useUpdateBankAccount,
+  useDeleteBankAccount,
+  useReactivateBankAccount
+} from '@/hooks/useBankAccounts';
+import { formatCurrency } from '@/services/bankAccounts';
+import { useAuthStore, useBranchStore } from '@/stores';
+import type { FavorecidoTipo, FavorecidoInsert, BranchInsert, BankAccountInsert, RecurrenceType } from '@/types/database';
 
 export default function Cadastros() {
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === 'admin';
+  const isAdminOrGerente = user?.role === 'admin' || user?.role === 'gerente';
   
   // Confirmation dialog
   const { confirm, dialogProps, isOpen: confirmOpen } = useConfirmDialog();
@@ -76,10 +89,13 @@ export default function Cadastros() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoriaModalOpen, setIsCategoriaModalOpen] = useState(false);
   const [isFilialModalOpen, setIsFilialModalOpen] = useState(false);
+  const [isBankAccountModalOpen, setIsBankAccountModalOpen] = useState(false);
   const [filterType, setFilterType] = useState<FavorecidoTipo | 'todos'>('todos');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingBranchId, setEditingBranchId] = useState<string | null>(null);
+  const [editingBankAccountId, setEditingBankAccountId] = useState<string | null>(null);
   const [showInactiveBranches, setShowInactiveBranches] = useState(false);
+  const [showInactiveBankAccounts, setShowInactiveBankAccounts] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
 
@@ -103,6 +119,9 @@ export default function Cadastros() {
     type: 'receita' as 'receita' | 'despesa' | 'ambos',
     color: '#3b82f6',
     subcategories: '',
+    is_recurring: false,
+    default_recurrence_type: '' as RecurrenceType | '',
+    default_recurrence_day: '',
   });
 
   const [branchForm, setBranchForm] = useState({
@@ -113,6 +132,15 @@ export default function Cadastros() {
     state: '',
     zip_code: '',
     phone: '',
+  });
+
+  const [bankAccountForm, setBankAccountForm] = useState({
+    name: '',
+    bank_name: '',
+    agency: '',
+    account_number: '',
+    branch_id: '',
+    initial_balance: '',
   });
 
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
@@ -134,6 +162,10 @@ export default function Cadastros() {
     isActive: showInactiveBranches ? undefined : true,
   });
 
+  const { data: bankAccounts, isLoading: bankAccountsLoading } = useAllBankAccounts({
+    isActive: showInactiveBankAccounts ? undefined : true,
+  });
+
   // Mutations
   const createFavorecido = useCreateFavorecido();
   const updateFavorecido = useUpdateFavorecido();
@@ -148,6 +180,10 @@ export default function Cadastros() {
   const updateBranch = useUpdateBranch();
   const deleteBranch = useDeleteBranch();
   const reactivateBranch = useReactivateBranch();
+  const createBankAccount = useCreateBankAccount();
+  const updateBankAccount = useUpdateBankAccount();
+  const deleteBankAccount = useDeleteBankAccount();
+  const reactivateBankAccount = useReactivateBankAccount();
 
   const filteredFavorecidos = favorecidos || [];
 
@@ -249,6 +285,9 @@ export default function Cadastros() {
         name: categoryForm.name,
         type: categoryForm.type,
         color: categoryForm.color,
+        is_recurring: categoryForm.is_recurring,
+        default_recurrence_type: categoryForm.is_recurring && categoryForm.default_recurrence_type ? categoryForm.default_recurrence_type : null,
+        default_recurrence_day: categoryForm.is_recurring && categoryForm.default_recurrence_day ? parseInt(categoryForm.default_recurrence_day) : null,
       });
 
       if (categoryForm.subcategories.trim()) {
@@ -263,7 +302,7 @@ export default function Cadastros() {
 
       toast.success('Categoria criada!');
       setIsCategoriaModalOpen(false);
-      setCategoryForm({ name: '', type: 'receita', color: '#3b82f6', subcategories: '' });
+      setCategoryForm({ name: '', type: 'receita', color: '#3b82f6', subcategories: '', is_recurring: false, default_recurrence_type: '', default_recurrence_day: '' });
     } catch (error) {
       toast.error('Erro ao criar categoria');
     }
@@ -355,6 +394,86 @@ export default function Cadastros() {
     } catch (error) {
       toast.error('Erro ao reativar filial');
     }
+  };
+
+  // Bank Account handlers
+  const handleBankAccountSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const accountData: BankAccountInsert = {
+      name: bankAccountForm.name,
+      bank_name: bankAccountForm.bank_name,
+      agency: bankAccountForm.agency || null,
+      account_number: bankAccountForm.account_number || null,
+      branch_id: bankAccountForm.branch_id,
+      initial_balance: parseFloat(bankAccountForm.initial_balance) || 0,
+    };
+
+    try {
+      if (editingBankAccountId) {
+        await updateBankAccount.mutateAsync({ id: editingBankAccountId, account: accountData });
+        toast.success('Conta bancária atualizada!');
+      } else {
+        await createBankAccount.mutateAsync(accountData);
+        toast.success('Conta bancária criada!');
+      }
+      setIsBankAccountModalOpen(false);
+      resetBankAccountForm();
+    } catch (error) {
+      toast.error('Erro ao salvar conta bancária');
+    }
+  };
+
+  const handleDeleteBankAccount = (id: string, name: string) => {
+    confirm(async () => {
+      setIsDeleting(true);
+      try {
+        await deleteBankAccount.mutateAsync(id);
+        toast.success('Conta bancária desativada!');
+      } catch (error) {
+        toast.error('Erro ao desativar conta bancária');
+      } finally {
+        setIsDeleting(false);
+      }
+    }, {
+      title: 'Desativar conta bancária',
+      description: `Tem certeza que deseja desativar a conta "${name}"? Você poderá reativá-la depois.`,
+      confirmText: 'Desativar',
+    });
+  };
+
+  const handleReactivateBankAccount = async (id: string) => {
+    try {
+      await reactivateBankAccount.mutateAsync(id);
+      toast.success('Conta bancária reativada!');
+    } catch (error) {
+      toast.error('Erro ao reativar conta bancária');
+    }
+  };
+
+  const resetBankAccountForm = () => {
+    setBankAccountForm({
+      name: '',
+      bank_name: '',
+      agency: '',
+      account_number: '',
+      branch_id: '',
+      initial_balance: '',
+    });
+    setEditingBankAccountId(null);
+  };
+
+  const openEditBankAccountModal = (account: NonNullable<typeof bankAccounts>[0]) => {
+    setBankAccountForm({
+      name: account.name,
+      bank_name: account.bank_name,
+      agency: account.agency || '',
+      account_number: account.account_number || '',
+      branch_id: account.branch_id,
+      initial_balance: account.initial_balance.toString(),
+    });
+    setEditingBankAccountId(account.id);
+    setIsBankAccountModalOpen(true);
   };
 
   const resetBranchForm = () => {
@@ -469,6 +588,11 @@ export default function Cadastros() {
             <TabsTrigger value="categorias" className="rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm">
               Categorias
             </TabsTrigger>
+            {isAdminOrGerente && (
+              <TabsTrigger value="contas-bancarias" className="rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                Contas Bancárias
+              </TabsTrigger>
+            )}
             {isAdmin && (
               <TabsTrigger value="filiais" className="rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm">
                 Filiais
@@ -673,88 +797,97 @@ export default function Cadastros() {
                         />
                       </div>
 
-                      {/* Documents Section - Only visible when editing */}
-                      {editingId && (
-                        <div className="border-t border-border pt-4 mt-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <label className="block text-sm font-medium text-foreground">
-                              <FileText className="w-4 h-4 inline mr-2" />
-                              Documentos
-                            </label>
-                            <button 
-                              type="button" 
-                              className="btn-secondary text-sm py-1"
-                              onClick={() => documentInputRef.current?.click()}
-                              disabled={uploadDocument.isPending}
-                            >
-                              {uploadDocument.isPending ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <Upload className="w-4 h-4" />
-                              )}
-                              Anexar
-                            </button>
-                            <input
-                              ref={documentInputRef}
-                              type="file"
-                              accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.zip,.rar"
-                              className="hidden"
-                              multiple
-                              onChange={handleDocumentUpload}
-                            />
-                          </div>
-                          
-                          {documentsLoading ? (
-                            <div className="flex items-center justify-center py-4">
-                              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                            </div>
-                          ) : (favorecidoDocuments || []).length > 0 ? (
-                            <div className="space-y-2 max-h-48 overflow-y-auto">
-                              {favorecidoDocuments?.map((doc) => (
-                                <div 
-                                  key={doc.id} 
-                                  className="flex items-center justify-between p-2 bg-muted/50 rounded-lg group"
-                                >
-                                  <div className="flex items-center gap-3 min-w-0">
-                                    <span className="text-lg flex-shrink-0">{getFileIcon(doc.file_type)}</span>
-                                    <div className="min-w-0">
-                                      <p className="text-sm font-medium text-foreground truncate" title={doc.file_name}>
-                                        {doc.file_name}
-                                      </p>
-                                      <p className="text-xs text-muted-foreground">
-                                        {formatFileSize(doc.file_size)}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-1 flex-shrink-0">
-                                    <a
-                                      href={doc.file_url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="p-1.5 hover:bg-muted rounded-lg transition-colors"
-                                      title="Download"
-                                    >
-                                      <Download className="w-4 h-4 text-muted-foreground" />
-                                    </a>
-                                    <button
-                                      type="button"
-                                      className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors"
-                                      onClick={() => handleDeleteDocument(doc.id, doc.file_name)}
-                                      title="Remover"
-                                    >
-                                      <Trash2 className="w-4 h-4 text-destructive" />
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-sm text-muted-foreground text-center py-4">
-                              Nenhum documento anexado
-                            </p>
+                      {/* Documents Section */}
+                      <div className="border-t border-border pt-4 mt-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <label className="block text-sm font-medium text-foreground">
+                            <FileText className="w-4 h-4 inline mr-2" />
+                            Documentos
+                          </label>
+                          {editingId && (
+                            <>
+                              <button 
+                                type="button" 
+                                className="btn-secondary text-sm py-1"
+                                onClick={() => documentInputRef.current?.click()}
+                                disabled={uploadDocument.isPending}
+                              >
+                                {uploadDocument.isPending ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Upload className="w-4 h-4" />
+                                )}
+                                Anexar
+                              </button>
+                              <input
+                                ref={documentInputRef}
+                                type="file"
+                                accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.zip,.rar"
+                                className="hidden"
+                                multiple
+                                onChange={handleDocumentUpload}
+                              />
+                            </>
                           )}
                         </div>
-                      )}
+                        
+                        {!editingId ? (
+                          <div className="flex items-center gap-3 p-4 bg-muted/30 rounded-lg border border-dashed border-border">
+                            <FileText className="w-5 h-5 text-muted-foreground" />
+                            <p className="text-sm text-muted-foreground">
+                              Salve o cadastro primeiro para adicionar documentos
+                            </p>
+                          </div>
+                        ) : documentsLoading ? (
+                          <div className="flex items-center justify-center py-4">
+                            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                          </div>
+                        ) : (favorecidoDocuments || []).length > 0 ? (
+                          <div className="space-y-2 max-h-48 overflow-y-auto">
+                            {favorecidoDocuments?.map((doc) => (
+                              <div 
+                                key={doc.id} 
+                                className="flex items-center justify-between p-2 bg-muted/50 rounded-lg group"
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <span className="text-lg flex-shrink-0">{getFileIcon(doc.file_type)}</span>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-medium text-foreground truncate" title={doc.file_name}>
+                                      {doc.file_name}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {formatFileSize(doc.file_size)}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  <a
+                                    href={doc.file_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="p-1.5 hover:bg-muted rounded-lg transition-colors"
+                                    title="Download"
+                                  >
+                                    <Download className="w-4 h-4 text-muted-foreground" />
+                                  </a>
+                                  <button
+                                    type="button"
+                                    className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors"
+                                    onClick={() => handleDeleteDocument(doc.id, doc.file_name)}
+                                    title="Remover"
+                                  >
+                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-4">
+                            Nenhum documento anexado
+                          </p>
+                        )}
+                      </div>
 
                       <div className="flex justify-end gap-3 pt-4">
                         <button type="button" className="btn-secondary" onClick={() => { setIsModalOpen(false); resetForm(); }}>
@@ -918,6 +1051,73 @@ export default function Cadastros() {
                         onChange={(e) => setCategoryForm({ ...categoryForm, subcategories: e.target.value })}
                       />
                     </div>
+
+                    {/* Recurrence Settings */}
+                    <div className="border-t border-border pt-4 mt-4">
+                      <label className="flex items-center gap-3 cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={categoryForm.is_recurring}
+                          onChange={(e) => setCategoryForm({ ...categoryForm, is_recurring: e.target.checked })}
+                          className="w-4 h-4 rounded border-input"
+                        />
+                        <span className="text-sm font-medium text-foreground">Categoria recorrente</span>
+                      </label>
+                      <p className="text-xs text-muted-foreground mt-1 ml-7">
+                        Lançamentos desta categoria terão recorrência por padrão
+                      </p>
+
+                      {categoryForm.is_recurring && (
+                        <div className="grid grid-cols-2 gap-4 mt-4">
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">Tipo de Recorrência</label>
+                            <select 
+                              className="input-financial"
+                              value={categoryForm.default_recurrence_type}
+                              onChange={(e) => setCategoryForm({ ...categoryForm, default_recurrence_type: e.target.value as RecurrenceType | '' })}
+                            >
+                              <option value="">Selecione...</option>
+                              <option value="diario">Diário</option>
+                              <option value="semanal">Semanal</option>
+                              <option value="mensal">Mensal</option>
+                              <option value="anual">Anual</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">
+                              {categoryForm.default_recurrence_type === 'semanal' ? 'Dia da Semana' : 'Dia do Mês'}
+                            </label>
+                            {categoryForm.default_recurrence_type === 'semanal' ? (
+                              <select 
+                                className="input-financial"
+                                value={categoryForm.default_recurrence_day}
+                                onChange={(e) => setCategoryForm({ ...categoryForm, default_recurrence_day: e.target.value })}
+                              >
+                                <option value="">Selecione...</option>
+                                <option value="0">Domingo</option>
+                                <option value="1">Segunda-feira</option>
+                                <option value="2">Terça-feira</option>
+                                <option value="3">Quarta-feira</option>
+                                <option value="4">Quinta-feira</option>
+                                <option value="5">Sexta-feira</option>
+                                <option value="6">Sábado</option>
+                              </select>
+                            ) : (
+                              <input 
+                                type="number" 
+                                min="1" 
+                                max="31"
+                                className="input-financial" 
+                                placeholder="1-31"
+                                value={categoryForm.default_recurrence_day}
+                                onChange={(e) => setCategoryForm({ ...categoryForm, default_recurrence_day: e.target.value })}
+                              />
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     <div className="flex justify-end gap-3 pt-4">
                       <button type="button" className="btn-secondary" onClick={() => setIsCategoriaModalOpen(false)}>
                         Cancelar
@@ -959,6 +1159,12 @@ export default function Cadastros() {
                               {categoria.type === 'ambos' ? 'Receita/Despesa' : 
                                categoria.type.charAt(0).toUpperCase() + categoria.type.slice(1)}
                             </span>
+                            {categoria.is_recurring && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-pending-muted text-pending flex items-center gap-1">
+                                <Repeat className="w-3 h-3" />
+                                Recorrente
+                              </span>
+                            )}
                           </div>
                           <div className="flex flex-wrap gap-2 mt-2">
                             {categoria.subcategories.map((sub) => (
@@ -986,6 +1192,220 @@ export default function Cadastros() {
               </div>
             )}
           </TabsContent>
+
+          {/* Contas Bancárias Tab - Admin and Gerente */}
+          {isAdminOrGerente && (
+            <TabsContent value="contas-bancarias" className="space-y-6 mt-6">
+              {/* Actions */}
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <p className="text-muted-foreground">Gerencie as contas bancárias da empresa</p>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={showInactiveBankAccounts}
+                      onChange={(e) => setShowInactiveBankAccounts(e.target.checked)}
+                      className="w-4 h-4 rounded border-input"
+                    />
+                    <span className="text-muted-foreground">Mostrar inativas</span>
+                  </label>
+                </div>
+                <Dialog open={isBankAccountModalOpen} onOpenChange={(open) => { setIsBankAccountModalOpen(open); if (!open) resetBankAccountForm(); }}>
+                  <DialogTrigger asChild>
+                    <button className="btn-primary">
+                      <Plus className="w-4 h-4" />
+                      Nova Conta
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle>{editingBankAccountId ? 'Editar Conta Bancária' : 'Nova Conta Bancária'}</DialogTitle>
+                      <DialogDescription>
+                        {editingBankAccountId ? 'Atualize os dados da conta bancária.' : 'Cadastre uma nova conta bancária.'}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form className="space-y-4 mt-4" onSubmit={handleBankAccountSubmit}>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Nome da Conta *</label>
+                        <input 
+                          type="text" 
+                          className="input-financial" 
+                          placeholder="Ex: Conta Principal, Caixa Empresa"
+                          value={bankAccountForm.name}
+                          onChange={(e) => setBankAccountForm({ ...bankAccountForm, name: e.target.value })}
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Banco *</label>
+                        <input 
+                          type="text" 
+                          className="input-financial" 
+                          placeholder="Ex: Banco do Brasil, Itaú, Bradesco"
+                          value={bankAccountForm.bank_name}
+                          onChange={(e) => setBankAccountForm({ ...bankAccountForm, bank_name: e.target.value })}
+                          required
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-foreground mb-2">Agência</label>
+                          <input 
+                            type="text" 
+                            className="input-financial" 
+                            placeholder="0000"
+                            value={bankAccountForm.agency}
+                            onChange={(e) => setBankAccountForm({ ...bankAccountForm, agency: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-foreground mb-2">Número da Conta</label>
+                          <input 
+                            type="text" 
+                            className="input-financial" 
+                            placeholder="00000-0"
+                            value={bankAccountForm.account_number}
+                            onChange={(e) => setBankAccountForm({ ...bankAccountForm, account_number: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Filial *</label>
+                        <select 
+                          className="input-financial"
+                          value={bankAccountForm.branch_id}
+                          onChange={(e) => setBankAccountForm({ ...bankAccountForm, branch_id: e.target.value })}
+                          required
+                        >
+                          <option value="">Selecione uma filial</option>
+                          {(branches || []).filter(b => b.is_active).map((branch) => (
+                            <option key={branch.id} value={branch.id}>
+                              {branch.name} ({branch.code})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Saldo Inicial</label>
+                        <input 
+                          type="number" 
+                          step="0.01"
+                          className="input-financial" 
+                          placeholder="0,00"
+                          value={bankAccountForm.initial_balance}
+                          onChange={(e) => setBankAccountForm({ ...bankAccountForm, initial_balance: e.target.value })}
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-3 pt-4">
+                        <button type="button" className="btn-secondary" onClick={() => { setIsBankAccountModalOpen(false); resetBankAccountForm(); }}>
+                          Cancelar
+                        </button>
+                        <button 
+                          type="submit" 
+                          className="btn-primary"
+                          disabled={createBankAccount.isPending || updateBankAccount.isPending}
+                        >
+                          {(createBankAccount.isPending || updateBankAccount.isPending) && <Loader2 className="w-4 h-4 animate-spin" />}
+                          {editingBankAccountId ? 'Atualizar' : 'Salvar'} Conta
+                        </button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              {/* Bank Accounts List */}
+              {bankAccountsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : (bankAccounts || []).length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Landmark className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhuma conta bancária encontrada</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {(bankAccounts || []).map((account) => (
+                    <div key={account.id} className={`card-financial p-5 group ${!account.is_active ? 'opacity-60' : ''}`}>
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <Landmark className="w-6 h-6 text-primary" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-foreground">{account.name}</h3>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">
+                                {account.bank_name}
+                              </span>
+                              {account.is_active ? (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-income-muted text-income">Ativa</span>
+                              ) : (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-expense-muted text-expense">Inativa</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 text-sm">
+                        {account.agency && (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <CreditCard className="w-4 h-4" />
+                            <span>Ag: {account.agency} | Cc: {account.account_number || '-'}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Store className="w-4 h-4" />
+                          <span>{account.branch?.name || 'Sem filial'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <DollarSign className="w-4 h-4 text-muted-foreground" />
+                          <span className={`font-semibold ${account.current_balance >= 0 ? 'text-income' : 'text-expense'}`}>
+                            {formatCurrency(account.current_balance)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 mt-4 pt-4 border-t border-border">
+                        <button 
+                          className="btn-secondary flex-1 py-2"
+                          onClick={() => openEditBankAccountModal(account)}
+                        >
+                          <Edit className="w-4 h-4" />
+                          Editar
+                        </button>
+                        {account.is_active ? (
+                          <button 
+                            className="btn-secondary py-2 px-3 text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteBankAccount(account.id, account.name)}
+                            disabled={deleteBankAccount.isPending}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        ) : (
+                          <button 
+                            className="btn-secondary py-2 px-3 text-income hover:bg-income/10"
+                            onClick={() => handleReactivateBankAccount(account.id)}
+                            disabled={reactivateBankAccount.isPending}
+                            title="Reativar conta"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          )}
 
           {/* Filiais Tab - Admin Only */}
           {isAdmin && (

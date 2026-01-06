@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { 
   Building2, 
@@ -10,8 +10,18 @@ import {
   AlertCircle,
   CheckCircle2,
   Loader2,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Plus,
+  ArrowRight
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { toast } from 'sonner';
 import { useAuthStore, useBranchStore } from '@/stores';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -25,7 +35,11 @@ import {
   importBankStatements,
   getUnreconciledEntries
 } from '@/services/conciliacao';
+import { createFinancialEntry } from '@/services/financeiro';
 import { parseExcel, parseCSV, parseBankStatement, exportToExcel } from '@/services/importExport';
+import { useCategories } from '@/hooks/useCategorias';
+import { useFavorecidos } from '@/hooks/useCadastros';
+import type { EntryType, FinancialEntryInsert } from '@/types/database';
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', {
@@ -48,6 +62,19 @@ export default function Conciliacao() {
   const [selectedExtrato, setSelectedExtrato] = useState<string | null>(null);
   const [selectedLancamento, setSelectedLancamento] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createAndReconcile, setCreateAndReconcile] = useState(true);
+
+  // Form state for new entry
+  const [newEntryForm, setNewEntryForm] = useState({
+    type: 'despesa' as EntryType,
+    description: '',
+    value: '',
+    due_date: '',
+    category_id: '',
+    favorecido_id: '',
+    notes: '',
+  });
 
   // Fetch bank accounts
   const { data: bankAccounts, isLoading: accountsLoading } = useQuery({
@@ -89,6 +116,13 @@ export default function Conciliacao() {
     enabled: !!selectedBanco && !!unidadeAtual?.id,
   });
 
+  // Fetch categories and favorecidos for the create entry form
+  const { data: categories } = useCategories();
+  const { data: favorecidos } = useFavorecidos({ isActive: true });
+
+  // Get selected statement for creating entry
+  const selectedStatement = statements?.find(s => s.id === selectedExtrato);
+
   // Reconcile mutation
   const reconcileMutation = useMutation({
     mutationFn: ({ statementId, entryId }: { statementId: string; entryId: string }) =>
@@ -110,6 +144,27 @@ export default function Conciliacao() {
       queryClient.invalidateQueries({ queryKey: ['bank-statements'] });
       queryClient.invalidateQueries({ queryKey: ['unreconciled-entries'] });
       queryClient.invalidateQueries({ queryKey: ['reconciliation-summary'] });
+    },
+  });
+
+  // Create entry mutation
+  const createEntryMutation = useMutation({
+    mutationFn: async (data: { entry: FinancialEntryInsert; statementId: string; reconcile: boolean }) => {
+      const newEntry = await createFinancialEntry(data.entry);
+      
+      // If should reconcile, create the reconciliation link
+      if (data.reconcile && data.statementId) {
+        await createReconciliation(data.statementId, newEntry.id, user?.id);
+      }
+      
+      return newEntry;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bank-statements'] });
+      queryClient.invalidateQueries({ queryKey: ['unreconciled-entries'] });
+      queryClient.invalidateQueries({ queryKey: ['reconciliation-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['match-candidates'] });
+      queryClient.invalidateQueries({ queryKey: ['financial-entries'] });
     },
   });
 
@@ -147,6 +202,86 @@ export default function Conciliacao() {
     }
 
     toast.success(`${matchedCount} item(s) conciliado(s) automaticamente!`);
+  };
+
+  // Open modal to create entry from statement
+  const handleOpenCreateModal = () => {
+    if (!selectedStatement) {
+      toast.error('Selecione um item do extrato primeiro');
+      return;
+    }
+
+    // Pre-fill form based on statement data
+    const entryType: EntryType = selectedStatement.type === 'credito' ? 'receita' : 'despesa';
+    
+    setNewEntryForm({
+      type: entryType,
+      description: selectedStatement.description,
+      value: String(Math.abs(Number(selectedStatement.value))),
+      due_date: selectedStatement.date,
+      category_id: '',
+      favorecido_id: '',
+      notes: `Criado a partir do extrato bancário em ${formatDate(selectedStatement.date)}`,
+    });
+    
+    setCreateAndReconcile(true);
+    setIsCreateModalOpen(true);
+  };
+
+  // Handle create entry form submission
+  const handleCreateEntry = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!unidadeAtual?.id) {
+      toast.error('Selecione uma filial');
+      return;
+    }
+
+    const entryData: FinancialEntryInsert = {
+      branch_id: unidadeAtual.id,
+      type: newEntryForm.type,
+      description: newEntryForm.description,
+      value: parseFloat(newEntryForm.value) || 0,
+      due_date: newEntryForm.due_date,
+      status: 'pago', // Entries from statements are usually already paid
+      payment_date: newEntryForm.due_date,
+      category_id: newEntryForm.category_id || null,
+      favorecido_id: newEntryForm.favorecido_id || null,
+      bank_account_id: selectedBanco,
+      notes: newEntryForm.notes || null,
+    };
+
+    try {
+      await createEntryMutation.mutateAsync({
+        entry: entryData,
+        statementId: selectedExtrato || '',
+        reconcile: createAndReconcile && !!selectedExtrato,
+      });
+      
+      toast.success(
+        createAndReconcile 
+          ? 'Lançamento criado e conciliado!' 
+          : 'Lançamento criado!'
+      );
+      
+      setIsCreateModalOpen(false);
+      setSelectedExtrato(null);
+      resetCreateForm();
+    } catch (error) {
+      toast.error('Erro ao criar lançamento');
+    }
+  };
+
+  const resetCreateForm = () => {
+    setNewEntryForm({
+      type: 'despesa',
+      description: '',
+      value: '',
+      due_date: '',
+      category_id: '',
+      favorecido_id: '',
+      notes: '',
+    });
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -244,11 +379,11 @@ export default function Conciliacao() {
               onClick={() => fileInputRef.current?.click()}
               disabled={!selectedBanco || isImporting}
             >
-              {isImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {isImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
               Importar Extrato
             </button>
             <button className="btn-secondary" onClick={handleExport} disabled={!statements?.length}>
-              <Download className="w-4 h-4" />
+              <Upload className="w-4 h-4" />
               Exportar Relatório
             </button>
           </div>
@@ -344,13 +479,15 @@ export default function Conciliacao() {
         {/* Conciliation Action */}
         {(selectedExtrato || selectedLancamento) && (
           <div className="card-financial p-4 bg-primary/5 border-primary/20 animate-fade-in">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-4">
                 <Link2 className="w-5 h-5 text-primary" />
                 <span className="text-sm text-foreground">
                   {selectedExtrato && selectedLancamento 
                     ? 'Clique em "Conciliar" para vincular os itens selecionados'
-                    : 'Selecione um item do extrato e um lançamento para conciliar'}
+                    : selectedExtrato && !selectedLancamento
+                      ? 'Selecione um lançamento para conciliar ou crie um novo'
+                      : 'Selecione um item do extrato e um lançamento para conciliar'}
                 </span>
               </div>
               <div className="flex gap-2">
@@ -360,6 +497,15 @@ export default function Conciliacao() {
                 >
                   Cancelar
                 </button>
+                {selectedExtrato && !selectedLancamento && (
+                  <button 
+                    className="btn-secondary"
+                    onClick={handleOpenCreateModal}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Criar Lançamento
+                  </button>
+                )}
                 <button 
                   className="btn-primary"
                   disabled={!selectedExtrato || !selectedLancamento || reconcileMutation.isPending}
@@ -395,21 +541,22 @@ export default function Conciliacao() {
                       className="btn-secondary mt-4"
                       onClick={() => fileInputRef.current?.click()}
                     >
-                      <Upload className="w-4 h-4" />
+                      <Download className="w-4 h-4" />
                       Importar Extrato
                     </button>
                   </div>
                 ) : (
                   statements.map((item) => {
                     const isReconciled = item.reconciliation_status === 'conciliado';
+                    const isSelected = selectedExtrato === item.id;
                     return (
                       <div
                         key={item.id}
                         onClick={() => !isReconciled && setSelectedExtrato(item.id)}
-                        className={`p-4 flex items-center justify-between cursor-pointer transition-colors ${
+                        className={`p-4 flex items-center justify-between cursor-pointer transition-colors group ${
                           isReconciled 
                             ? 'bg-income-muted/30 cursor-default' 
-                            : selectedExtrato === item.id 
+                            : isSelected 
                               ? 'bg-primary/10' 
                               : 'hover:bg-muted/50'
                         }`}
@@ -429,11 +576,25 @@ export default function Conciliacao() {
                             <p className="text-xs text-muted-foreground">{formatDate(item.date)}</p>
                           </div>
                         </div>
-                        <p className={`font-mono-numbers font-semibold ${
-                          item.type === 'credito' ? 'text-income' : 'text-expense'
-                        }`}>
-                          {item.type === 'credito' ? '+' : '-'}{formatCurrency(Number(item.value))}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          {!isReconciled && isSelected && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenCreateModal();
+                              }}
+                              className="p-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 transition-colors"
+                              title="Criar lançamento a partir deste item"
+                            >
+                              <Plus className="w-4 h-4 text-primary" />
+                            </button>
+                          )}
+                          <p className={`font-mono-numbers font-semibold ${
+                            item.type === 'credito' ? 'text-income' : 'text-expense'
+                          }`}>
+                            {item.type === 'credito' ? '+' : '-'}{formatCurrency(Number(item.value))}
+                          </p>
+                        </div>
                       </div>
                     );
                   })
@@ -489,6 +650,159 @@ export default function Conciliacao() {
             </div>
           </div>
         )}
+
+        {/* Create Entry Modal */}
+        <Dialog open={isCreateModalOpen} onOpenChange={(open) => { setIsCreateModalOpen(open); if (!open) resetCreateForm(); }}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Criar Lançamento</DialogTitle>
+              <DialogDescription>
+                Crie um novo lançamento a partir do item do extrato selecionado.
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedStatement && (
+              <div className="p-3 bg-muted/50 rounded-lg border border-border mb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{selectedStatement.description}</p>
+                    <p className="text-xs text-muted-foreground">{formatDate(selectedStatement.date)}</p>
+                  </div>
+                  <p className={`font-mono-numbers font-semibold ${
+                    selectedStatement.type === 'credito' ? 'text-income' : 'text-expense'
+                  }`}>
+                    {selectedStatement.type === 'credito' ? '+' : '-'}{formatCurrency(Number(selectedStatement.value))}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <form className="space-y-4" onSubmit={handleCreateEntry}>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Tipo</label>
+                  <select 
+                    className="input-financial" 
+                    value={newEntryForm.type}
+                    onChange={(e) => setNewEntryForm({ ...newEntryForm, type: e.target.value as EntryType })}
+                  >
+                    <option value="receita">Receita</option>
+                    <option value="despesa">Despesa</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Valor</label>
+                  <CurrencyInput
+                    value={newEntryForm.value}
+                    onChange={(numValue) => setNewEntryForm({ ...newEntryForm, value: String(numValue) })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Descrição</label>
+                <input 
+                  type="text" 
+                  className="input-financial" 
+                  placeholder="Descrição do lançamento" 
+                  value={newEntryForm.description}
+                  onChange={(e) => setNewEntryForm({ ...newEntryForm, description: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Data</label>
+                  <input 
+                    type="date" 
+                    className="input-financial" 
+                    value={newEntryForm.due_date}
+                    onChange={(e) => setNewEntryForm({ ...newEntryForm, due_date: e.target.value })}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">Categoria</label>
+                  <select 
+                    className="input-financial"
+                    value={newEntryForm.category_id}
+                    onChange={(e) => setNewEntryForm({ ...newEntryForm, category_id: e.target.value })}
+                  >
+                    <option value="">Selecione</option>
+                    {categories?.filter(c => c.type === newEntryForm.type || c.type === 'ambos').map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Favorecido</label>
+                <select 
+                  className="input-financial"
+                  value={newEntryForm.favorecido_id}
+                  onChange={(e) => setNewEntryForm({ ...newEntryForm, favorecido_id: e.target.value })}
+                >
+                  <option value="">Selecione</option>
+                  {favorecidos?.map(f => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">Observações</label>
+                <textarea 
+                  className="input-financial min-h-[60px]" 
+                  placeholder="Observações adicionais"
+                  value={newEntryForm.notes}
+                  onChange={(e) => setNewEntryForm({ ...newEntryForm, notes: e.target.value })}
+                />
+              </div>
+
+              <div className="pt-2">
+                <label className="flex items-center gap-3 cursor-pointer p-3 bg-income-muted/50 rounded-lg border border-income/20">
+                  <input 
+                    type="checkbox" 
+                    checked={createAndReconcile}
+                    onChange={(e) => setCreateAndReconcile(e.target.checked)}
+                    className="w-4 h-4 rounded border-input text-income"
+                  />
+                  <div className="flex items-center gap-2">
+                    <Link2 className="w-4 h-4 text-income" />
+                    <span className="text-sm font-medium text-foreground">Conciliar automaticamente após criar</span>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button 
+                  type="button" 
+                  className="btn-secondary" 
+                  onClick={() => { setIsCreateModalOpen(false); resetCreateForm(); }}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn-primary"
+                  disabled={createEntryMutation.isPending}
+                >
+                  {createEntryMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      {createAndReconcile ? 'Criar e Conciliar' : 'Criar Lançamento'}
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );

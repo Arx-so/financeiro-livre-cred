@@ -16,6 +16,7 @@ import Programacao from "./pages/Programacao";
 import Previsao from "./pages/Previsao";
 import Conciliacao from "./pages/Conciliacao";
 import Contratos from "./pages/Contratos";
+import Docs from "./pages/Docs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -101,6 +102,7 @@ function AppRoutes() {
       <Route path="/previsao" element={<ProtectedRoute><Previsao /></ProtectedRoute>} />
       <Route path="/conciliacao" element={<ProtectedRoute><Conciliacao /></ProtectedRoute>} />
       <Route path="/contratos" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
+      <Route path="/docs" element={<ProtectedRoute><Docs /></ProtectedRoute>} />
       
       {/* 404 - Protected to prevent information leak */}
       <Route path="*" element={<ProtectedRoute><NotFound /></ProtectedRoute>} />

@@ -3,8 +3,8 @@ import {
   Plus, 
   Search, 
   Filter, 
-  Download, 
   Upload,
+  Download,
   Edit,
   Trash2,
   MoreHorizontal,
@@ -15,7 +15,8 @@ import {
   Loader2,
   Check,
   X,
-  Ban
+  Ban,
+  Repeat
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import {
@@ -34,16 +35,18 @@ import {
   useFinancialEntries, 
   useFinancialSummary,
   useCreateFinancialEntry,
+  useCreateFinancialEntries,
   useUpdateFinancialEntry,
   useDeleteFinancialEntries,
   useMarkAsPaid,
-  useUpdateOverdueEntries
+  useUpdateOverdueEntries,
+  calculateRecurringDates
 } from '@/hooks/useFinanceiro';
 import { useCategories, useSubcategories } from '@/hooks/useCategorias';
 import { useFavorecidos } from '@/hooks/useCadastros';
 import { getBankAccounts } from '@/services/conciliacao';
 import { exportToExcel, exportToCSV, parseExcel, parseCSV, parseXML, parseNFE } from '@/services/importExport';
-import type { EntryType, EntryStatus, FinancialEntryInsert } from '@/types/database';
+import type { EntryType, EntryStatus, FinancialEntryInsert, RecurrenceType } from '@/types/database';
 import { useQuery } from '@tanstack/react-query';
 
 function formatCurrency(value: number) {
@@ -62,6 +65,10 @@ export default function Financeiro() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTipo, setFilterTipo] = useState<'todos' | EntryType>('todos');
+  const [filterMonth, setFilterMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
@@ -82,14 +89,32 @@ export default function Financeiro() {
     favorecido_id: '',
     bank_account_id: '',
     notes: '',
+    is_recurring: false,
+    recurrence_type: '' as RecurrenceType | '',
+    recurrence_day: '',
+    recurrence_end_date: '',
   });
+
+  // Calculate date range for month filter
+  const getMonthDateRange = (monthStr: string) => {
+    if (!monthStr) return { startDate: undefined, endDate: undefined };
+    const [year, month] = monthStr.split('-').map(Number);
+    const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+    const lastDay = new Date(year, month, 0).getDate();
+    const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    return { startDate, endDate };
+  };
+
+  const { startDate, endDate } = getMonthDateRange(filterMonth);
 
   // Fetch data
   const { data: entries, isLoading: entriesLoading } = useFinancialEntries({
     type: filterTipo === 'todos' ? undefined : filterTipo,
     search: searchTerm || undefined,
+    startDate,
+    endDate,
   });
-  const { data: summary } = useFinancialSummary();
+  const { data: summary } = useFinancialSummary(undefined, startDate, endDate);
   const { data: categories } = useCategories();
   const { data: subcategories } = useSubcategories(formData.category_id);
   const { data: favorecidos } = useFavorecidos({ isActive: true });
@@ -101,6 +126,7 @@ export default function Financeiro() {
 
   // Mutations
   const createEntry = useCreateFinancialEntry();
+  const createEntries = useCreateFinancialEntries();
   const updateEntry = useUpdateFinancialEntry();
   const deleteEntries = useDeleteFinancialEntries();
   const markPaid = useMarkAsPaid();
@@ -167,6 +193,15 @@ export default function Financeiro() {
       favorecido_id: formData.favorecido_id || null,
       bank_account_id: formData.bank_account_id || null,
       notes: formData.notes || null,
+      // Only include recurrence fields if recurring is enabled
+      // These fields require migration 006_recurring_entries.sql to be executed
+      ...(formData.is_recurring && {
+        is_recurring: true,
+        recurrence_type: formData.recurrence_type || null,
+        recurrence_day: formData.recurrence_day ? parseInt(formData.recurrence_day) : null,
+        recurrence_end_date: formData.recurrence_end_date || null,
+        is_recurring_template: !editingId, // New recurring entries are templates
+      }),
     };
 
     try {
@@ -174,12 +209,54 @@ export default function Financeiro() {
         await updateEntry.mutateAsync({ id: editingId, entry: entryData });
         toast.success('Lançamento atualizado!');
       } else {
-        await createEntry.mutateAsync(entryData);
-        toast.success('Lançamento criado!');
+        // Create the first entry (template for recurring)
+        const createdEntry = await createEntry.mutateAsync(entryData);
+        
+        // If it's a recurring entry, generate entries for the next 12 months
+        if (formData.is_recurring && formData.recurrence_type && !editingId) {
+          const recurrenceDay = formData.recurrence_day ? parseInt(formData.recurrence_day) : null;
+          const futureDates = calculateRecurringDates(
+            formData.due_date,
+            formData.recurrence_type,
+            recurrenceDay,
+            11 // 11 more entries to complete 12 months total
+          );
+          
+          // Create entries for future dates
+          const futureEntries: FinancialEntryInsert[] = futureDates.map(date => ({
+            branch_id: unidadeAtual.id,
+            type: formData.type,
+            description: formData.description,
+            value: parseFloat(formData.value) || 0,
+            due_date: date,
+            payment_date: null,
+            status: 'pendente' as const,
+            category_id: formData.category_id || null,
+            subcategory_id: formData.subcategory_id || null,
+            favorecido_id: formData.favorecido_id || null,
+            bank_account_id: formData.bank_account_id || null,
+            notes: formData.notes || null,
+            is_recurring: true,
+            recurrence_type: formData.recurrence_type as RecurrenceType,
+            recurrence_day: recurrenceDay,
+            recurrence_end_date: formData.recurrence_end_date || null,
+            recurring_parent_id: createdEntry.id,
+            is_recurring_template: false,
+          }));
+          
+          if (futureEntries.length > 0) {
+            await createEntries.mutateAsync(futureEntries);
+          }
+          
+          toast.success(`Lançamento recorrente criado! ${futureEntries.length + 1} lançamentos gerados.`);
+        } else {
+          toast.success('Lançamento criado!');
+        }
       }
       setIsModalOpen(false);
       resetForm();
     } catch (error) {
+      console.error('Error saving entry:', error);
       toast.error('Erro ao salvar lançamento');
     }
   };
@@ -267,6 +344,10 @@ export default function Financeiro() {
       favorecido_id: '',
       bank_account_id: '',
       notes: '',
+      is_recurring: false,
+      recurrence_type: '',
+      recurrence_day: '',
+      recurrence_end_date: '',
     });
     setEditingId(null);
   };
@@ -284,10 +365,29 @@ export default function Financeiro() {
       favorecido_id: entry.favorecido_id || '',
       bank_account_id: entry.bank_account_id || '',
       notes: entry.notes || '',
+      is_recurring: entry.is_recurring || false,
+      recurrence_type: entry.recurrence_type || '',
+      recurrence_day: entry.recurrence_day?.toString() || '',
+      recurrence_end_date: entry.recurrence_end_date || '',
     });
     setEditingId(entry.id);
     setIsModalOpen(true);
   };
+
+  // Get selected category to check if it has default recurrence
+  const selectedCategory = categories?.find(c => c.id === formData.category_id);
+
+  // Apply category recurrence defaults when category changes
+  useEffect(() => {
+    if (selectedCategory?.is_recurring && !editingId) {
+      setFormData(prev => ({
+        ...prev,
+        is_recurring: true,
+        recurrence_type: selectedCategory.default_recurrence_type || prev.recurrence_type,
+        recurrence_day: selectedCategory.default_recurrence_day?.toString() || prev.recurrence_day,
+      }));
+    }
+  }, [formData.category_id, selectedCategory, editingId]);
 
   const handleMarkAsPaid = async (entryId: string) => {
     try {
@@ -330,13 +430,13 @@ export default function Financeiro() {
           </div>
           <div className="flex items-center gap-3">
             <label className="btn-secondary cursor-pointer">
-              <Upload className="w-4 h-4" />
+              <Download className="w-4 h-4" />
               Importar XML
               <input type="file" accept=".xml" className="hidden" onChange={handleImportXML} />
             </label>
             <div className="relative group">
               <button className="btn-secondary">
-                <Download className="w-4 h-4" />
+                <Upload className="w-4 h-4" />
                 Exportar
               </button>
               <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
@@ -495,6 +595,86 @@ export default function Financeiro() {
                       onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     />
                   </div>
+
+                  {/* Recurrence Settings */}
+                  <div className="border-t border-border pt-4 mt-4">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={formData.is_recurring}
+                        onChange={(e) => setFormData({ ...formData, is_recurring: e.target.checked })}
+                        className="w-4 h-4 rounded border-input"
+                      />
+                      <Repeat className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm font-medium text-foreground">Lançamento recorrente</span>
+                    </label>
+                    {selectedCategory?.is_recurring && (
+                      <p className="text-xs text-muted-foreground mt-1 ml-7">
+                        Categoria com recorrência padrão aplicada
+                      </p>
+                    )}
+
+                    {formData.is_recurring && (
+                      <div className="grid grid-cols-3 gap-4 mt-4">
+                        <div>
+                          <label className="block text-sm font-medium text-foreground mb-2">Tipo de Recorrência</label>
+                          <select 
+                            className="input-financial"
+                            value={formData.recurrence_type}
+                            onChange={(e) => setFormData({ ...formData, recurrence_type: e.target.value as RecurrenceType | '' })}
+                            required={formData.is_recurring}
+                          >
+                            <option value="">Selecione...</option>
+                            <option value="diario">Diário</option>
+                            <option value="semanal">Semanal</option>
+                            <option value="mensal">Mensal</option>
+                            <option value="anual">Anual</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-foreground mb-2">
+                            {formData.recurrence_type === 'semanal' ? 'Dia da Semana' : 'Dia do Mês'}
+                          </label>
+                          {formData.recurrence_type === 'semanal' ? (
+                            <select 
+                              className="input-financial"
+                              value={formData.recurrence_day}
+                              onChange={(e) => setFormData({ ...formData, recurrence_day: e.target.value })}
+                            >
+                              <option value="">Selecione...</option>
+                              <option value="0">Domingo</option>
+                              <option value="1">Segunda-feira</option>
+                              <option value="2">Terça-feira</option>
+                              <option value="3">Quarta-feira</option>
+                              <option value="4">Quinta-feira</option>
+                              <option value="5">Sexta-feira</option>
+                              <option value="6">Sábado</option>
+                            </select>
+                          ) : (
+                            <input 
+                              type="number" 
+                              min="1" 
+                              max="31"
+                              className="input-financial" 
+                              placeholder="1-31"
+                              value={formData.recurrence_day}
+                              onChange={(e) => setFormData({ ...formData, recurrence_day: e.target.value })}
+                            />
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-foreground mb-2">Data Fim (opcional)</label>
+                          <input 
+                            type="date" 
+                            className="input-financial" 
+                            value={formData.recurrence_end_date}
+                            onChange={(e) => setFormData({ ...formData, recurrence_end_date: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex justify-end gap-3 pt-4">
                     <button type="button" className="btn-secondary" onClick={() => { setIsModalOpen(false); resetForm(); }}>
                       Cancelar
@@ -548,6 +728,21 @@ export default function Financeiro() {
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="input-financial pl-11"
               />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="month"
+                value={filterMonth}
+                onChange={(e) => setFilterMonth(e.target.value)}
+                className="input-financial w-auto"
+              />
+              <button
+                onClick={() => setFilterMonth('')}
+                className={!filterMonth ? 'btn-primary' : 'btn-secondary'}
+                title="Mostrar todos os meses"
+              >
+                Todos
+              </button>
             </div>
             <div className="flex gap-2">
               <button
@@ -649,7 +844,12 @@ export default function Financeiro() {
                             </div>
                           </td>
                           <td>
-                            <p className="font-medium text-foreground">{entry.description}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-foreground">{entry.description}</p>
+                              {entry.is_recurring && (
+                                <Repeat className="w-3 h-3 text-muted-foreground" aria-label="Lançamento recorrente" />
+                              )}
+                            </div>
                           </td>
                           <td className="text-foreground">{entry.favorecido?.name || '-'}</td>
                           <td>

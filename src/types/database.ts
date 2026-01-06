@@ -4,6 +4,7 @@ export type EntryType = 'receita' | 'despesa';
 export type EntryStatus = 'pendente' | 'pago' | 'atrasado' | 'cancelado';
 export type ContractStatus = 'ativo' | 'pendente' | 'encerrado';
 export type ReconciliationStatus = 'pendente' | 'conciliado' | 'divergente';
+export type RecurrenceType = 'diario' | 'semanal' | 'mensal' | 'anual';
 
 export interface Database {
   public: {
@@ -91,6 +92,9 @@ export interface Database {
           type: EntryType | 'ambos';
           color: string;
           is_active: boolean;
+          is_recurring: boolean;
+          default_recurrence_type: RecurrenceType | null;
+          default_recurrence_day: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -100,6 +104,9 @@ export interface Database {
           type: EntryType | 'ambos';
           color?: string;
           is_active?: boolean;
+          is_recurring?: boolean;
+          default_recurrence_type?: RecurrenceType | null;
+          default_recurrence_day?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -108,6 +115,9 @@ export interface Database {
           type?: EntryType | 'ambos';
           color?: string;
           is_active?: boolean;
+          is_recurring?: boolean;
+          default_recurrence_type?: RecurrenceType | null;
+          default_recurrence_day?: number | null;
           updated_at?: string;
         };
       };
@@ -245,6 +255,12 @@ export interface Database {
           notes: string | null;
           document_number: string | null;
           created_by: string | null;
+          is_recurring: boolean;
+          recurrence_type: RecurrenceType | null;
+          recurrence_day: number | null;
+          recurrence_end_date: string | null;
+          recurring_parent_id: string | null;
+          is_recurring_template: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -264,6 +280,12 @@ export interface Database {
           notes?: string | null;
           document_number?: string | null;
           created_by?: string | null;
+          is_recurring?: boolean;
+          recurrence_type?: RecurrenceType | null;
+          recurrence_day?: number | null;
+          recurrence_end_date?: string | null;
+          recurring_parent_id?: string | null;
+          is_recurring_template?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -281,6 +303,12 @@ export interface Database {
           status?: EntryStatus;
           notes?: string | null;
           document_number?: string | null;
+          is_recurring?: boolean;
+          recurrence_type?: RecurrenceType | null;
+          recurrence_day?: number | null;
+          recurrence_end_date?: string | null;
+          recurring_parent_id?: string | null;
+          is_recurring_template?: boolean;
           updated_at?: string;
         };
       };
@@ -531,6 +559,7 @@ export interface Database {
       entry_status: EntryStatus;
       contract_status: ContractStatus;
       reconciliation_status: ReconciliationStatus;
+      recurrence_type: RecurrenceType;
     };
   };
 }
