@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -8,7 +9,8 @@ import {
   MoreHorizontal,
   Calendar,
   Filter,
-  Loader2
+  Loader2,
+  ChevronDown
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuthStore, useBranchStore } from '@/stores';
@@ -40,16 +42,38 @@ function getDaysUntil(dateStr: string): number {
   return Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+// Generate year options (current year and 5 years back)
+function getYearOptions(): number[] {
+  const currentYear = new Date().getFullYear();
+  const years: number[] = [];
+  for (let i = 0; i <= 5; i++) {
+    years.push(currentYear - i);
+  }
+  return years;
+}
+
 export default function Dashboard() {
   const user = useAuthStore((state) => state.user);
   const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().toLocaleString('pt-BR', { month: 'long' });
 
-  // Fetch data
-  const { data: summary, isLoading: summaryLoading } = useFinancialSummary();
-  const { data: monthlyData, isLoading: monthlyLoading } = useMonthlyData(currentYear);
-  const { data: recentTransactions, isLoading: recentLoading } = useRecentTransactions(5);
+  // Year selector state
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const yearOptions = getYearOptions();
+
+  // Calculate date range for the selected year
+  const yearStartDate = `${selectedYear}-01-01`;
+  const yearEndDate = `${selectedYear}-12-31`;
+
+  // Fetch data filtered by selected year
+  const { data: summary, isLoading: summaryLoading } = useFinancialSummary(
+    undefined, 
+    yearStartDate, 
+    yearEndDate
+  );
+  const { data: monthlyData, isLoading: monthlyLoading } = useMonthlyData(selectedYear);
+  const { data: recentTransactions, isLoading: recentLoading } = useRecentTransactions(5, undefined, selectedYear);
   const { data: upcomingPayments, isLoading: upcomingLoading } = useUpcomingPayments(15);
 
   // Prepare chart data
@@ -97,14 +121,23 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="btn-secondary">
-              <Calendar className="w-4 h-4" />
-              {currentMonth.charAt(0).toUpperCase() + currentMonth.slice(1)} {currentYear}
-            </button>
-            <button className="btn-secondary">
-              <Filter className="w-4 h-4" />
-              Filtros
-            </button>
+            <div className="relative">
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                className="btn-secondary appearance-none pr-8 cursor-pointer"
+              >
+                {yearOptions.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            </div>
+            <span className="text-sm text-muted-foreground">
+              {selectedYear === currentYear ? `${currentMonth.charAt(0).toUpperCase() + currentMonth.slice(1)}` : 'Ano completo'}
+            </span>
           </div>
         </div>
 
@@ -113,7 +146,7 @@ export default function Dashboard() {
           <div className="stat-card stat-card-income animate-fade-in">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Receitas do Mês</p>
+                <p className="text-sm font-medium text-muted-foreground">Receitas de {selectedYear}</p>
                 <p className="text-2xl font-bold font-mono-numbers text-foreground mt-1">
                   {formatCurrency(summary?.totalReceitas || 0)}
                 </p>
@@ -131,7 +164,7 @@ export default function Dashboard() {
           <div className="stat-card stat-card-expense animate-fade-in stagger-1">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Despesas do Mês</p>
+                <p className="text-sm font-medium text-muted-foreground">Despesas de {selectedYear}</p>
                 <p className="text-2xl font-bold font-mono-numbers text-foreground mt-1">
                   {formatCurrency(summary?.totalDespesas || 0)}
                 </p>
@@ -149,7 +182,7 @@ export default function Dashboard() {
           <div className="stat-card stat-card-primary animate-fade-in stagger-2">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Saldo Atual</p>
+                <p className="text-sm font-medium text-muted-foreground">Saldo de {selectedYear}</p>
                 <p className="text-2xl font-bold font-mono-numbers text-foreground mt-1">
                   {formatCurrency(summary?.saldo || 0)}
                 </p>
@@ -176,7 +209,7 @@ export default function Dashboard() {
           <div className="stat-card stat-card-pending animate-fade-in stagger-3">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Contas Pendentes</p>
+                <p className="text-sm font-medium text-muted-foreground">Pendentes ({selectedYear})</p>
                 <p className="text-2xl font-bold font-mono-numbers text-foreground mt-1">
                   {formatCurrency(summary?.pendentes || 0)}
                 </p>
@@ -199,7 +232,7 @@ export default function Dashboard() {
           <div className="lg:col-span-2 card-financial p-6 animate-fade-in">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="font-semibold text-foreground">Fluxo de Caixa</h3>
+                <h3 className="font-semibold text-foreground">Fluxo de Caixa {selectedYear}</h3>
                 <p className="text-sm text-muted-foreground">Receitas vs Despesas</p>
               </div>
               <button className="p-2 hover:bg-muted rounded-lg transition-colors">
@@ -301,7 +334,7 @@ export default function Dashboard() {
           {/* Recent Transactions */}
           <div className="card-financial p-6 animate-fade-in">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-foreground">Transações Recentes</h3>
+              <h3 className="font-semibold text-foreground">Transações Recentes ({selectedYear})</h3>
               <Link to="/financeiro" className="text-sm text-primary hover:underline">Ver todas</Link>
             </div>
             <div className="space-y-3">

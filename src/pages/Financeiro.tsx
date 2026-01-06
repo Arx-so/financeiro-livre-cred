@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
@@ -12,7 +12,10 @@ import {
   ArrowDownRight,
   ChevronLeft,
   ChevronRight,
-  Loader2
+  Loader2,
+  Check,
+  X,
+  Ban
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import {
@@ -23,6 +26,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { CurrencyInput } from '@/components/ui/currency-input';
+import { ConfirmDialog, useConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from 'sonner';
 import { useBranchStore } from '@/stores';
 import { 
@@ -31,7 +36,8 @@ import {
   useCreateFinancialEntry,
   useUpdateFinancialEntry,
   useDeleteFinancialEntries,
-  useMarkAsPaid 
+  useMarkAsPaid,
+  useUpdateOverdueEntries
 } from '@/hooks/useFinanceiro';
 import { useCategories, useSubcategories } from '@/hooks/useCategorias';
 import { useFavorecidos } from '@/hooks/useCadastros';
@@ -58,6 +64,10 @@ export default function Financeiro() {
   const [filterTipo, setFilterTipo] = useState<'todos' | EntryType>('todos');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // Confirmation dialog
+  const { confirm, dialogProps } = useConfirmDialog();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -65,6 +75,8 @@ export default function Financeiro() {
     description: '',
     value: '',
     due_date: '',
+    payment_date: '',
+    status: 'pendente' as EntryStatus,
     category_id: '',
     subcategory_id: '',
     favorecido_id: '',
@@ -92,6 +104,14 @@ export default function Financeiro() {
   const updateEntry = useUpdateFinancialEntry();
   const deleteEntries = useDeleteFinancialEntries();
   const markPaid = useMarkAsPaid();
+  const updateOverdue = useUpdateOverdueEntries();
+
+  // Auto-update overdue entries on page load
+  useEffect(() => {
+    if (unidadeAtual?.id) {
+      updateOverdue.mutate();
+    }
+  }, [unidadeAtual?.id]);
 
   const filteredEntries = entries || [];
 
@@ -138,8 +158,10 @@ export default function Financeiro() {
       branch_id: unidadeAtual.id,
       type: formData.type,
       description: formData.description,
-      value: parseFloat(formData.value.replace(/[^\d,-]/g, '').replace(',', '.')),
+      value: parseFloat(formData.value) || 0,
       due_date: formData.due_date,
+      payment_date: formData.status === 'pago' ? (formData.payment_date || new Date().toISOString().split('T')[0]) : null,
+      status: formData.status,
       category_id: formData.category_id || null,
       subcategory_id: formData.subcategory_id || null,
       favorecido_id: formData.favorecido_id || null,
@@ -162,16 +184,25 @@ export default function Financeiro() {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (selectedIds.length === 0) return;
 
-    try {
-      await deleteEntries.mutateAsync(selectedIds);
-      toast.success(`${selectedIds.length} lançamento(s) excluído(s)`);
-      setSelectedIds([]);
-    } catch (error) {
-      toast.error('Erro ao excluir lançamentos');
-    }
+    confirm(async () => {
+      setIsDeleting(true);
+      try {
+        await deleteEntries.mutateAsync(selectedIds);
+        toast.success(`${selectedIds.length} lançamento(s) excluído(s)`);
+        setSelectedIds([]);
+      } catch (error) {
+        toast.error('Erro ao excluir lançamentos');
+      } finally {
+        setIsDeleting(false);
+      }
+    }, {
+      title: 'Excluir lançamentos',
+      description: `Tem certeza que deseja excluir ${selectedIds.length} lançamento(s)? Esta ação não pode ser desfeita.`,
+      confirmText: 'Excluir',
+    });
   };
 
   const handleExport = (format: 'xlsx' | 'csv') => {
@@ -229,6 +260,8 @@ export default function Financeiro() {
       description: '',
       value: '',
       due_date: '',
+      payment_date: '',
+      status: 'pendente',
       category_id: '',
       subcategory_id: '',
       favorecido_id: '',
@@ -244,6 +277,8 @@ export default function Financeiro() {
       description: entry.description,
       value: String(entry.value),
       due_date: entry.due_date,
+      payment_date: entry.payment_date || '',
+      status: entry.status,
       category_id: entry.category_id || '',
       subcategory_id: entry.subcategory_id || '',
       favorecido_id: entry.favorecido_id || '',
@@ -252,6 +287,36 @@ export default function Financeiro() {
     });
     setEditingId(entry.id);
     setIsModalOpen(true);
+  };
+
+  const handleMarkAsPaid = async (entryId: string) => {
+    try {
+      await markPaid.mutateAsync({ id: entryId });
+      toast.success('Lançamento marcado como pago!');
+    } catch (error) {
+      toast.error('Erro ao marcar como pago');
+    }
+  };
+
+  const handleCancelEntry = (entryId: string, description: string) => {
+    confirm(async () => {
+      setIsDeleting(true);
+      try {
+        await updateEntry.mutateAsync({ 
+          id: entryId, 
+          entry: { status: 'cancelado' } 
+        });
+        toast.success('Lançamento cancelado!');
+      } catch (error) {
+        toast.error('Erro ao cancelar lançamento');
+      } finally {
+        setIsDeleting(false);
+      }
+    }, {
+      title: 'Cancelar lançamento',
+      description: `Tem certeza que deseja cancelar o lançamento "${description}"?`,
+      confirmText: 'Cancelar lançamento',
+    });
   };
 
   return (
@@ -298,7 +363,7 @@ export default function Financeiro() {
                   </DialogDescription>
                 </DialogHeader>
                 <form className="space-y-4 mt-4" onSubmit={handleSubmit}>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-2">Tipo</label>
                       <select 
@@ -312,16 +377,37 @@ export default function Financeiro() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-2">Valor</label>
-                      <input 
-                        type="text" 
-                        className="input-financial font-mono-numbers" 
-                        placeholder="R$ 0,00" 
+                      <CurrencyInput
                         value={formData.value}
-                        onChange={(e) => setFormData({ ...formData, value: e.target.value })}
+                        onChange={(numValue, formatted) => setFormData({ ...formData, value: String(numValue) })}
                         required
                       />
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">Status</label>
+                      <select 
+                        className="input-financial" 
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value as EntryStatus })}
+                      >
+                        <option value="pendente">Pendente</option>
+                        <option value="pago">Pago</option>
+                        <option value="atrasado">Atrasado</option>
+                        <option value="cancelado">Cancelado</option>
+                      </select>
+                    </div>
                   </div>
+                  {formData.status === 'pago' && (
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">Data do Pagamento</label>
+                      <input 
+                        type="date" 
+                        className="input-financial" 
+                        value={formData.payment_date}
+                        onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
+                      />
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">Descrição</label>
                     <input 
@@ -579,12 +665,35 @@ export default function Financeiro() {
                           </td>
                           <td>{getStatusBadge(entry.status)}</td>
                           <td>
-                            <button 
-                              className="p-2 hover:bg-muted rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={() => openEditModal(entry)}
-                            >
-                              <Edit className="w-4 h-4 text-muted-foreground" />
-                            </button>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {entry.status === 'pendente' && (
+                                <button 
+                                  className="p-2 hover:bg-income/10 rounded-lg"
+                                  onClick={() => handleMarkAsPaid(entry.id)}
+                                  title="Marcar como pago"
+                                  disabled={markPaid.isPending}
+                                >
+                                  <Check className="w-4 h-4 text-income" />
+                                </button>
+                              )}
+                              {(entry.status === 'pendente' || entry.status === 'atrasado') && (
+                                <button 
+                                  className="p-2 hover:bg-muted rounded-lg"
+                                  onClick={() => handleCancelEntry(entry.id, entry.description)}
+                                  title="Cancelar"
+                                  disabled={updateEntry.isPending}
+                                >
+                                  <Ban className="w-4 h-4 text-muted-foreground" />
+                                </button>
+                              )}
+                              <button 
+                                className="p-2 hover:bg-muted rounded-lg"
+                                onClick={() => openEditModal(entry)}
+                                title="Editar"
+                              >
+                                <Edit className="w-4 h-4 text-muted-foreground" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -612,6 +721,9 @@ export default function Financeiro() {
           )}
         </div>
       </div>
+
+      {/* Confirmation Dialog */}
+      <ConfirmDialog {...dialogProps} isLoading={isDeleting} />
     </AppLayout>
   );
 }

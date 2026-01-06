@@ -280,15 +280,24 @@ export async function getUpcomingPayments(branchId: string, days: number = 30): 
 }
 
 // Get recent transactions
-export async function getRecentTransactions(branchId: string, limit: number = 10): Promise<FinancialEntryWithRelations[]> {
-  const { data, error } = await supabase
+export async function getRecentTransactions(branchId: string, limit: number = 10, year?: number): Promise<FinancialEntryWithRelations[]> {
+  let query = supabase
     .from('financial_entries')
     .select(`
       *,
       category:categories(id, name, color),
       favorecido:favorecidos(id, name)
     `)
-    .eq('branch_id', branchId)
+    .eq('branch_id', branchId);
+
+  // Filter by year if provided
+  if (year) {
+    const yearStart = `${year}-01-01`;
+    const yearEnd = `${year}-12-31`;
+    query = query.gte('due_date', yearStart).lte('due_date', yearEnd);
+  }
+
+  const { data, error } = await query
     .order('created_at', { ascending: false })
     .limit(limit);
 

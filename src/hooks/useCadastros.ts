@@ -11,6 +11,9 @@ import {
   getFornecedores,
   getFuncionarios,
   getVendedores,
+  getFavorecidoDocuments,
+  uploadFavorecidoDocument,
+  deleteFavorecidoDocument,
   FavorecidoFilters,
 } from '@/services/cadastros';
 import type { FavorecidoInsert, FavorecidoUpdate } from '@/types/database';
@@ -26,6 +29,7 @@ export const cadastrosKeys = {
   fornecedores: () => [...cadastrosKeys.all, 'fornecedores'] as const,
   funcionarios: () => [...cadastrosKeys.all, 'funcionarios'] as const,
   vendedores: () => [...cadastrosKeys.all, 'vendedores'] as const,
+  documents: (favorecidoId: string) => [...cadastrosKeys.all, 'documents', favorecidoId] as const,
 };
 
 // Hooks
@@ -124,6 +128,38 @@ export function useDeleteFavorecidoPhoto() {
   return useMutation({
     mutationFn: ({ favorecidoId, photoUrl }: { favorecidoId: string; photoUrl: string }) =>
       deleteFavorecidoPhoto(favorecidoId, photoUrl),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cadastrosKeys.all });
+    },
+  });
+}
+
+// Document hooks
+export function useFavorecidoDocuments(favorecidoId: string) {
+  return useQuery({
+    queryKey: cadastrosKeys.documents(favorecidoId),
+    queryFn: () => getFavorecidoDocuments(favorecidoId),
+    enabled: !!favorecidoId,
+  });
+}
+
+export function useUploadFavorecidoDocument() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ favorecidoId, file, uploadedBy }: { favorecidoId: string; file: File; uploadedBy?: string }) =>
+      uploadFavorecidoDocument(favorecidoId, file, uploadedBy),
+    onSuccess: (_, { favorecidoId }) => {
+      queryClient.invalidateQueries({ queryKey: cadastrosKeys.documents(favorecidoId) });
+    },
+  });
+}
+
+export function useDeleteFavorecidoDocument() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (documentId: string) => deleteFavorecidoDocument(documentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cadastrosKeys.all });
     },

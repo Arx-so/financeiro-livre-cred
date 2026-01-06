@@ -3,7 +3,8 @@ import type {
   Favorecido, 
   FavorecidoInsert, 
   FavorecidoUpdate,
-  FavorecidoTipo 
+  FavorecidoTipo,
+  FavorecidoDocument
 } from '@/types/database';
 
 export interface FavorecidoFilters {
@@ -197,4 +198,124 @@ export async function getVendedores(): Promise<Favorecido[]> {
   }
 
   return data || [];
+}
+
+// ============ Document Management ============
+
+// Get documents for a favorecido
+export async function getFavorecidoDocuments(favorecidoId: string): Promise<FavorecidoDocument[]> {
+  const { data, error } = await supabase
+    .from('favorecido_documents')
+    .select('*')
+    .eq('favorecido_id', favorecidoId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching favorecido documents:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+// Upload document for favorecido
+export async function uploadFavorecidoDocument(
+  favorecidoId: string, 
+  file: File,
+  uploadedBy?: string
+): Promise<FavorecidoDocument> {
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${favorecidoId}/${Date.now()}-${file.name}`;
+
+  // Upload file to storage
+  const { error: uploadError } = await supabase.storage
+    .from('documents')
+    .upload(fileName, file);
+
+  if (uploadError) {
+    console.error('Error uploading document:', uploadError);
+    throw uploadError;
+  }
+
+  // Get public URL
+  const { data: urlData } = supabase.storage
+    .from('documents')
+    .getPublicUrl(fileName);
+
+  // Create document record
+  const { data, error } = await supabase
+    .from('favorecido_documents')
+    .insert({
+      favorecido_id: favorecidoId,
+      file_name: file.name,
+      file_url: urlData.publicUrl,
+      file_type: file.type || `application/${fileExt}`,
+      file_size: file.size,
+      uploaded_by: uploadedBy || null,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating document record:', error);
+    // Try to clean up the uploaded file
+    await supabase.storage.from('documents').remove([fileName]);
+    throw error;
+  }
+
+  return data;
+}
+
+// Delete document for favorecido
+export async function deleteFavorecidoDocument(documentId: string): Promise<void> {
+  // First get the document to find the file URL
+  const { data: doc, error: fetchError } = await supabase
+    .from('favorecido_documents')
+    .select('*')
+    .eq('id', documentId)
+    .single();
+
+  if (fetchError) {
+    console.error('Error fetching document:', fetchError);
+    throw fetchError;
+  }
+
+  // Extract file path from URL and delete from storage
+  if (doc?.file_url) {
+    const urlParts = doc.file_url.split('/documents/');
+    if (urlParts.length > 1) {
+      const filePath = urlParts[1];
+      await supabase.storage.from('documents').remove([filePath]);
+    }
+  }
+
+  // Delete document record
+  const { error } = await supabase
+    .from('favorecido_documents')
+    .delete()
+    .eq('id', documentId);
+
+  if (error) {
+    console.error('Error deleting document:', error);
+    throw error;
+  }
+}
+
+// Get file icon based on file type
+export function getFileIcon(fileType: string): string {
+  if (fileType.includes('pdf')) return '📄';
+  if (fileType.includes('image')) return '🖼️';
+  if (fileType.includes('word') || fileType.includes('doc')) return '📝';
+  if (fileType.includes('excel') || fileType.includes('spreadsheet') || fileType.includes('xls')) return '📊';
+  if (fileType.includes('zip') || fileType.includes('rar')) return '📦';
+  return '📁';
+}
+
+// Format file size
+export function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }

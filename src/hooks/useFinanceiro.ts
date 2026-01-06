@@ -84,13 +84,13 @@ export function useUpcomingPayments(days: number = 30, branchId?: string) {
   });
 }
 
-export function useRecentTransactions(limit: number = 10, branchId?: string) {
+export function useRecentTransactions(limit: number = 10, branchId?: string, year?: number) {
   const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
   const effectiveBranchId = branchId || unidadeAtual?.id;
 
   return useQuery({
-    queryKey: [...financialKeys.recent(effectiveBranchId || ''), limit],
-    queryFn: () => getRecentTransactions(effectiveBranchId!, limit),
+    queryKey: [...financialKeys.recent(effectiveBranchId || ''), limit, year],
+    queryFn: () => getRecentTransactions(effectiveBranchId!, limit, year),
     enabled: !!effectiveBranchId,
   });
 }

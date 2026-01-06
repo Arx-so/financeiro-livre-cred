@@ -21,6 +21,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { 
   BarChart, 
   Bar, 
@@ -163,7 +164,7 @@ export default function Planejamento() {
     try {
       await createBudgetMutation.mutateAsync({
         categoryId: budgetForm.category_id,
-        annualAmount: parseFloat(budgetForm.annual_amount.replace(/[^\d,-]/g, '').replace(',', '.')),
+        annualAmount: parseFloat(budgetForm.annual_amount) || 0,
       });
       toast.success('Orçamento anual criado!');
       setIsBudgetModalOpen(false);
@@ -186,7 +187,7 @@ export default function Planejamento() {
       seller_id: targetForm.seller_id,
       year: selectedYear,
       month: selectedMonth,
-      target_amount: parseFloat(targetForm.target_amount.replace(/[^\d,-]/g, '').replace(',', '.')),
+      target_amount: parseFloat(targetForm.target_amount) || 0,
       commission_rate: parseFloat(targetForm.commission_rate),
       bonus_rate: parseFloat(targetForm.bonus_rate),
     };
@@ -307,12 +308,9 @@ export default function Planejamento() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-2">Valor Anual</label>
-                      <input
-                        type="text"
-                        className="input-financial font-mono-numbers"
-                        placeholder="R$ 0,00"
+                      <CurrencyInput
                         value={budgetForm.annual_amount}
-                        onChange={(e) => setBudgetForm({ ...budgetForm, annual_amount: e.target.value })}
+                        onChange={(numValue) => setBudgetForm({ ...budgetForm, annual_amount: String(numValue) })}
                         required
                       />
                     </div>
@@ -490,12 +488,9 @@ export default function Planejamento() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-2">Meta de Vendas</label>
-                      <input
-                        type="text"
-                        className="input-financial font-mono-numbers"
-                        placeholder="R$ 0,00"
+                      <CurrencyInput
                         value={targetForm.target_amount}
-                        onChange={(e) => setTargetForm({ ...targetForm, target_amount: e.target.value })}
+                        onChange={(numValue) => setTargetForm({ ...targetForm, target_amount: String(numValue) })}
                         required
                       />
                     </div>

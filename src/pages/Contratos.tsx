@@ -23,6 +23,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { CurrencyInput } from '@/components/ui/currency-input';
+import { ConfirmDialog, useConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from 'sonner';
 import { useAuthStore, useBranchStore } from '@/stores';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -62,6 +64,10 @@ export default function Contratos() {
   const [selectedContrato, setSelectedContrato] = useState<any>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploadingContractId, setUploadingContractId] = useState<string | null>(null);
+  
+  // Confirmation dialog
+  const { confirm, dialogProps } = useConfirmDialog();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -154,7 +160,7 @@ export default function Contratos() {
       title: formData.title,
       favorecido_id: formData.favorecido_id || null,
       type: formData.type,
-      value: parseFloat(formData.value.replace(/[^\d,-]/g, '').replace(',', '.')),
+      value: parseFloat(formData.value) || 0,
       start_date: formData.start_date,
       end_date: formData.end_date,
       notes: formData.notes || null,
@@ -176,14 +182,23 @@ export default function Contratos() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteMutation.mutateAsync(id);
-      toast.success('Contrato excluído!');
-      setSelectedContrato(null);
-    } catch (error) {
-      toast.error('Erro ao excluir contrato');
-    }
+  const handleDelete = (id: string, title: string) => {
+    confirm(async () => {
+      setIsDeleting(true);
+      try {
+        await deleteMutation.mutateAsync(id);
+        toast.success('Contrato excluído!');
+        setSelectedContrato(null);
+      } catch (error) {
+        toast.error('Erro ao excluir contrato');
+      } finally {
+        setIsDeleting(false);
+      }
+    }, {
+      title: 'Excluir contrato',
+      description: `Tem certeza que deseja excluir o contrato "${title}"? Esta ação não pode ser desfeita.`,
+      confirmText: 'Excluir',
+    });
   };
 
   const handleSign = async (id: string) => {
@@ -210,13 +225,22 @@ export default function Contratos() {
     setUploadingContractId(null);
   };
 
-  const handleDeleteFile = async (fileId: string) => {
-    try {
-      await deleteFileMutation.mutateAsync(fileId);
-      toast.success('Arquivo removido!');
-    } catch (error) {
-      toast.error('Erro ao remover arquivo');
-    }
+  const handleDeleteFile = (fileId: string, fileName: string) => {
+    confirm(async () => {
+      setIsDeleting(true);
+      try {
+        await deleteFileMutation.mutateAsync(fileId);
+        toast.success('Arquivo removido!');
+      } catch (error) {
+        toast.error('Erro ao remover arquivo');
+      } finally {
+        setIsDeleting(false);
+      }
+    }, {
+      title: 'Remover arquivo',
+      description: `Tem certeza que deseja remover o arquivo "${fileName}"?`,
+      confirmText: 'Remover',
+    });
   };
 
   const resetForm = () => {
@@ -315,12 +339,9 @@ export default function Contratos() {
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-foreground mb-2">Valor Total *</label>
-                    <input 
-                      type="text" 
-                      className="input-financial font-mono-numbers" 
-                      placeholder="R$ 0,00"
+                    <CurrencyInput
                       value={formData.value}
-                      onChange={(e) => setFormData({ ...formData, value: e.target.value })}
+                      onChange={(numValue) => setFormData({ ...formData, value: String(numValue) })}
                       required
                     />
                   </div>
@@ -559,7 +580,7 @@ export default function Contratos() {
                           </a>
                           <button 
                             className="btn-secondary p-1 text-destructive"
-                            onClick={() => handleDeleteFile(file.id)}
+                            onClick={() => handleDeleteFile(file.id, file.name)}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -582,7 +603,7 @@ export default function Contratos() {
                 </button>
                 <button 
                   className="btn-destructive flex-1"
-                  onClick={() => handleDelete(selectedContrato.id)}
+                  onClick={() => handleDelete(selectedContrato.id, selectedContrato.title)}
                   disabled={deleteMutation.isPending}
                 >
                   {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
@@ -593,6 +614,9 @@ export default function Contratos() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Confirmation Dialog */}
+      <ConfirmDialog {...dialogProps} isLoading={isDeleting} />
     </AppLayout>
   );
 }

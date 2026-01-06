@@ -453,6 +453,35 @@ export interface Database {
           updated_at?: string;
         };
       };
+      favorecido_documents: {
+        Row: {
+          id: string;
+          favorecido_id: string;
+          file_name: string;
+          file_url: string;
+          file_type: string;
+          file_size: number;
+          uploaded_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          favorecido_id: string;
+          file_name: string;
+          file_url: string;
+          file_type: string;
+          file_size: number;
+          uploaded_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          favorecido_id?: string;
+          file_name?: string;
+          file_url?: string;
+          file_type?: string;
+          file_size?: number;
+        };
+      };
       sales_targets: {
         Row: {
           id: string;
@@ -521,6 +550,7 @@ export type Contract = Database['public']['Tables']['contracts']['Row'];
 export type ContractFile = Database['public']['Tables']['contract_files']['Row'];
 export type BudgetItem = Database['public']['Tables']['budget_items']['Row'];
 export type SalesTarget = Database['public']['Tables']['sales_targets']['Row'];
+export type FavorecidoDocument = Database['public']['Tables']['favorecido_documents']['Row'];
 
 // Insert types
 export type ProfileInsert = Database['public']['Tables']['profiles']['Insert'];
@@ -536,6 +566,7 @@ export type ContractInsert = Database['public']['Tables']['contracts']['Insert']
 export type ContractFileInsert = Database['public']['Tables']['contract_files']['Insert'];
 export type BudgetItemInsert = Database['public']['Tables']['budget_items']['Insert'];
 export type SalesTargetInsert = Database['public']['Tables']['sales_targets']['Insert'];
+export type FavorecidoDocumentInsert = Database['public']['Tables']['favorecido_documents']['Insert'];
 
 // Update types
 export type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];

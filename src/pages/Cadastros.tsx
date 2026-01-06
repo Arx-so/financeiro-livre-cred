@@ -14,7 +14,12 @@ import {
   MapPin,
   MoreHorizontal,
   Loader2,
-  Users
+  Users,
+  Store,
+  RotateCcw,
+  FileText,
+  Download,
+  X
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -26,30 +31,57 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { DocumentInput } from '@/components/ui/document-input';
+import { PhoneInput } from '@/components/ui/phone-input';
+import { CepInput } from '@/components/ui/cep-input';
+import { ConfirmDialog, useConfirmDialog } from '@/components/ui/confirm-dialog';
 import { toast } from 'sonner';
 import { 
   useFavorecidos, 
   useCreateFavorecido, 
   useUpdateFavorecido, 
   useDeleteFavorecido,
-  useUploadFavorecidoPhoto 
+  useUploadFavorecidoPhoto,
+  useFavorecidoDocuments,
+  useUploadFavorecidoDocument,
+  useDeleteFavorecidoDocument
 } from '@/hooks/useCadastros';
+import { formatFileSize, getFileIcon } from '@/services/cadastros';
 import { 
   useCategoriesWithSubcategories, 
   useCreateCategory, 
   useDeleteCategory,
   useCreateSubcategories 
 } from '@/hooks/useCategorias';
-import type { FavorecidoTipo, FavorecidoInsert, FavorecidoUpdate } from '@/types/database';
+import {
+  useBranches,
+  useCreateBranch,
+  useUpdateBranch,
+  useDeleteBranch,
+  useReactivateBranch
+} from '@/hooks/useBranches';
+import { useAuthStore } from '@/stores';
+import type { FavorecidoTipo, FavorecidoInsert, BranchInsert } from '@/types/database';
 
 export default function Cadastros() {
+  const user = useAuthStore((state) => state.user);
+  const isAdmin = user?.role === 'admin';
+  
+  // Confirmation dialog
+  const { confirm, dialogProps, isOpen: confirmOpen } = useConfirmDialog();
+  const [isDeleting, setIsDeleting] = useState(false);
+  
   const [activeTab, setActiveTab] = useState('favorecidos');
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCategoriaModalOpen, setIsCategoriaModalOpen] = useState(false);
+  const [isFilialModalOpen, setIsFilialModalOpen] = useState(false);
   const [filterType, setFilterType] = useState<FavorecidoTipo | 'todos'>('todos');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingBranchId, setEditingBranchId] = useState<string | null>(null);
+  const [showInactiveBranches, setShowInactiveBranches] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -73,6 +105,16 @@ export default function Cadastros() {
     subcategories: '',
   });
 
+  const [branchForm, setBranchForm] = useState({
+    name: '',
+    code: '',
+    address: '',
+    city: '',
+    state: '',
+    zip_code: '',
+    phone: '',
+  });
+
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
@@ -84,15 +126,28 @@ export default function Cadastros() {
   });
 
   const { data: categories, isLoading: categoriesLoading } = useCategoriesWithSubcategories();
+  
+  // Fetch documents for the currently editing favorecido
+  const { data: favorecidoDocuments, isLoading: documentsLoading, refetch: refetchDocuments } = useFavorecidoDocuments(editingId || '');
+  
+  const { data: branches, isLoading: branchesLoading } = useBranches({
+    isActive: showInactiveBranches ? undefined : true,
+  });
 
   // Mutations
   const createFavorecido = useCreateFavorecido();
   const updateFavorecido = useUpdateFavorecido();
   const deleteFavorecido = useDeleteFavorecido();
   const uploadPhoto = useUploadFavorecidoPhoto();
+  const uploadDocument = useUploadFavorecidoDocument();
+  const deleteDocument = useDeleteFavorecidoDocument();
   const createCategory = useCreateCategory();
   const deleteCategory = useDeleteCategory();
   const createSubcategories = useCreateSubcategories();
+  const createBranch = useCreateBranch();
+  const updateBranch = useUpdateBranch();
+  const deleteBranch = useDeleteBranch();
+  const reactivateBranch = useReactivateBranch();
 
   const filteredFavorecidos = favorecidos || [];
 
@@ -106,6 +161,44 @@ export default function Cadastros() {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !editingId) return;
+
+    for (const file of Array.from(files)) {
+      try {
+        await uploadDocument.mutateAsync({ favorecidoId: editingId, file });
+        toast.success(`${file.name} enviado com sucesso!`);
+      } catch (error) {
+        toast.error(`Erro ao enviar ${file.name}`);
+      }
+    }
+    
+    // Reset the input
+    if (documentInputRef.current) {
+      documentInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteDocument = (docId: string, fileName: string) => {
+    confirm(async () => {
+      setIsDeleting(true);
+      try {
+        await deleteDocument.mutateAsync(docId);
+        refetchDocuments();
+        toast.success('Documento removido!');
+      } catch (error) {
+        toast.error('Erro ao remover documento');
+      } finally {
+        setIsDeleting(false);
+      }
+    }, {
+      title: 'Remover documento',
+      description: `Tem certeza que deseja remover o arquivo "${fileName}"?`,
+      confirmText: 'Remover',
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -176,22 +269,123 @@ export default function Cadastros() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string, name: string) => {
+    confirm(async () => {
+      setIsDeleting(true);
+      try {
+        await deleteFavorecido.mutateAsync(id);
+        toast.success('Cadastro removido!');
+      } catch (error) {
+        toast.error('Erro ao remover cadastro');
+      } finally {
+        setIsDeleting(false);
+      }
+    }, {
+      title: 'Excluir cadastro',
+      description: `Tem certeza que deseja excluir "${name}"? Esta ação não pode ser desfeita.`,
+      confirmText: 'Excluir',
+    });
+  };
+
+  const handleDeleteCategory = (id: string, name: string) => {
+    confirm(async () => {
+      setIsDeleting(true);
+      try {
+        await deleteCategory.mutateAsync(id);
+        toast.success('Categoria removida!');
+      } catch (error) {
+        toast.error('Erro ao remover categoria');
+      } finally {
+        setIsDeleting(false);
+      }
+    }, {
+      title: 'Excluir categoria',
+      description: `Tem certeza que deseja excluir a categoria "${name}"? Esta ação não pode ser desfeita.`,
+      confirmText: 'Excluir',
+    });
+  };
+
+  const handleBranchSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const branchData: BranchInsert = {
+      name: branchForm.name,
+      code: branchForm.code,
+      address: branchForm.address ? `${branchForm.address}${branchForm.city ? `, ${branchForm.city}` : ''}${branchForm.state ? ` - ${branchForm.state}` : ''}` : null,
+      phone: branchForm.phone || null,
+    };
+
     try {
-      await deleteFavorecido.mutateAsync(id);
-      toast.success('Cadastro removido!');
+      if (editingBranchId) {
+        await updateBranch.mutateAsync({ id: editingBranchId, branch: branchData });
+        toast.success('Filial atualizada!');
+      } else {
+        await createBranch.mutateAsync(branchData);
+        toast.success('Filial criada!');
+      }
+      setIsFilialModalOpen(false);
+      resetBranchForm();
     } catch (error) {
-      toast.error('Erro ao remover cadastro');
+      toast.error('Erro ao salvar filial');
     }
   };
 
-  const handleDeleteCategory = async (id: string) => {
+  const handleDeleteBranch = (id: string, name: string) => {
+    confirm(async () => {
+      setIsDeleting(true);
+      try {
+        await deleteBranch.mutateAsync(id);
+        toast.success('Filial desativada!');
+      } catch (error) {
+        toast.error('Erro ao desativar filial');
+      } finally {
+        setIsDeleting(false);
+      }
+    }, {
+      title: 'Desativar filial',
+      description: `Tem certeza que deseja desativar a filial "${name}"? Você poderá reativá-la depois.`,
+      confirmText: 'Desativar',
+    });
+  };
+
+  const handleReactivateBranch = async (id: string) => {
     try {
-      await deleteCategory.mutateAsync(id);
-      toast.success('Categoria removida!');
+      await reactivateBranch.mutateAsync(id);
+      toast.success('Filial reativada!');
     } catch (error) {
-      toast.error('Erro ao remover categoria');
+      toast.error('Erro ao reativar filial');
     }
+  };
+
+  const resetBranchForm = () => {
+    setBranchForm({
+      name: '',
+      code: '',
+      address: '',
+      city: '',
+      state: '',
+      zip_code: '',
+      phone: '',
+    });
+    setEditingBranchId(null);
+  };
+
+  const openEditBranchModal = (branch: NonNullable<typeof branches>[0]) => {
+    // Parse the address back to components if possible
+    const addressParts = branch.address?.split(', ') || [];
+    const lastPart = addressParts[addressParts.length - 1]?.split(' - ') || [];
+    
+    setBranchForm({
+      name: branch.name,
+      code: branch.code,
+      address: addressParts[0] || '',
+      city: addressParts.length > 1 ? (lastPart.length > 1 ? addressParts.slice(1, -1).join(', ') + ', ' + lastPart[0] : addressParts.slice(1).join(', ')) : '',
+      state: lastPart.length > 1 ? lastPart[1] : '',
+      zip_code: '',
+      phone: branch.phone || '',
+    });
+    setEditingBranchId(branch.id);
+    setIsFilialModalOpen(true);
   };
 
   const resetForm = () => {
@@ -275,6 +469,11 @@ export default function Cadastros() {
             <TabsTrigger value="categorias" className="rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm">
               Categorias
             </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="filiais" className="rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                Filiais
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="favorecidos" className="space-y-6 mt-6">
@@ -389,22 +588,16 @@ export default function Cadastros() {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-foreground mb-2">CPF/CNPJ</label>
-                          <input 
-                            type="text" 
-                            className="input-financial" 
-                            placeholder="000.000.000-00"
+                          <DocumentInput
                             value={formData.document}
-                            onChange={(e) => setFormData({ ...formData, document: e.target.value })}
+                            onChange={(value) => setFormData({ ...formData, document: value })}
                           />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-foreground mb-2">Telefone</label>
-                          <input 
-                            type="tel" 
-                            className="input-financial" 
-                            placeholder="(00) 00000-0000"
+                          <PhoneInput
                             value={formData.phone}
-                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            onChange={(value) => setFormData({ ...formData, phone: value })}
                           />
                         </div>
                       </div>
@@ -433,6 +626,22 @@ export default function Cadastros() {
 
                       <div className="grid grid-cols-3 gap-4">
                         <div>
+                          <label className="block text-sm font-medium text-foreground mb-2">CEP</label>
+                          <CepInput
+                            value={formData.zip_code}
+                            onChange={(value) => setFormData({ ...formData, zip_code: value })}
+                            onAddressFound={(address) => {
+                              setFormData(prev => ({
+                                ...prev,
+                                address: address.logradouro ? `${address.logradouro}${address.bairro ? `, ${address.bairro}` : ''}` : prev.address,
+                                city: address.localidade || prev.city,
+                                state: address.uf || prev.state,
+                              }));
+                              toast.success('Endereço encontrado!');
+                            }}
+                          />
+                        </div>
+                        <div>
                           <label className="block text-sm font-medium text-foreground mb-2">Cidade</label>
                           <input 
                             type="text" 
@@ -452,16 +661,6 @@ export default function Cadastros() {
                             onChange={(e) => setFormData({ ...formData, state: e.target.value })}
                           />
                         </div>
-                        <div>
-                          <label className="block text-sm font-medium text-foreground mb-2">CEP</label>
-                          <input 
-                            type="text" 
-                            className="input-financial" 
-                            placeholder="00000-000"
-                            value={formData.zip_code}
-                            onChange={(e) => setFormData({ ...formData, zip_code: e.target.value })}
-                          />
-                        </div>
                       </div>
 
                       <div>
@@ -473,6 +672,89 @@ export default function Cadastros() {
                           onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                         />
                       </div>
+
+                      {/* Documents Section - Only visible when editing */}
+                      {editingId && (
+                        <div className="border-t border-border pt-4 mt-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <label className="block text-sm font-medium text-foreground">
+                              <FileText className="w-4 h-4 inline mr-2" />
+                              Documentos
+                            </label>
+                            <button 
+                              type="button" 
+                              className="btn-secondary text-sm py-1"
+                              onClick={() => documentInputRef.current?.click()}
+                              disabled={uploadDocument.isPending}
+                            >
+                              {uploadDocument.isPending ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Upload className="w-4 h-4" />
+                              )}
+                              Anexar
+                            </button>
+                            <input
+                              ref={documentInputRef}
+                              type="file"
+                              accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.zip,.rar"
+                              className="hidden"
+                              multiple
+                              onChange={handleDocumentUpload}
+                            />
+                          </div>
+                          
+                          {documentsLoading ? (
+                            <div className="flex items-center justify-center py-4">
+                              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                            </div>
+                          ) : (favorecidoDocuments || []).length > 0 ? (
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                              {favorecidoDocuments?.map((doc) => (
+                                <div 
+                                  key={doc.id} 
+                                  className="flex items-center justify-between p-2 bg-muted/50 rounded-lg group"
+                                >
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <span className="text-lg flex-shrink-0">{getFileIcon(doc.file_type)}</span>
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-medium text-foreground truncate" title={doc.file_name}>
+                                        {doc.file_name}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        {formatFileSize(doc.file_size)}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1 flex-shrink-0">
+                                    <a
+                                      href={doc.file_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="p-1.5 hover:bg-muted rounded-lg transition-colors"
+                                      title="Download"
+                                    >
+                                      <Download className="w-4 h-4 text-muted-foreground" />
+                                    </a>
+                                    <button
+                                      type="button"
+                                      className="p-1.5 hover:bg-destructive/10 rounded-lg transition-colors"
+                                      onClick={() => handleDeleteDocument(doc.id, doc.file_name)}
+                                      title="Remover"
+                                    >
+                                      <Trash2 className="w-4 h-4 text-destructive" />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground text-center py-4">
+                              Nenhum documento anexado
+                            </p>
+                          )}
+                        </div>
+                      )}
 
                       <div className="flex justify-end gap-3 pt-4">
                         <button type="button" className="btn-secondary" onClick={() => { setIsModalOpen(false); resetForm(); }}>
@@ -563,7 +845,7 @@ export default function Cadastros() {
                       </button>
                       <button 
                         className="btn-secondary py-2 px-3 text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDelete(favorecido.id)}
+                        onClick={() => handleDelete(favorecido.id, favorecido.name)}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -693,7 +975,7 @@ export default function Cadastros() {
                         </button>
                         <button 
                           className="btn-secondary p-2 text-destructive hover:bg-destructive/10"
-                          onClick={() => handleDeleteCategory(categoria.id)}
+                          onClick={() => handleDeleteCategory(categoria.id, categoria.name)}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -704,8 +986,228 @@ export default function Cadastros() {
               </div>
             )}
           </TabsContent>
+
+          {/* Filiais Tab - Admin Only */}
+          {isAdmin && (
+            <TabsContent value="filiais" className="space-y-6 mt-6">
+              {/* Actions */}
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <p className="text-muted-foreground">Gerencie as filiais da empresa</p>
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={showInactiveBranches}
+                      onChange={(e) => setShowInactiveBranches(e.target.checked)}
+                      className="w-4 h-4 rounded border-input"
+                    />
+                    <span className="text-muted-foreground">Mostrar inativas</span>
+                  </label>
+                </div>
+                <Dialog open={isFilialModalOpen} onOpenChange={(open) => { setIsFilialModalOpen(open); if (!open) resetBranchForm(); }}>
+                  <DialogTrigger asChild>
+                    <button className="btn-primary">
+                      <Plus className="w-4 h-4" />
+                      Nova Filial
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>{editingBranchId ? 'Editar Filial' : 'Nova Filial'}</DialogTitle>
+                      <DialogDescription>
+                        {editingBranchId ? 'Atualize os dados da filial.' : 'Cadastre uma nova filial para sua empresa.'}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form className="space-y-4 mt-4" onSubmit={handleBranchSubmit}>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-foreground mb-2">Nome da Filial *</label>
+                          <input 
+                            type="text" 
+                            className="input-financial" 
+                            placeholder="Ex: Matriz, Filial Centro"
+                            value={branchForm.name}
+                            onChange={(e) => setBranchForm({ ...branchForm, name: e.target.value })}
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-foreground mb-2">Código *</label>
+                          <input 
+                            type="text" 
+                            className="input-financial" 
+                            placeholder="Ex: MTZ, FLC01"
+                            value={branchForm.code}
+                            onChange={(e) => setBranchForm({ ...branchForm, code: e.target.value.toUpperCase() })}
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Telefone</label>
+                        <PhoneInput
+                          value={branchForm.phone}
+                          onChange={(value) => setBranchForm({ ...branchForm, phone: value })}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-foreground mb-2">CEP</label>
+                          <CepInput
+                            value={branchForm.zip_code}
+                            onChange={(value) => setBranchForm({ ...branchForm, zip_code: value })}
+                            onAddressFound={(address) => {
+                              setBranchForm(prev => ({
+                                ...prev,
+                                address: address.logradouro ? `${address.logradouro}${address.bairro ? `, ${address.bairro}` : ''}` : prev.address,
+                                city: address.localidade || prev.city,
+                                state: address.uf || prev.state,
+                              }));
+                              toast.success('Endereço encontrado!');
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-foreground mb-2">Cidade</label>
+                          <input 
+                            type="text" 
+                            className="input-financial" 
+                            placeholder="Cidade"
+                            value={branchForm.city}
+                            onChange={(e) => setBranchForm({ ...branchForm, city: e.target.value })}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-foreground mb-2">Estado</label>
+                          <input 
+                            type="text" 
+                            className="input-financial" 
+                            placeholder="UF"
+                            value={branchForm.state}
+                            onChange={(e) => setBranchForm({ ...branchForm, state: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Endereço</label>
+                        <input 
+                          type="text" 
+                          className="input-financial" 
+                          placeholder="Rua, número, bairro"
+                          value={branchForm.address}
+                          onChange={(e) => setBranchForm({ ...branchForm, address: e.target.value })}
+                        />
+                      </div>
+
+                      <div className="flex justify-end gap-3 pt-4">
+                        <button type="button" className="btn-secondary" onClick={() => { setIsFilialModalOpen(false); resetBranchForm(); }}>
+                          Cancelar
+                        </button>
+                        <button 
+                          type="submit" 
+                          className="btn-primary"
+                          disabled={createBranch.isPending || updateBranch.isPending}
+                        >
+                          {(createBranch.isPending || updateBranch.isPending) && <Loader2 className="w-4 h-4 animate-spin" />}
+                          {editingBranchId ? 'Atualizar' : 'Salvar'} Filial
+                        </button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              {/* Branches List */}
+              {branchesLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : (branches || []).length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Store className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhuma filial encontrada</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {(branches || []).map((branch) => (
+                    <div key={branch.id} className={`card-financial p-5 group ${!branch.is_active ? 'opacity-60' : ''}`}>
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <Store className="w-6 h-6 text-primary" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-foreground">{branch.name}</h3>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-mono">
+                                {branch.code}
+                              </span>
+                              {branch.is_active ? (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-income-muted text-income">Ativa</span>
+                              ) : (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-expense-muted text-expense">Inativa</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 text-sm">
+                        {branch.phone && (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Phone className="w-4 h-4" />
+                            <span>{branch.phone}</span>
+                          </div>
+                        )}
+                        {branch.address && (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <MapPin className="w-4 h-4" />
+                            <span className="truncate">{branch.address}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex gap-2 mt-4 pt-4 border-t border-border">
+                        <button 
+                          className="btn-secondary flex-1 py-2"
+                          onClick={() => openEditBranchModal(branch)}
+                        >
+                          <Edit className="w-4 h-4" />
+                          Editar
+                        </button>
+                        {branch.is_active ? (
+                          <button 
+                            className="btn-secondary py-2 px-3 text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteBranch(branch.id, branch.name)}
+                            disabled={deleteBranch.isPending}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        ) : (
+                          <button 
+                            className="btn-secondary py-2 px-3 text-income hover:bg-income/10"
+                            onClick={() => handleReactivateBranch(branch.id)}
+                            disabled={reactivateBranch.isPending}
+                            title="Reativar filial"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          )}
         </Tabs>
       </div>
+
+      {/* Confirmation Dialog */}
+      <ConfirmDialog {...dialogProps} isLoading={isDeleting} />
     </AppLayout>
   );
 }
