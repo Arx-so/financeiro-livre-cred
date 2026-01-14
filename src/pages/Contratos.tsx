@@ -170,15 +170,15 @@ export default function Contratos() {
     try {
       if (editingId) {
         await updateMutation.mutateAsync({ id: editingId, data: contractData });
-        toast.success('Contrato atualizado!');
+        toast.success('Venda atualizada!');
       } else {
         await createMutation.mutateAsync(contractData);
-        toast.success('Contrato criado!');
+        toast.success('Venda criada!');
       }
       setIsModalOpen(false);
       resetForm();
     } catch (error) {
-      toast.error('Erro ao salvar contrato');
+      toast.error('Erro ao salvar venda');
     }
   };
 
@@ -187,16 +187,16 @@ export default function Contratos() {
       setIsDeleting(true);
       try {
         await deleteMutation.mutateAsync(id);
-        toast.success('Contrato excluído!');
+        toast.success('Venda excluída!');
         setSelectedContrato(null);
       } catch (error) {
-        toast.error('Erro ao excluir contrato');
+        toast.error('Erro ao excluir venda');
       } finally {
         setIsDeleting(false);
       }
     }, {
-      title: 'Excluir contrato',
-      description: `Tem certeza que deseja excluir o contrato "${title}"? Esta ação não pode ser desfeita.`,
+      title: 'Excluir venda',
+      description: `Tem certeza que deseja excluir a venda "${title}"? Esta ação não pode ser desfeita.`,
       confirmText: 'Excluir',
     });
   };
@@ -204,9 +204,9 @@ export default function Contratos() {
   const handleSign = async (id: string) => {
     try {
       await signMutation.mutateAsync(id);
-      toast.success('Contrato assinado!');
+      toast.success('Venda confirmada!');
     } catch (error) {
-      toast.error('Erro ao assinar contrato');
+      toast.error('Erro ao confirmar venda');
     }
   };
 
@@ -276,30 +276,30 @@ export default function Contratos() {
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Contratos</h1>
-            <p className="text-muted-foreground">Gerencie contratos e documentos</p>
+            <h1 className="text-2xl font-bold text-foreground">Vendas</h1>
+            <p className="text-muted-foreground">Gerencie vendas e produtos</p>
           </div>
           <Dialog open={isModalOpen} onOpenChange={(open) => { setIsModalOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
               <button className="btn-primary">
                 <Plus className="w-4 h-4" />
-                Novo Contrato
+                Nova Venda
               </button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>{editingId ? 'Editar Contrato' : 'Novo Contrato'}</DialogTitle>
+                <DialogTitle>{editingId ? 'Editar Venda' : 'Nova Venda'}</DialogTitle>
                 <DialogDescription>
-                  Preencha os dados para {editingId ? 'atualizar o' : 'criar um novo'} contrato.
+                  Preencha os dados para {editingId ? 'atualizar a' : 'criar uma nova'} venda.
                 </DialogDescription>
               </DialogHeader>
               <form className="space-y-4 mt-4" onSubmit={handleSubmit}>
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Título do Contrato *</label>
+                  <label className="block text-sm font-medium text-foreground mb-2">Título da Venda/Produto *</label>
                   <input 
                     type="text" 
                     className="input-financial" 
-                    placeholder="Ex: Contrato de Prestação de Serviços"
+                    placeholder="Ex: Venda de Produto X"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     required
@@ -386,7 +386,7 @@ export default function Contratos() {
                   >
                     {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="w-4 h-4 animate-spin" />}
                     <FileText className="w-4 h-4" />
-                    {editingId ? 'Atualizar' : 'Criar'} Contrato
+                    {editingId ? 'Atualizar' : 'Criar'} Venda
                   </button>
                 </div>
               </form>
@@ -397,11 +397,11 @@ export default function Contratos() {
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="stat-card stat-card-primary">
-            <p className="text-sm text-muted-foreground">Total de Contratos</p>
+            <p className="text-sm text-muted-foreground">Total de Vendas</p>
             <p className="text-2xl font-bold text-foreground">{summary?.total || 0}</p>
           </div>
           <div className="stat-card stat-card-income">
-            <p className="text-sm text-muted-foreground">Contratos Ativos</p>
+            <p className="text-sm text-muted-foreground">Vendas Ativas</p>
             <p className="text-2xl font-bold text-income">{summary?.active || 0}</p>
           </div>
           <div className="stat-card stat-card-pending">
@@ -422,7 +422,7 @@ export default function Contratos() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Buscar por título, cliente..."
+              placeholder="Buscar por título, cliente, produto..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="input-financial pl-11"
@@ -438,7 +438,7 @@ export default function Contratos() {
         ) : filteredContratos.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
             <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p>Nenhum contrato encontrado</p>
+            <p>Nenhuma venda encontrada</p>
           </div>
         ) : (
           <div className="grid gap-4">
@@ -527,7 +527,7 @@ export default function Contratos() {
           <DialogHeader>
             <DialogTitle>{selectedContrato?.title}</DialogTitle>
             <DialogDescription>
-              Detalhes do contrato
+              Detalhes da venda
             </DialogDescription>
           </DialogHeader>
           {selectedContrato && (

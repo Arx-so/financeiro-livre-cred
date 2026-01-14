@@ -23,7 +23,9 @@ import {
   Landmark,
   CreditCard,
   DollarSign,
-  Repeat
+  Repeat,
+  History,
+  Clock
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -73,7 +75,11 @@ import {
 } from '@/hooks/useBankAccounts';
 import { formatCurrency } from '@/services/bankAccounts';
 import { useAuthStore, useBranchStore } from '@/stores';
-import type { FavorecidoTipo, FavorecidoInsert, BranchInsert, BankAccountInsert, RecurrenceType } from '@/types/database';
+import { useEntityLogs } from '@/hooks/useActivityLogs';
+import { getActionText, formatLogDetails } from '@/services/activityLogs';
+import { useUsers, useUpdateUserRole, useSetUserBranchAccess } from '@/hooks/useUsers';
+import { getRoleText, getRoleBadgeClass } from '@/services/users';
+import type { FavorecidoTipo, FavorecidoInsert, BranchInsert, BankAccountInsert, RecurrenceType, BankAccountType, PixKeyType, PaymentType, UserRole, Profile } from '@/types/database';
 
 export default function Cadastros() {
   const user = useAuthStore((state) => state.user);
@@ -96,6 +102,9 @@ export default function Cadastros() {
   const [editingBankAccountId, setEditingBankAccountId] = useState<string | null>(null);
   const [showInactiveBranches, setShowInactiveBranches] = useState(false);
   const [showInactiveBankAccounts, setShowInactiveBankAccounts] = useState(false);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const documentInputRef = useRef<HTMLInputElement>(null);
 
@@ -112,6 +121,15 @@ export default function Cadastros() {
     zip_code: '',
     category: '',
     notes: '',
+    // Banking info
+    bank_name: '',
+    bank_agency: '',
+    bank_account: '',
+    bank_account_type: '' as BankAccountType | '',
+    pix_key: '',
+    pix_key_type: '' as PixKeyType | '',
+    preferred_payment_type: '' as PaymentType | '',
+    birth_date: '',
   });
 
   const [categoryForm, setCategoryForm] = useState({
@@ -143,6 +161,11 @@ export default function Cadastros() {
     initial_balance: '',
   });
 
+  const [userForm, setUserForm] = useState({
+    role: 'usuario' as UserRole,
+    selectedBranches: [] as string[],
+  });
+
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
@@ -158,12 +181,20 @@ export default function Cadastros() {
   // Fetch documents for the currently editing favorecido
   const { data: favorecidoDocuments, isLoading: documentsLoading, refetch: refetchDocuments } = useFavorecidoDocuments(editingId || '');
   
+  // Fetch activity logs for the currently editing favorecido
+  const { data: favorecidoLogs, isLoading: logsLoading } = useEntityLogs('favorecido', editingId || '', !!editingId);
+  
   const { data: branches, isLoading: branchesLoading } = useBranches({
     isActive: showInactiveBranches ? undefined : true,
   });
 
   const { data: bankAccounts, isLoading: bankAccountsLoading } = useAllBankAccounts({
     isActive: showInactiveBankAccounts ? undefined : true,
+  });
+
+  // Fetch users (admin only)
+  const { data: users, isLoading: usersLoading } = useUsers({
+    search: userSearchTerm || undefined,
   });
 
   // Mutations
@@ -184,8 +215,11 @@ export default function Cadastros() {
   const updateBankAccount = useUpdateBankAccount();
   const deleteBankAccount = useDeleteBankAccount();
   const reactivateBankAccount = useReactivateBankAccount();
+  const updateUserRole = useUpdateUserRole();
+  const setUserBranchAccess = useSetUserBranchAccess();
 
   const filteredFavorecidos = favorecidos || [];
+  const filteredUsers = users || [];
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -252,6 +286,15 @@ export default function Cadastros() {
       zip_code: formData.zip_code || null,
       category: formData.category || null,
       notes: formData.notes || null,
+      // Banking info
+      bank_name: formData.bank_name || null,
+      bank_agency: formData.bank_agency || null,
+      bank_account: formData.bank_account || null,
+      bank_account_type: formData.bank_account_type || null,
+      pix_key: formData.pix_key || null,
+      pix_key_type: formData.pix_key_type || null,
+      preferred_payment_type: formData.preferred_payment_type || null,
+      birth_date: formData.birth_date || null,
     };
 
     try {
@@ -476,6 +519,58 @@ export default function Cadastros() {
     setIsBankAccountModalOpen(true);
   };
 
+  // User management functions
+  const resetUserForm = () => {
+    setUserForm({
+      role: 'usuario',
+      selectedBranches: [],
+    });
+    setEditingUserId(null);
+  };
+
+  const openEditUserModal = (userProfile: Profile) => {
+    setUserForm({
+      role: userProfile.role,
+      selectedBranches: [], // Will be loaded when modal opens
+    });
+    setEditingUserId(userProfile.id);
+    setIsUserModalOpen(true);
+  };
+
+  const handleUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editingUserId) return;
+
+    try {
+      // Update role
+      await updateUserRole.mutateAsync({ userId: editingUserId, role: userForm.role });
+      
+      // Update branch access (only for non-admin users)
+      if (userForm.role !== 'admin') {
+        await setUserBranchAccess.mutateAsync({ 
+          userId: editingUserId, 
+          branchIds: userForm.selectedBranches 
+        });
+      }
+      
+      toast.success('Usuário atualizado!');
+      setIsUserModalOpen(false);
+      resetUserForm();
+    } catch (error) {
+      toast.error('Erro ao atualizar usuário');
+    }
+  };
+
+  const toggleBranchSelection = (branchId: string) => {
+    setUserForm(prev => ({
+      ...prev,
+      selectedBranches: prev.selectedBranches.includes(branchId)
+        ? prev.selectedBranches.filter(id => id !== branchId)
+        : [...prev.selectedBranches, branchId]
+    }));
+  };
+
   const resetBranchForm = () => {
     setBranchForm({
       name: '',
@@ -520,6 +615,14 @@ export default function Cadastros() {
       zip_code: '',
       category: '',
       notes: '',
+      bank_name: '',
+      bank_agency: '',
+      bank_account: '',
+      bank_account_type: '',
+      pix_key: '',
+      pix_key_type: '',
+      preferred_payment_type: '',
+      birth_date: '',
     });
     setEditingId(null);
     setSelectedPhoto(null);
@@ -539,6 +642,14 @@ export default function Cadastros() {
       zip_code: favorecido.zip_code || '',
       category: favorecido.category || '',
       notes: favorecido.notes || '',
+      bank_name: favorecido.bank_name || '',
+      bank_agency: favorecido.bank_agency || '',
+      bank_account: favorecido.bank_account || '',
+      bank_account_type: favorecido.bank_account_type || '',
+      pix_key: favorecido.pix_key || '',
+      pix_key_type: favorecido.pix_key_type || '',
+      preferred_payment_type: favorecido.preferred_payment_type || '',
+      birth_date: favorecido.birth_date || '',
     });
     setEditingId(favorecido.id);
     setPhotoPreview(favorecido.photo_url);
@@ -596,6 +707,11 @@ export default function Cadastros() {
             {isAdmin && (
               <TabsTrigger value="filiais" className="rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm">
                 Filiais
+              </TabsTrigger>
+            )}
+            {isAdmin && (
+              <TabsTrigger value="usuarios" className="rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                Usuários
               </TabsTrigger>
             )}
           </TabsList>
@@ -797,6 +913,114 @@ export default function Cadastros() {
                         />
                       </div>
 
+                      {/* Banking Section */}
+                      <div className="border-t border-border pt-4 mt-4">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Landmark className="w-4 h-4 text-primary" />
+                          <label className="block text-sm font-medium text-foreground">Dados Bancários</label>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">Data de Nascimento</label>
+                            <input 
+                              type="date" 
+                              className="input-financial" 
+                              value={formData.birth_date}
+                              onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">Forma de Pagamento Preferida</label>
+                            <select 
+                              className="input-financial"
+                              value={formData.preferred_payment_type}
+                              onChange={(e) => setFormData({ ...formData, preferred_payment_type: e.target.value as PaymentType | '' })}
+                            >
+                              <option value="">Selecione</option>
+                              <option value="pix">PIX</option>
+                              <option value="ted">TED</option>
+                              <option value="boleto">Boleto</option>
+                              <option value="cartao">Cartão</option>
+                              <option value="dinheiro">Dinheiro</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 mt-4">
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">Tipo Chave PIX</label>
+                            <select 
+                              className="input-financial"
+                              value={formData.pix_key_type}
+                              onChange={(e) => setFormData({ ...formData, pix_key_type: e.target.value as PixKeyType | '' })}
+                            >
+                              <option value="">Selecione</option>
+                              <option value="cpf">CPF</option>
+                              <option value="cnpj">CNPJ</option>
+                              <option value="email">E-mail</option>
+                              <option value="telefone">Telefone</option>
+                              <option value="aleatoria">Chave Aleatória</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">Chave PIX</label>
+                            <input 
+                              type="text" 
+                              className="input-financial" 
+                              placeholder="Chave PIX"
+                              value={formData.pix_key}
+                              onChange={(e) => setFormData({ ...formData, pix_key: e.target.value })}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-4 gap-4 mt-4">
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">Banco</label>
+                            <input 
+                              type="text" 
+                              className="input-financial" 
+                              placeholder="Nome do banco"
+                              value={formData.bank_name}
+                              onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">Agência</label>
+                            <input 
+                              type="text" 
+                              className="input-financial" 
+                              placeholder="0000"
+                              value={formData.bank_agency}
+                              onChange={(e) => setFormData({ ...formData, bank_agency: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">Conta</label>
+                            <input 
+                              type="text" 
+                              className="input-financial" 
+                              placeholder="00000-0"
+                              value={formData.bank_account}
+                              onChange={(e) => setFormData({ ...formData, bank_account: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">Tipo</label>
+                            <select 
+                              className="input-financial"
+                              value={formData.bank_account_type}
+                              onChange={(e) => setFormData({ ...formData, bank_account_type: e.target.value as BankAccountType | '' })}
+                            >
+                              <option value="">Selecione</option>
+                              <option value="corrente">Corrente</option>
+                              <option value="poupanca">Poupança</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+
                       {/* Documents Section */}
                       <div className="border-t border-border pt-4 mt-4">
                         <div className="flex items-center justify-between mb-3">
@@ -888,6 +1112,63 @@ export default function Cadastros() {
                           </p>
                         )}
                       </div>
+
+                      {/* Activity Log Section */}
+                      {editingId && (
+                        <div className="border-t border-border pt-4 mt-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <History className="w-4 h-4 text-primary" />
+                            <label className="block text-sm font-medium text-foreground">Histórico de Atividades</label>
+                          </div>
+                          
+                          {logsLoading ? (
+                            <div className="flex items-center justify-center py-4">
+                              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                            </div>
+                          ) : (favorecidoLogs || []).length > 0 ? (
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                              {favorecidoLogs?.map((log) => (
+                                <div 
+                                  key={log.id} 
+                                  className="flex items-start gap-3 p-2 bg-muted/30 rounded-lg"
+                                >
+                                  <Clock className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <p className="text-sm font-medium text-foreground">
+                                        {getActionText(log.action)}
+                                      </p>
+                                      <p className="text-xs text-muted-foreground whitespace-nowrap">
+                                        {new Date(log.created_at).toLocaleDateString('pt-BR', {
+                                          day: '2-digit',
+                                          month: '2-digit',
+                                          year: '2-digit',
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                        })}
+                                      </p>
+                                    </div>
+                                    {log.user_name && (
+                                      <p className="text-xs text-muted-foreground">
+                                        por {log.user_name}
+                                      </p>
+                                    )}
+                                    {log.details && (
+                                      <p className="text-xs text-muted-foreground mt-1">
+                                        {formatLogDetails(log.details)}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground text-center py-4">
+                              Nenhum histórico registrado
+                            </p>
+                          )}
+                        </div>
+                      )}
 
                       <div className="flex justify-end gap-3 pt-4">
                         <button type="button" className="btn-secondary" onClick={() => { setIsModalOpen(false); resetForm(); }}>
@@ -1621,6 +1902,161 @@ export default function Cadastros() {
                   ))}
                 </div>
               )}
+            </TabsContent>
+          )}
+
+          {/* Usuários Tab - Admin Only */}
+          {isAdmin && (
+            <TabsContent value="usuarios" className="space-y-6 mt-6">
+              {/* Actions */}
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por nome, email..."
+                    value={userSearchTerm}
+                    onChange={(e) => setUserSearchTerm(e.target.value)}
+                    className="input-financial pl-11"
+                  />
+                </div>
+              </div>
+
+              {/* Users List */}
+              {usersLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredUsers.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhum usuário encontrado</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredUsers.map((userProfile) => (
+                    <div key={userProfile.id} className="card-financial p-5 group">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          {userProfile.avatar_url ? (
+                            <img 
+                              src={userProfile.avatar_url} 
+                              alt={userProfile.name}
+                              className="w-12 h-12 rounded-xl object-cover"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                              <User className="w-6 h-6 text-primary" />
+                            </div>
+                          )}
+                          <div>
+                            <h3 className="font-semibold text-foreground">{userProfile.name}</h3>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${getRoleBadgeClass(userProfile.role)}`}>
+                              {getRoleText(userProfile.role)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Mail className="w-4 h-4" />
+                          <span className="truncate">{userProfile.email}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Clock className="w-4 h-4" />
+                          <span>Cadastrado em {new Date(userProfile.created_at).toLocaleDateString('pt-BR')}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 mt-4 pt-4 border-t border-border">
+                        <button 
+                          className="btn-secondary flex-1 py-2"
+                          onClick={() => openEditUserModal(userProfile)}
+                          disabled={userProfile.id === user?.id}
+                        >
+                          <Edit className="w-4 h-4" />
+                          {userProfile.id === user?.id ? 'Você' : 'Gerenciar'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* User Edit Modal */}
+              <Dialog open={isUserModalOpen} onOpenChange={(open) => { setIsUserModalOpen(open); if (!open) resetUserForm(); }}>
+                <DialogContent className="max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Gerenciar Usuário</DialogTitle>
+                    <DialogDescription>
+                      Altere a função e as filiais permitidas para este usuário.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form className="space-y-4 mt-4" onSubmit={handleUserSubmit}>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">Função</label>
+                      <select 
+                        className="input-financial"
+                        value={userForm.role}
+                        onChange={(e) => setUserForm({ ...userForm, role: e.target.value as UserRole })}
+                      >
+                        <option value="usuario">Usuário</option>
+                        <option value="gerente">Gerente</option>
+                        <option value="admin">Administrador</option>
+                      </select>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {userForm.role === 'admin' && 'Administradores têm acesso total ao sistema.'}
+                        {userForm.role === 'gerente' && 'Gerentes podem gerenciar lançamentos e cadastros nas filiais permitidas.'}
+                        {userForm.role === 'usuario' && 'Usuários podem visualizar e criar lançamentos nas filiais permitidas.'}
+                      </p>
+                    </div>
+
+                    {userForm.role !== 'admin' && (
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Filiais Permitidas</label>
+                        <div className="space-y-2 max-h-48 overflow-y-auto p-2 bg-muted/30 rounded-lg">
+                          {(branches || []).filter(b => b.is_active).map((branch) => (
+                            <label 
+                              key={branch.id} 
+                              className="flex items-center gap-3 p-2 hover:bg-muted rounded-lg cursor-pointer"
+                            >
+                              <input 
+                                type="checkbox"
+                                checked={userForm.selectedBranches.includes(branch.id)}
+                                onChange={() => toggleBranchSelection(branch.id)}
+                                className="w-4 h-4 rounded border-input"
+                              />
+                              <div className="flex items-center gap-2">
+                                <Store className="w-4 h-4 text-muted-foreground" />
+                                <span className="text-sm text-foreground">{branch.name}</span>
+                                <span className="text-xs text-muted-foreground">({branch.code})</span>
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Selecione as filiais que este usuário pode acessar.
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end gap-3 pt-4">
+                      <button type="button" className="btn-secondary" onClick={() => { setIsUserModalOpen(false); resetUserForm(); }}>
+                        Cancelar
+                      </button>
+                      <button 
+                        type="submit" 
+                        className="btn-primary"
+                        disabled={updateUserRole.isPending || setUserBranchAccess.isPending}
+                      >
+                        {(updateUserRole.isPending || setUserBranchAccess.isPending) && <Loader2 className="w-4 h-4 animate-spin" />}
+                        Salvar Alterações
+                      </button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
             </TabsContent>
           )}
         </Tabs>

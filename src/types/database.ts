@@ -5,6 +5,11 @@ export type EntryStatus = 'pendente' | 'pago' | 'atrasado' | 'cancelado';
 export type ContractStatus = 'ativo' | 'pendente' | 'encerrado';
 export type ReconciliationStatus = 'pendente' | 'conciliado' | 'divergente';
 export type RecurrenceType = 'diario' | 'semanal' | 'mensal' | 'anual';
+export type BankAccountType = 'corrente' | 'poupanca';
+export type PixKeyType = 'cpf' | 'cnpj' | 'email' | 'telefone' | 'aleatoria';
+export type PaymentType = 'pix' | 'ted' | 'boleto' | 'cartao' | 'dinheiro';
+export type AgendaEventType = 'lembrete' | 'aniversario' | 'festividade' | 'feriado';
+export type AgendaRecurrenceType = 'yearly' | 'monthly' | 'weekly' | 'none';
 
 export interface Database {
   public: {
@@ -161,6 +166,15 @@ export interface Database {
           photo_url: string | null;
           notes: string | null;
           is_active: boolean;
+          // Banking info
+          bank_name: string | null;
+          bank_agency: string | null;
+          bank_account: string | null;
+          bank_account_type: BankAccountType | null;
+          pix_key: string | null;
+          pix_key_type: PixKeyType | null;
+          preferred_payment_type: PaymentType | null;
+          birth_date: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -179,6 +193,15 @@ export interface Database {
           photo_url?: string | null;
           notes?: string | null;
           is_active?: boolean;
+          // Banking info
+          bank_name?: string | null;
+          bank_agency?: string | null;
+          bank_account?: string | null;
+          bank_account_type?: BankAccountType | null;
+          pix_key?: string | null;
+          pix_key_type?: PixKeyType | null;
+          preferred_payment_type?: PaymentType | null;
+          birth_date?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -196,6 +219,15 @@ export interface Database {
           photo_url?: string | null;
           notes?: string | null;
           is_active?: boolean;
+          // Banking info
+          bank_name?: string | null;
+          bank_agency?: string | null;
+          bank_account?: string | null;
+          bank_account_type?: BankAccountType | null;
+          pix_key?: string | null;
+          pix_key_type?: PixKeyType | null;
+          preferred_payment_type?: PaymentType | null;
+          birth_date?: string | null;
           updated_at?: string;
         };
       };
@@ -549,6 +581,125 @@ export interface Database {
           updated_at?: string;
         };
       };
+      activity_logs: {
+        Row: {
+          id: string;
+          entity_type: string;
+          entity_id: string;
+          action: string;
+          user_id: string | null;
+          user_name: string | null;
+          details: Record<string, unknown> | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          entity_type: string;
+          entity_id: string;
+          action: string;
+          user_id?: string | null;
+          user_name?: string | null;
+          details?: Record<string, unknown> | null;
+          created_at?: string;
+        };
+        Update: {
+          entity_type?: string;
+          entity_id?: string;
+          action?: string;
+          user_id?: string | null;
+          user_name?: string | null;
+          details?: Record<string, unknown> | null;
+        };
+      };
+      agenda_events: {
+        Row: {
+          id: string;
+          title: string;
+          description: string | null;
+          event_type: AgendaEventType;
+          event_date: string;
+          event_time: string | null;
+          recurrence_type: AgendaRecurrenceType | null;
+          related_entity_type: string | null;
+          related_entity_id: string | null;
+          notify_before_days: number;
+          notify_users: string[] | null;
+          created_by: string | null;
+          branch_id: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          description?: string | null;
+          event_type: AgendaEventType;
+          event_date: string;
+          event_time?: string | null;
+          recurrence_type?: AgendaRecurrenceType | null;
+          related_entity_type?: string | null;
+          related_entity_id?: string | null;
+          notify_before_days?: number;
+          notify_users?: string[] | null;
+          created_by?: string | null;
+          branch_id?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          title?: string;
+          description?: string | null;
+          event_type?: AgendaEventType;
+          event_date?: string;
+          event_time?: string | null;
+          recurrence_type?: AgendaRecurrenceType | null;
+          related_entity_type?: string | null;
+          related_entity_id?: string | null;
+          notify_before_days?: number;
+          notify_users?: string[] | null;
+          branch_id?: string | null;
+          is_active?: boolean;
+          updated_at?: string;
+        };
+      };
+      notifications: {
+        Row: {
+          id: string;
+          user_id: string;
+          title: string;
+          message: string | null;
+          type: string;
+          related_event_id: string | null;
+          related_entity_type: string | null;
+          related_entity_id: string | null;
+          is_read: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          title: string;
+          message?: string | null;
+          type: string;
+          related_event_id?: string | null;
+          related_entity_type?: string | null;
+          related_entity_id?: string | null;
+          is_read?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          title?: string;
+          message?: string | null;
+          type?: string;
+          related_event_id?: string | null;
+          related_entity_type?: string | null;
+          related_entity_id?: string | null;
+          is_read?: boolean;
+        };
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -560,6 +711,11 @@ export interface Database {
       contract_status: ContractStatus;
       reconciliation_status: ReconciliationStatus;
       recurrence_type: RecurrenceType;
+      bank_account_type: BankAccountType;
+      pix_key_type: PixKeyType;
+      payment_type: PaymentType;
+      agenda_event_type: AgendaEventType;
+      agenda_recurrence_type: AgendaRecurrenceType;
     };
   };
 }
@@ -580,6 +736,9 @@ export type ContractFile = Database['public']['Tables']['contract_files']['Row']
 export type BudgetItem = Database['public']['Tables']['budget_items']['Row'];
 export type SalesTarget = Database['public']['Tables']['sales_targets']['Row'];
 export type FavorecidoDocument = Database['public']['Tables']['favorecido_documents']['Row'];
+export type ActivityLog = Database['public']['Tables']['activity_logs']['Row'];
+export type AgendaEvent = Database['public']['Tables']['agenda_events']['Row'];
+export type Notification = Database['public']['Tables']['notifications']['Row'];
 
 // Insert types
 export type ProfileInsert = Database['public']['Tables']['profiles']['Insert'];
@@ -596,6 +755,9 @@ export type ContractFileInsert = Database['public']['Tables']['contract_files'][
 export type BudgetItemInsert = Database['public']['Tables']['budget_items']['Insert'];
 export type SalesTargetInsert = Database['public']['Tables']['sales_targets']['Insert'];
 export type FavorecidoDocumentInsert = Database['public']['Tables']['favorecido_documents']['Insert'];
+export type ActivityLogInsert = Database['public']['Tables']['activity_logs']['Insert'];
+export type AgendaEventInsert = Database['public']['Tables']['agenda_events']['Insert'];
+export type NotificationInsert = Database['public']['Tables']['notifications']['Insert'];
 
 // Update types
 export type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
@@ -609,3 +771,6 @@ export type BankStatementUpdate = Database['public']['Tables']['bank_statements'
 export type ContractUpdate = Database['public']['Tables']['contracts']['Update'];
 export type BudgetItemUpdate = Database['public']['Tables']['budget_items']['Update'];
 export type SalesTargetUpdate = Database['public']['Tables']['sales_targets']['Update'];
+export type ActivityLogUpdate = Database['public']['Tables']['activity_logs']['Update'];
+export type AgendaEventUpdate = Database['public']['Tables']['agenda_events']['Update'];
+export type NotificationUpdate = Database['public']['Tables']['notifications']['Update'];

@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore, useBranchStore } from '@/stores';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { NotificationBell } from '@/components/NotificationBell';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,8 +66,13 @@ const navigationGroups = [
     icon: FolderOpen,
     items: [
       { name: 'Clientes/Fornecedores', href: '/cadastros', icon: Users },
-      { name: 'Contratos', href: '/contratos', icon: FileText },
+      { name: 'Vendas', href: '/vendas', icon: FileText },
     ],
+  },
+  {
+    name: 'Agenda',
+    href: '/agenda',
+    icon: Calendar,
   },
   {
     name: 'Relatórios',
@@ -120,26 +126,33 @@ export function Header() {
 
           {/* Right Section */}
           <div className="flex items-center gap-3">
-            {/* Unit Selector */}
-            <Select
-              value={unidadeAtual?.id || ''}
-              onValueChange={(value) => {
-                const unidade = unidades.find(u => u.id === value);
-                if (unidade) setUnidadeAtual(unidade);
-              }}
-            >
-              <SelectTrigger className="w-[160px] h-9">
-                <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
-                <SelectValue placeholder="Selecione a filial" />
-              </SelectTrigger>
-              <SelectContent>
-                {unidades.map((unidade) => (
-                  <SelectItem key={unidade.id} value={unidade.id}>
-                    {unidade.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* Unit Selector - More prominent */}
+            <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-1 px-2 py-1 bg-primary/10 rounded-lg">
+                <Building2 className="w-4 h-4 text-primary" />
+                <span className="text-xs font-medium text-primary">{unidadeAtual?.code || '-'}</span>
+              </div>
+              <Select
+                value={unidadeAtual?.id || ''}
+                onValueChange={(value) => {
+                  const unidade = unidades.find(u => u.id === value);
+                  if (unidade) setUnidadeAtual(unidade);
+                }}
+              >
+                <SelectTrigger className="w-[160px] h-9 border-primary/50 focus:ring-primary">
+                  <Building2 className="w-4 h-4 mr-2 text-primary sm:hidden" />
+                  <SelectValue placeholder="Selecione a filial" />
+                </SelectTrigger>
+                <SelectContent>
+                  {unidades.map((unidade) => (
+                    <SelectItem key={unidade.id} value={unidade.id}>
+                      <span className="font-mono text-xs text-muted-foreground mr-2">{unidade.code}</span>
+                      {unidade.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             {/* Search */}
             <button className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg bg-muted text-muted-foreground text-sm hover:bg-muted/80 transition-colors">
@@ -154,10 +167,7 @@ export function Header() {
             <ThemeToggle />
 
             {/* Notifications */}
-            <button className="relative p-2 rounded-lg hover:bg-muted transition-colors">
-              <Bell className="w-5 h-5 text-muted-foreground" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full" />
-            </button>
+            <NotificationBell />
 
             {/* User Menu */}
             <DropdownMenu>
