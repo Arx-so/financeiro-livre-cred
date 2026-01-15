@@ -8,78 +8,80 @@ export interface CurrencyInputProps
 }
 
 const brlFormatter = new Intl.NumberFormat('pt-BR', {
-  style: 'currency',
-  currency: 'BRL',
+    style: 'currency',
+    currency: 'BRL',
 });
 
 function formatFromCentsDigits(digits: string) {
-  // digits = "1234" => 12.34
-  const cents = Number(digits || '0');
-  const value = cents / 100;
-  return brlFormatter.format(value); // "R$ 12,34"
+    // digits = "1234" => 12.34
+    const cents = Number(digits || '0');
+    const value = cents / 100;
+    return brlFormatter.format(value); // "R$ 12,34"
 }
 
 function parseDisplayToNumber(display: string) {
-  // "R$ 1.234,56" -> 1234.56
-  const digits = (display || '').replace(/\D/g, '');
-  return Number(digits || '0') / 100;
+    // "R$ 1.234,56" -> 1234.56
+    const digits = (display || '').replace(/\D/g, '');
+    return Number(digits || '0') / 100;
 }
 
 const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputProps>(
-  ({ className, value, onChange, ...props }, ref) => {
-    const [displayValue, setDisplayValue] = React.useState('');
+    ({
+        className, value, onChange, ...props
+    }, ref) => {
+        const [displayValue, setDisplayValue] = React.useState('');
 
-    // Sync from prop -> display (without fighting typing)
-    const lastNumRef = React.useRef<number | null>(null);
+        // Sync from prop -> display (without fighting typing)
+        const lastNumRef = React.useRef<number | null>(null);
 
-    React.useEffect(() => {
-      if (value === '' || value === null || value === undefined) {
-        lastNumRef.current = null;
-        setDisplayValue('');
-        return;
-      }
+        React.useEffect(() => {
+            if (value === '' || value === null || value === undefined) {
+                lastNumRef.current = null;
+                setDisplayValue('');
+                return;
+            }
 
-      const num = typeof value === 'string' ? parseDisplayToNumber(value) : value;
-      const safeNum = Number.isFinite(num) ? num : 0;
+            const num = typeof value === 'string' ? parseDisplayToNumber(value) : value;
+            const safeNum = Number.isFinite(num) ? num : 0;
 
-      if (lastNumRef.current === safeNum) return;
-      lastNumRef.current = safeNum;
+            if (lastNumRef.current === safeNum) return;
+            lastNumRef.current = safeNum;
 
-      setDisplayValue(brlFormatter.format(safeNum));
-    }, [value]);
+            setDisplayValue(brlFormatter.format(safeNum));
+        }, [value]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const raw = e.target.value ?? '';
-      const digits = raw.replace(/\D/g, ''); // cents digits only
+        const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+            const raw = e.target.value ?? '';
+            const digits = raw.replace(/\D/g, ''); // cents digits only
 
-      if (!digits) {
-        setDisplayValue('');
-        lastNumRef.current = 0;
-        onChange(0, '');
-        return;
-      }
+            if (!digits) {
+                setDisplayValue('');
+                lastNumRef.current = 0;
+                onChange(0, '');
+                return;
+            }
 
-      const formatted = formatFromCentsDigits(digits);
-      const numeric = Number(digits) / 100;
+            const formatted = formatFromCentsDigits(digits);
+            const numeric = Number(digits) / 100;
 
-      setDisplayValue(formatted);
-      lastNumRef.current = numeric;
-      onChange(numeric, formatted);
-    };
+            setDisplayValue(formatted);
+            lastNumRef.current = numeric;
+            onChange(numeric, formatted);
+        };
 
-    return (
-      <input
-        type="text"
-        inputMode="numeric"
-        className={cn('input-financial font-mono-numbers', className)}
-        ref={ref}
-        value={displayValue}
-        onChange={handleChange}
-        placeholder="R$ 0,00"
-        {...props}
-      />
-    );
-  }
+        return (
+            <input
+                type="text"
+                inputMode="numeric"
+                className={cn('input-financial font-mono-numbers', className)}
+                ref={ref}
+                value={displayValue}
+                onChange={handleChange}
+                placeholder="R$ 0,00"
+                {...props}
+            />
+        );
+    }
 );
 
 CurrencyInput.displayName = 'CurrencyInput';

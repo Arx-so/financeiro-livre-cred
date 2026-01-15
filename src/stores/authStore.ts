@@ -39,211 +39,211 @@ interface AuthState {
 
 // Fetch user profile from database
 const fetchUserProfile = async (userId: string): Promise<AuthUser | null> => {
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    try {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
 
-    if (error || !data) {
-      console.error('Error fetching profile:', error);
-      return null;
+        if (error || !data) {
+            console.error('Error fetching profile:', error);
+            return null;
+        }
+
+        const profile = data as Profile;
+        return {
+            id: profile.id,
+            email: profile.email,
+            name: profile.name,
+            role: profile.role,
+            avatarUrl: profile.avatar_url,
+        };
+    } catch (error) {
+        console.error('Error fetching user profile:', error);
+        return null;
     }
-
-    const profile = data as Profile;
-    return {
-      id: profile.id,
-      email: profile.email,
-      name: profile.name,
-      role: profile.role,
-      avatarUrl: profile.avatar_url,
-    };
-  } catch (error) {
-    console.error('Error fetching user profile:', error);
-    return null;
-  }
 };
 
 // Helper function to translate Supabase auth errors to Portuguese
 function translateAuthError(error: AuthError): string {
-  const errorMessages: Record<string, string> = {
-    'Invalid login credentials': 'Email ou senha inválidos',
-    'Email not confirmed': 'Email não confirmado. Verifique sua caixa de entrada.',
-    'User already registered': 'Este email já está cadastrado',
-    'Password should be at least 6 characters': 'A senha deve ter pelo menos 6 caracteres',
-    'Unable to validate email address: invalid format': 'Formato de email inválido',
-    'Email rate limit exceeded': 'Muitas tentativas. Aguarde alguns minutos.',
-    'For security purposes, you can only request this after 60 seconds': 'Aguarde 60 segundos para tentar novamente.',
-  };
+    const errorMessages: Record<string, string> = {
+        'Invalid login credentials': 'Email ou senha inválidos',
+        'Email not confirmed': 'Email não confirmado. Verifique sua caixa de entrada.',
+        'User already registered': 'Este email já está cadastrado',
+        'Password should be at least 6 characters': 'A senha deve ter pelo menos 6 caracteres',
+        'Unable to validate email address: invalid format': 'Formato de email inválido',
+        'Email rate limit exceeded': 'Muitas tentativas. Aguarde alguns minutos.',
+        'For security purposes, you can only request this after 60 seconds': 'Aguarde 60 segundos para tentar novamente.',
+    };
 
-  return errorMessages[error.message] || error.message;
+    return errorMessages[error.message] || error.message;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
-  user: null,
-  session: null,
-  isLoading: true,
-  isAuthenticated: false,
-  isInitialized: false,
+    user: null,
+    session: null,
+    isLoading: true,
+    isAuthenticated: false,
+    isInitialized: false,
 
-  _setUser: (user) => set({ user, isAuthenticated: !!user }),
-  _setSession: (session) => set({ session }),
-  _setLoading: (isLoading) => set({ isLoading }),
+    _setUser: (user) => set({ user, isAuthenticated: !!user }),
+    _setSession: (session) => set({ session }),
+    _setLoading: (isLoading) => set({ isLoading }),
 
-  initialize: async () => {
-    const state = get();
-    if (state.isInitialized) return;
+    initialize: async () => {
+        const state = get();
+        if (state.isInitialized) return;
 
-    try {
-      // Get initial session
-      const { data: { session: initialSession } } = await supabase.auth.getSession();
+        try {
+            // Get initial session
+            const { data: { session: initialSession } } = await supabase.auth.getSession();
 
-      if (initialSession?.user) {
-        set({ session: initialSession });
+            if (initialSession?.user) {
+                set({ session: initialSession });
 
-        const profile = await fetchUserProfile(initialSession.user.id);
-        if (profile) {
-          set({ user: profile, isAuthenticated: true });
+                const profile = await fetchUserProfile(initialSession.user.id);
+                if (profile) {
+                    set({ user: profile, isAuthenticated: true });
+                }
+            }
+        } catch (error) {
+            console.error('Error initializing auth:', error);
+        } finally {
+            set({ isLoading: false, isInitialized: true });
         }
-      }
-    } catch (error) {
-      console.error('Error initializing auth:', error);
-    } finally {
-      set({ isLoading: false, isInitialized: true });
-    }
 
-    // Listen for auth changes
-    supabase.auth.onAuthStateChange((event, newSession) => {
-      console.log('[Auth] onAuthStateChange event:', event);
+        // Listen for auth changes
+        supabase.auth.onAuthStateChange((event, newSession) => {
+            console.log('[Auth] onAuthStateChange event:', event);
 
-      set({ session: newSession });
+            set({ session: newSession });
 
-      // Only handle sign out here - sign in is handled by login()
-      if (event === 'SIGNED_OUT') {
-        console.log('[Auth] SIGNED_OUT - clearing user state');
-        set({
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
+            // Only handle sign out here - sign in is handled by login()
+            if (event === 'SIGNED_OUT') {
+                console.log('[Auth] SIGNED_OUT - clearing user state');
+                set({
+                    user: null,
+                    isAuthenticated: false,
+                    isLoading: false,
+                });
+                localStorage.removeItem('fincontrol_unidade');
+            }
         });
-        localStorage.removeItem('fincontrol_unidade');
-      }
-    });
-  },
+    },
 
-  login: async (email, password) => {
-    try {
-      console.log('[Auth] login() called');
-      set({ isLoading: true });
+    login: async (email, password) => {
+        try {
+            console.log('[Auth] login() called');
+            set({ isLoading: true });
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
 
-      console.log('[Auth] signInWithPassword result:', { user: data?.user?.id, error });
+            console.log('[Auth] signInWithPassword result:', { user: data?.user?.id, error });
 
-      if (error) {
-        set({ isLoading: false });
-        return { success: false, error: translateAuthError(error) };
-      }
+            if (error) {
+                set({ isLoading: false });
+                return { success: false, error: translateAuthError(error) };
+            }
 
-      if (!data.user) {
-        set({ isLoading: false });
-        return { success: false, error: 'Erro ao autenticar usuário' };
-      }
+            if (!data.user) {
+                set({ isLoading: false });
+                return { success: false, error: 'Erro ao autenticar usuário' };
+            }
 
-      // Fetch profile directly in login() to ensure it completes before returning
-      console.log('[Auth] Fetching profile...');
-      const profile = await fetchUserProfile(data.user.id);
-      console.log('[Auth] Profile result:', profile);
-      
-      if (!profile) {
-        set({ isLoading: false });
-        return { success: false, error: 'Perfil de usuário não encontrado. Entre em contato com o administrador.' };
-      }
+            // Fetch profile directly in login() to ensure it completes before returning
+            console.log('[Auth] Fetching profile...');
+            const profile = await fetchUserProfile(data.user.id);
+            console.log('[Auth] Profile result:', profile);
 
-      set({
-        user: profile,
-        session: data.session,
-        isAuthenticated: true,
-        isLoading: false,
-      });
+            if (!profile) {
+                set({ isLoading: false });
+                return { success: false, error: 'Perfil de usuário não encontrado. Entre em contato com o administrador.' };
+            }
 
-      console.log('[Auth] Login complete');
-      return { success: true };
-    } catch (error) {
-      console.error('Login error:', error);
-      set({ isLoading: false });
-      return { success: false, error: 'Erro ao fazer login. Tente novamente.' };
-    }
-  },
+            set({
+                user: profile,
+                session: data.session,
+                isAuthenticated: true,
+                isLoading: false,
+            });
 
-  register: async (email, password, name) => {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            name,
-            role: 'usuario',
-          },
-        },
-      });
+            console.log('[Auth] Login complete');
+            return { success: true };
+        } catch (error) {
+            console.error('Login error:', error);
+            set({ isLoading: false });
+            return { success: false, error: 'Erro ao fazer login. Tente novamente.' };
+        }
+    },
 
-      if (error) {
-        return { success: false, error: translateAuthError(error) };
-      }
+    register: async (email, password, name) => {
+        try {
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: {
+                        name,
+                        role: 'usuario',
+                    },
+                },
+            });
 
-      return { success: true };
-    } catch (error) {
-      console.error('Register error:', error);
-      return { success: false, error: 'Erro ao criar conta. Tente novamente.' };
-    }
-  },
+            if (error) {
+                return { success: false, error: translateAuthError(error) };
+            }
 
-  resetPassword: async (email) => {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
+            return { success: true };
+        } catch (error) {
+            console.error('Register error:', error);
+            return { success: false, error: 'Erro ao criar conta. Tente novamente.' };
+        }
+    },
 
-      if (error) {
-        return { success: false, error: translateAuthError(error) };
-      }
+    resetPassword: async (email) => {
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: `${window.location.origin}/reset-password`,
+            });
 
-      return { success: true };
-    } catch (error) {
-      console.error('Reset password error:', error);
-      return { success: false, error: 'Erro ao enviar email de recuperação.' };
-    }
-  },
+            if (error) {
+                return { success: false, error: translateAuthError(error) };
+            }
 
-  logout: async () => {
-    try {
-      await supabase.auth.signOut();
-      set({
-        user: null,
-        session: null,
-        isAuthenticated: false,
-      });
-      localStorage.removeItem('fincontrol_unidade');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  },
+            return { success: true };
+        } catch (error) {
+            console.error('Reset password error:', error);
+            return { success: false, error: 'Erro ao enviar email de recuperação.' };
+        }
+    },
 
-  refreshUser: async () => {
-    const { session } = get();
-    if (session?.user) {
-      const profile = await fetchUserProfile(session.user.id);
-      if (profile) {
-        set({ user: profile });
-      }
-    }
-  },
+    logout: async () => {
+        try {
+            await supabase.auth.signOut();
+            set({
+                user: null,
+                session: null,
+                isAuthenticated: false,
+            });
+            localStorage.removeItem('fincontrol_unidade');
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
+    },
+
+    refreshUser: async () => {
+        const { session } = get();
+        if (session?.user) {
+            const profile = await fetchUserProfile(session.user.id);
+            if (profile) {
+                set({ user: profile });
+            }
+        }
+    },
 }));
 
 // Selectors for optimized re-renders

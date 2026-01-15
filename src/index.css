@@ -47,14 +47,15 @@
 
     --radius: 0.75rem;
 
-    --sidebar-background: 222 47% 11%;
+    --sidebar-background: 220 20% 12%;
     --sidebar-foreground: 220 14% 96%;
     --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 47% 18%;
-    --sidebar-accent-foreground: 220 14% 96%;
-    --sidebar-border: 222 47% 18%;
+    --sidebar-accent: 217 50% 22%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 220 15% 20%;
     --sidebar-ring: 217 91% 60%;
+    --sidebar-muted: 220 15% 30%;
 
     /* Custom Financial Colors */
     --income: 160 84% 39%;

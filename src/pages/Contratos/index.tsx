@@ -1,0 +1,450 @@
+import {
+    useState, useRef, useCallback, useMemo
+} from 'react';
+import {
+    FileText,
+    Plus,
+    Edit,
+    Trash2,
+    Upload,
+    PenTool,
+    Calendar,
+    User,
+    Loader2,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { AppLayout } from '@/components/layout/AppLayout';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
+import { CurrencyInput } from '@/components/ui/currency-input';
+import { ConfirmDialog, useConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useAuthStore, useBranchStore } from '@/stores';
+import {
+    getContracts,
+    createContract,
+    updateContract,
+    deleteContract,
+    uploadContractFile,
+    signContract,
+    getContractsSummary,
+    ContractFilters,
+} from '@/services/contratos';
+import { useFavorecidos } from '@/hooks/useCadastros';
+import {
+    PageHeader, EmptyState, LoadingState, StatCard, SearchInput
+} from '@/components/shared';
+import { getContractStatusBadge } from '@/components/shared/StatusBadge';
+import { formatCurrency, formatDate } from '@/lib/utils';
+import type { ContractInsert } from '@/types/database';
+
+export default function Contratos() {
+    const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
+    const user = useAuthStore((state) => state.user);
+    const queryClient = useQueryClient();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const [searchTerm, setSearchTerm] = useState('');
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [uploadingContractId, setUploadingContractId] = useState<string | null>(null);
+
+    // Confirmation dialog
+    const { confirm, dialogProps } = useConfirmDialog();
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // Form state
+    const [formData, setFormData] = useState({
+        title: '',
+        favorecido_id: '',
+        type: '',
+        value: '',
+        start_date: '',
+        end_date: '',
+        notes: '',
+    });
+
+    // Fetch data
+    const filters: ContractFilters = useMemo(() => ({
+        branchId: unidadeAtual?.id,
+        search: searchTerm || undefined,
+    }), [unidadeAtual?.id, searchTerm]);
+
+    const { data: contracts, isLoading } = useQuery({
+        queryKey: ['contracts', filters],
+        queryFn: () => getContracts(filters),
+        enabled: !!unidadeAtual?.id,
+    });
+
+    const { data: summary } = useQuery({
+        queryKey: ['contracts-summary', unidadeAtual?.id],
+        queryFn: () => getContractsSummary(unidadeAtual!.id),
+        enabled: !!unidadeAtual?.id,
+    });
+
+    const { data: favorecidos } = useFavorecidos({ isActive: true });
+
+    // Mutations
+    const createMutation = useMutation({
+        mutationFn: createContract,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['contracts'] });
+            queryClient.invalidateQueries({ queryKey: ['contracts-summary'] });
+            setIsModalOpen(false);
+            resetForm();
+            toast.success('Contrato criado!');
+        },
+        onError: () => toast.error('Erro ao criar contrato'),
+    });
+
+    const updateMutation = useMutation({
+        mutationFn: ({ id, data }: { id: string; data: Partial<ContractInsert> }) => updateContract(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['contracts'] });
+            setIsModalOpen(false);
+            resetForm();
+            toast.success('Contrato atualizado!');
+        },
+        onError: () => toast.error('Erro ao atualizar contrato'),
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: deleteContract,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['contracts'] });
+            queryClient.invalidateQueries({ queryKey: ['contracts-summary'] });
+            toast.success('Contrato excluído!');
+        },
+        onError: () => toast.error('Erro ao excluir contrato'),
+    });
+
+    const signMutation = useMutation({
+        mutationFn: ({ contractId, signedBy }: { contractId: string; signedBy: string }) => (
+            signContract(contractId, signedBy)
+        ),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['contracts'] });
+            toast.success('Contrato assinado!');
+        },
+        onError: () => toast.error('Erro ao assinar contrato'),
+    });
+
+    const uploadFileMutation = useMutation({
+        mutationFn: ({ contractId, file }: { contractId: string; file: File }) => uploadContractFile(contractId, file),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['contracts'] });
+            toast.success('Arquivo anexado!');
+        },
+        onError: () => toast.error('Erro ao anexar arquivo'),
+    });
+
+    // Handlers
+    const resetForm = useCallback(() => {
+        setFormData({
+            title: '',
+            favorecido_id: '',
+            type: '',
+            value: '',
+            start_date: '',
+            end_date: '',
+            notes: '',
+        });
+        setEditingId(null);
+    }, []);
+
+    const handleSubmit = useCallback(async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!unidadeAtual?.id) {
+            toast.error('Selecione uma filial');
+            return;
+        }
+
+        const contractData: ContractInsert = {
+            branch_id: unidadeAtual.id,
+            title: formData.title,
+            favorecido_id: formData.favorecido_id || null,
+            type: formData.type || null,
+            value: parseFloat(formData.value) || 0,
+            start_date: formData.start_date,
+            end_date: formData.end_date || null,
+            notes: formData.notes || null,
+        };
+
+        if (editingId) {
+            updateMutation.mutate({ id: editingId, data: contractData });
+        } else {
+            createMutation.mutate(contractData);
+        }
+    }, [formData, editingId, unidadeAtual?.id, createMutation, updateMutation]);
+
+    const handleDelete = useCallback((id: string, title: string) => {
+        confirm(async () => {
+            setIsDeleting(true);
+            try {
+                await deleteMutation.mutateAsync(id);
+            } finally {
+                setIsDeleting(false);
+            }
+        }, {
+            title: 'Excluir contrato',
+            description: `Tem certeza que deseja excluir "${title}"?`,
+            confirmText: 'Excluir',
+        });
+    }, [confirm, deleteMutation]);
+
+    const openEditModal = useCallback((contract: any) => {
+        setFormData({
+            title: contract.title,
+            favorecido_id: contract.favorecido_id || '',
+            type: contract.type || '',
+            value: contract.value?.toString() || '',
+            start_date: contract.start_date,
+            end_date: contract.end_date || '',
+            notes: contract.notes || '',
+        });
+        setEditingId(contract.id);
+        setIsModalOpen(true);
+    }, []);
+
+    const handleSign = useCallback((contractId: string) => {
+        if (!user?.name) {
+            toast.error('Usuário não identificado');
+            return;
+        }
+        signMutation.mutate({ contractId, signedBy: user.name });
+    }, [user?.name, signMutation]);
+
+    const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>, contractId: string) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploadingContractId(contractId);
+        try {
+            await uploadFileMutation.mutateAsync({ contractId, file });
+        } finally {
+            setUploadingContractId(null);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+        }
+    }, [uploadFileMutation]);
+
+    const isSaving = createMutation.isPending || updateMutation.isPending;
+
+    return (
+        <AppLayout>
+            <div className="space-y-6">
+                <PageHeader title="Vendas" description="Gerencie contratos e vendas">
+                    <Dialog open={isModalOpen} onOpenChange={(open) => { setIsModalOpen(open); if (!open) resetForm(); }}>
+                        <DialogTrigger asChild>
+                            <button className="btn-primary">
+                                <Plus className="w-4 h-4" />
+                                Novo Contrato
+                            </button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-lg">
+                            <DialogHeader>
+                                <DialogTitle>{editingId ? 'Editar Contrato' : 'Novo Contrato'}</DialogTitle>
+                                <DialogDescription>
+                                    Preencha os dados do contrato
+                                </DialogDescription>
+                            </DialogHeader>
+                            <form className="space-y-4 mt-4" onSubmit={handleSubmit}>
+                                <div>
+                                    <label className="block text-sm font-medium text-foreground mb-2">Título</label>
+                                    <input
+                                        type="text"
+                                        className="input-financial"
+                                        value={formData.title}
+                                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                                        required
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-2">Cliente</label>
+                                        <select
+                                            className="input-financial"
+                                            value={formData.favorecido_id}
+                                            onChange={(e) => setFormData({ ...formData, favorecido_id: e.target.value })}
+                                        >
+                                            <option value="">Selecione</option>
+                                            {favorecidos?.map((f) => (
+                                                <option key={f.id} value={f.id}>{f.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-2">Valor</label>
+                                        <CurrencyInput
+                                            value={formData.value}
+                                            onChange={(numValue) => setFormData({ ...formData, value: String(numValue) })}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-2">Data Início</label>
+                                        <input
+                                            type="date"
+                                            className="input-financial"
+                                            value={formData.start_date}
+                                            onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-2">Data Fim</label>
+                                        <input
+                                            type="date"
+                                            className="input-financial"
+                                            value={formData.end_date}
+                                            onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-foreground mb-2">Tipo</label>
+                                    <input
+                                        type="text"
+                                        className="input-financial"
+                                        placeholder="Ex: Venda, Prestação de Serviço"
+                                        value={formData.type}
+                                        onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-foreground mb-2">Observações</label>
+                                    <textarea
+                                        className="input-financial min-h-[80px]"
+                                        value={formData.notes}
+                                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                                    />
+                                </div>
+                                <div className="flex justify-end gap-3 pt-4">
+                                    <button type="button" className="btn-secondary" onClick={() => { setIsModalOpen(false); resetForm(); }}>
+                                        Cancelar
+                                    </button>
+                                    <button type="submit" className="btn-primary" disabled={isSaving}>
+                                        {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                                        {editingId ? 'Atualizar' : 'Criar'}
+                                        {' '}
+                                        Contrato
+                                    </button>
+                                </div>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+                </PageHeader>
+
+                {/* Summary Cards */}
+                {summary && (
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <StatCard label="Total Contratos" value={summary.total || 0} icon={FileText} />
+                        <StatCard label="Ativos" value={summary.active || 0} icon={FileText} variant="income" />
+                        <StatCard label="Pendentes" value={summary.pending || 0} icon={FileText} variant="pending" />
+                        <StatCard label="Valor Total" value={formatCurrency(summary.totalValue || 0)} icon={FileText} variant="primary" />
+                    </div>
+                )}
+
+                {/* Search */}
+                <div className="flex gap-4">
+                    <SearchInput
+                        value={searchTerm}
+                        onChange={setSearchTerm}
+                        placeholder="Buscar contratos..."
+                        className="max-w-md"
+                    />
+                </div>
+
+                {/* Contracts List */}
+                {isLoading ? (
+                    <LoadingState />
+                ) : !contracts?.length ? (
+                    <EmptyState icon={FileText} message="Nenhum contrato encontrado" />
+                ) : (
+                    <div className="grid gap-4">
+                        {contracts.map((contract) => (
+                            <div key={contract.id} className="card-financial p-5 group">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex items-start gap-4">
+                                        <div className="p-3 rounded-xl bg-primary/10">
+                                            <FileText className="w-6 h-6 text-primary" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-foreground">{contract.title}</h3>
+                                            <div className="flex items-center gap-3 mt-1">
+                                                {contract.favorecido && (
+                                                    <span className="text-sm text-muted-foreground flex items-center gap-1">
+                                                        <User className="w-3.5 h-3.5" />
+                                                        {contract.favorecido.name}
+                                                    </span>
+                                                )}
+                                                <span className="text-sm text-muted-foreground flex items-center gap-1">
+                                                    <Calendar className="w-3.5 h-3.5" />
+                                                    {formatDate(contract.start_date)}
+                                                    {contract.end_date && ` - ${formatDate(contract.end_date)}`}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        {getContractStatusBadge(contract.status)}
+                                        <span className="font-semibold font-mono text-foreground">
+                                            {formatCurrency(contract.value)}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 mt-4 pt-4 border-t border-border">
+                                    <button className="btn-secondary py-2" onClick={() => openEditModal(contract)}>
+                                        <Edit className="w-4 h-4" />
+                                        Editar
+                                    </button>
+                                    {contract.status === 'pendente' && (
+                                        <button
+                                            className="btn-secondary py-2"
+                                            onClick={() => handleSign(contract.id)}
+                                            disabled={signMutation.isPending}
+                                        >
+                                            <PenTool className="w-4 h-4" />
+                                            Assinar
+                                        </button>
+                                    )}
+                                    <label className="btn-secondary py-2 cursor-pointer">
+                                        {uploadingContractId === contract.id ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                            <Upload className="w-4 h-4" />
+                                        )}
+                                        Anexar
+                                        <input
+                                            type="file"
+                                            className="hidden"
+                                            onChange={(e) => handleFileUpload(e, contract.id)}
+                                            disabled={uploadingContractId === contract.id}
+                                        />
+                                    </label>
+                                    <button
+                                        className="btn-secondary py-2 text-destructive hover:bg-destructive/10"
+                                        onClick={() => handleDelete(contract.id, contract.title)}
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            <ConfirmDialog {...dialogProps} isLoading={isDeleting} />
+        </AppLayout>
+    );
+}

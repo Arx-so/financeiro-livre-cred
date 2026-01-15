@@ -1,0 +1,1 @@
+export { FavorecidoCard } from './FavorecidoCard';

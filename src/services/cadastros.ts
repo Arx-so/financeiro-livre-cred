@@ -1,10 +1,10 @@
 import { supabase } from '@/lib/supabase';
-import type { 
-  Favorecido, 
-  FavorecidoInsert, 
-  FavorecidoUpdate,
-  FavorecidoTipo,
-  FavorecidoDocument
+import type {
+    Favorecido,
+    FavorecidoInsert,
+    FavorecidoUpdate,
+    FavorecidoTipo,
+    FavorecidoDocument
 } from '@/types/database';
 
 export interface FavorecidoFilters {
@@ -15,307 +15,307 @@ export interface FavorecidoFilters {
 
 // Get all favorecidos with filters
 export async function getFavorecidos(filters: FavorecidoFilters = {}): Promise<Favorecido[]> {
-  let query = supabase
-    .from('favorecidos')
-    .select('*')
-    .order('name');
+    let query = supabase
+        .from('favorecidos')
+        .select('*')
+        .order('name');
 
-  if (filters.type) {
-    query = query.eq('type', filters.type);
-  }
+    if (filters.type) {
+        query = query.eq('type', filters.type);
+    }
 
-  if (filters.isActive !== undefined) {
-    query = query.eq('is_active', filters.isActive);
-  }
+    if (filters.isActive !== undefined) {
+        query = query.eq('is_active', filters.isActive);
+    }
 
-  if (filters.search) {
-    query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,document.ilike.%${filters.search}%`);
-  }
+    if (filters.search) {
+        query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,document.ilike.%${filters.search}%`);
+    }
 
-  const { data, error } = await query;
+    const { data, error } = await query;
 
-  if (error) {
-    console.error('Error fetching favorecidos:', error);
-    throw error;
-  }
+    if (error) {
+        console.error('Error fetching favorecidos:', error);
+        throw error;
+    }
 
-  return data || [];
+    return data || [];
 }
 
 // Get single favorecido
 export async function getFavorecido(id: string): Promise<Favorecido | null> {
-  const { data, error } = await supabase
-    .from('favorecidos')
-    .select('*')
-    .eq('id', id)
-    .single();
+    const { data, error } = await supabase
+        .from('favorecidos')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-  if (error) {
-    console.error('Error fetching favorecido:', error);
-    throw error;
-  }
+    if (error) {
+        console.error('Error fetching favorecido:', error);
+        throw error;
+    }
 
-  return data;
+    return data;
 }
 
 // Create favorecido
 export async function createFavorecido(favorecido: FavorecidoInsert): Promise<Favorecido> {
-  const { data, error } = await supabase
-    .from('favorecidos')
-    .insert(favorecido)
-    .select()
-    .single();
+    const { data, error } = await supabase
+        .from('favorecidos')
+        .insert(favorecido)
+        .select()
+        .single();
 
-  if (error) {
-    console.error('Error creating favorecido:', error);
-    throw error;
-  }
+    if (error) {
+        console.error('Error creating favorecido:', error);
+        throw error;
+    }
 
-  return data;
+    return data;
 }
 
 // Update favorecido
 export async function updateFavorecido(id: string, favorecido: FavorecidoUpdate): Promise<Favorecido> {
-  const { data, error } = await supabase
-    .from('favorecidos')
-    .update(favorecido)
-    .eq('id', id)
-    .select()
-    .single();
+    const { data, error } = await supabase
+        .from('favorecidos')
+        .update(favorecido)
+        .eq('id', id)
+        .select()
+        .single();
 
-  if (error) {
-    console.error('Error updating favorecido:', error);
-    throw error;
-  }
+    if (error) {
+        console.error('Error updating favorecido:', error);
+        throw error;
+    }
 
-  return data;
+    return data;
 }
 
 // Delete favorecido (soft delete)
 export async function deleteFavorecido(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('favorecidos')
-    .update({ is_active: false })
-    .eq('id', id);
+    const { error } = await supabase
+        .from('favorecidos')
+        .update({ is_active: false })
+        .eq('id', id);
 
-  if (error) {
-    console.error('Error deleting favorecido:', error);
-    throw error;
-  }
+    if (error) {
+        console.error('Error deleting favorecido:', error);
+        throw error;
+    }
 }
 
 // Hard delete favorecido
 export async function hardDeleteFavorecido(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('favorecidos')
-    .delete()
-    .eq('id', id);
+    const { error } = await supabase
+        .from('favorecidos')
+        .delete()
+        .eq('id', id);
 
-  if (error) {
-    console.error('Error hard deleting favorecido:', error);
-    throw error;
-  }
+    if (error) {
+        console.error('Error hard deleting favorecido:', error);
+        throw error;
+    }
 }
 
 // Upload photo for favorecido
 export async function uploadFavorecidoPhoto(favorecidoId: string, file: File): Promise<string> {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${favorecidoId}/${Date.now()}.${fileExt}`;
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${favorecidoId}/${Date.now()}.${fileExt}`;
 
-  const { error: uploadError } = await supabase.storage
-    .from('avatars')
-    .upload(fileName, file, {
-      upsert: true,
+    const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, {
+            upsert: true,
+        });
+
+    if (uploadError) {
+        console.error('Error uploading photo:', uploadError);
+        throw uploadError;
+    }
+
+    const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+    // Update favorecido with photo URL
+    await updateFavorecido(favorecidoId, {
+        photo_url: urlData.publicUrl,
     });
 
-  if (uploadError) {
-    console.error('Error uploading photo:', uploadError);
-    throw uploadError;
-  }
-
-  const { data: urlData } = supabase.storage
-    .from('avatars')
-    .getPublicUrl(fileName);
-
-  // Update favorecido with photo URL
-  await updateFavorecido(favorecidoId, {
-    photo_url: urlData.publicUrl,
-  });
-
-  return urlData.publicUrl;
+    return urlData.publicUrl;
 }
 
 // Delete photo for favorecido
 export async function deleteFavorecidoPhoto(favorecidoId: string, photoUrl: string): Promise<void> {
-  // Extract file path from URL
-  const urlParts = photoUrl.split('/avatars/');
-  if (urlParts.length > 1) {
-    const filePath = urlParts[1];
+    // Extract file path from URL
+    const urlParts = photoUrl.split('/avatars/');
+    if (urlParts.length > 1) {
+        const filePath = urlParts[1];
 
-    const { error } = await supabase.storage
-      .from('avatars')
-      .remove([filePath]);
+        const { error } = await supabase.storage
+            .from('avatars')
+            .remove([filePath]);
 
-    if (error) {
-      console.error('Error deleting photo:', error);
+        if (error) {
+            console.error('Error deleting photo:', error);
+        }
     }
-  }
 
-  // Remove photo URL from favorecido
-  await updateFavorecido(favorecidoId, {
-    photo_url: null,
-  });
+    // Remove photo URL from favorecido
+    await updateFavorecido(favorecidoId, {
+        photo_url: null,
+    });
 }
 
 // Get clients only
 export async function getClientes(): Promise<Favorecido[]> {
-  return getFavorecidos({ type: 'cliente', isActive: true });
+    return getFavorecidos({ type: 'cliente', isActive: true });
 }
 
 // Get suppliers only
 export async function getFornecedores(): Promise<Favorecido[]> {
-  return getFavorecidos({ type: 'fornecedor', isActive: true });
+    return getFavorecidos({ type: 'fornecedor', isActive: true });
 }
 
 // Get employees only
 export async function getFuncionarios(): Promise<Favorecido[]> {
-  return getFavorecidos({ type: 'funcionario', isActive: true });
+    return getFavorecidos({ type: 'funcionario', isActive: true });
 }
 
 // Get sellers (employees who are salespeople)
 export async function getVendedores(): Promise<Favorecido[]> {
-  const { data, error } = await supabase
-    .from('favorecidos')
-    .select('*')
-    .eq('type', 'funcionario')
-    .eq('is_active', true)
-    .eq('category', 'Vendedor')
-    .order('name');
+    const { data, error } = await supabase
+        .from('favorecidos')
+        .select('*')
+        .eq('type', 'funcionario')
+        .eq('is_active', true)
+        .eq('category', 'Vendedor')
+        .order('name');
 
-  if (error) {
-    console.error('Error fetching vendedores:', error);
-    throw error;
-  }
+    if (error) {
+        console.error('Error fetching vendedores:', error);
+        throw error;
+    }
 
-  return data || [];
+    return data || [];
 }
 
 // ============ Document Management ============
 
 // Get documents for a favorecido
 export async function getFavorecidoDocuments(favorecidoId: string): Promise<FavorecidoDocument[]> {
-  const { data, error } = await supabase
-    .from('favorecido_documents')
-    .select('*')
-    .eq('favorecido_id', favorecidoId)
-    .order('created_at', { ascending: false });
+    const { data, error } = await supabase
+        .from('favorecido_documents')
+        .select('*')
+        .eq('favorecido_id', favorecidoId)
+        .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('Error fetching favorecido documents:', error);
-    throw error;
-  }
+    if (error) {
+        console.error('Error fetching favorecido documents:', error);
+        throw error;
+    }
 
-  return data || [];
+    return data || [];
 }
 
 // Upload document for favorecido
 export async function uploadFavorecidoDocument(
-  favorecidoId: string, 
-  file: File,
-  uploadedBy?: string
+    favorecidoId: string,
+    file: File,
+    uploadedBy?: string
 ): Promise<FavorecidoDocument> {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${favorecidoId}/${Date.now()}-${file.name}`;
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${favorecidoId}/${Date.now()}-${file.name}`;
 
-  // Upload file to storage
-  const { error: uploadError } = await supabase.storage
-    .from('documents')
-    .upload(fileName, file);
+    // Upload file to storage
+    const { error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(fileName, file);
 
-  if (uploadError) {
-    console.error('Error uploading document:', uploadError);
-    throw uploadError;
-  }
+    if (uploadError) {
+        console.error('Error uploading document:', uploadError);
+        throw uploadError;
+    }
 
-  // Get public URL
-  const { data: urlData } = supabase.storage
-    .from('documents')
-    .getPublicUrl(fileName);
+    // Get public URL
+    const { data: urlData } = supabase.storage
+        .from('documents')
+        .getPublicUrl(fileName);
 
-  // Create document record
-  const { data, error } = await supabase
-    .from('favorecido_documents')
-    .insert({
-      favorecido_id: favorecidoId,
-      file_name: file.name,
-      file_url: urlData.publicUrl,
-      file_type: file.type || `application/${fileExt}`,
-      file_size: file.size,
-      uploaded_by: uploadedBy || null,
-    })
-    .select()
-    .single();
+    // Create document record
+    const { data, error } = await supabase
+        .from('favorecido_documents')
+        .insert({
+            favorecido_id: favorecidoId,
+            file_name: file.name,
+            file_url: urlData.publicUrl,
+            file_type: file.type || `application/${fileExt}`,
+            file_size: file.size,
+            uploaded_by: uploadedBy || null,
+        })
+        .select()
+        .single();
 
-  if (error) {
-    console.error('Error creating document record:', error);
-    // Try to clean up the uploaded file
-    await supabase.storage.from('documents').remove([fileName]);
-    throw error;
-  }
+    if (error) {
+        console.error('Error creating document record:', error);
+        // Try to clean up the uploaded file
+        await supabase.storage.from('documents').remove([fileName]);
+        throw error;
+    }
 
-  return data;
+    return data;
 }
 
 // Delete document for favorecido
 export async function deleteFavorecidoDocument(documentId: string): Promise<void> {
-  // First get the document to find the file URL
-  const { data: doc, error: fetchError } = await supabase
-    .from('favorecido_documents')
-    .select('*')
-    .eq('id', documentId)
-    .single();
+    // First get the document to find the file URL
+    const { data: doc, error: fetchError } = await supabase
+        .from('favorecido_documents')
+        .select('*')
+        .eq('id', documentId)
+        .single();
 
-  if (fetchError) {
-    console.error('Error fetching document:', fetchError);
-    throw fetchError;
-  }
-
-  // Extract file path from URL and delete from storage
-  if (doc?.file_url) {
-    const urlParts = doc.file_url.split('/documents/');
-    if (urlParts.length > 1) {
-      const filePath = urlParts[1];
-      await supabase.storage.from('documents').remove([filePath]);
+    if (fetchError) {
+        console.error('Error fetching document:', fetchError);
+        throw fetchError;
     }
-  }
 
-  // Delete document record
-  const { error } = await supabase
-    .from('favorecido_documents')
-    .delete()
-    .eq('id', documentId);
+    // Extract file path from URL and delete from storage
+    if (doc?.file_url) {
+        const urlParts = doc.file_url.split('/documents/');
+        if (urlParts.length > 1) {
+            const filePath = urlParts[1];
+            await supabase.storage.from('documents').remove([filePath]);
+        }
+    }
 
-  if (error) {
-    console.error('Error deleting document:', error);
-    throw error;
-  }
+    // Delete document record
+    const { error } = await supabase
+        .from('favorecido_documents')
+        .delete()
+        .eq('id', documentId);
+
+    if (error) {
+        console.error('Error deleting document:', error);
+        throw error;
+    }
 }
 
 // Get file icon based on file type
 export function getFileIcon(fileType: string): string {
-  if (fileType.includes('pdf')) return '📄';
-  if (fileType.includes('image')) return '🖼️';
-  if (fileType.includes('word') || fileType.includes('doc')) return '📝';
-  if (fileType.includes('excel') || fileType.includes('spreadsheet') || fileType.includes('xls')) return '📊';
-  if (fileType.includes('zip') || fileType.includes('rar')) return '📦';
-  return '📁';
+    if (fileType.includes('pdf')) return '📄';
+    if (fileType.includes('image')) return '🖼️';
+    if (fileType.includes('word') || fileType.includes('doc')) return '📝';
+    if (fileType.includes('excel') || fileType.includes('spreadsheet') || fileType.includes('xls')) return '📊';
+    if (fileType.includes('zip') || fileType.includes('rar')) return '📦';
+    return '📁';
 }
 
 // Format file size
 export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / k**i).toFixed(2))} ${sizes[i]}`;
 }
