@@ -1,0 +1,12 @@
+export { VisaoGeral } from './VisaoGeral';
+export { Dashboard } from './Dashboard';
+export { Financeiro } from './Financeiro';
+export { Cadastros } from './Cadastros';
+export { Conciliacao } from './Conciliacao';
+export { Vendas } from './Vendas';
+export { Agenda } from './Agenda';
+export { Relatorios } from './Relatorios';
+export { Previsao } from './Previsao';
+export { Programacao } from './Programacao';
+export { Permissoes } from './Permissoes';
+export { FAQ } from './FAQ';
