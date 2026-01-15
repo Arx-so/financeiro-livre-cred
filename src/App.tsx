@@ -11,7 +11,11 @@ import { useAuthStore, useBranchStore } from "@/stores";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Financeiro from "./pages/Financeiro";
-import Cadastros from "./pages/Cadastros";
+import Favorecidos from "./pages/Favorecidos";
+import Categorias from "./pages/Categorias";
+import ContasBancarias from "./pages/ContasBancarias";
+import Filiais from "./pages/Filiais";
+import Usuarios from "./pages/Usuarios";
 import Relatorios from "./pages/Relatorios";
 import Planejamento from "./pages/Planejamento";
 import Programacao from "./pages/Programacao";
@@ -100,7 +104,11 @@ function AppRoutes() {
             <Route path="/financeiro" element={<ProtectedRoute><Financeiro /></ProtectedRoute>} />
             <Route path="/programacao" element={<ProtectedRoute><Programacao /></ProtectedRoute>} />
             <Route path="/planejamento" element={<ProtectedRoute><Planejamento /></ProtectedRoute>} />
-            <Route path="/cadastros" element={<ProtectedRoute><Cadastros /></ProtectedRoute>} />
+            <Route path="/favorecidos" element={<ProtectedRoute><Favorecidos /></ProtectedRoute>} />
+            <Route path="/categorias" element={<ProtectedRoute><Categorias /></ProtectedRoute>} />
+            <Route path="/contas-bancarias" element={<ProtectedRoute><ContasBancarias /></ProtectedRoute>} />
+            <Route path="/filiais" element={<ProtectedRoute><Filiais /></ProtectedRoute>} />
+            <Route path="/usuarios" element={<ProtectedRoute><Usuarios /></ProtectedRoute>} />
             <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
             <Route path="/previsao" element={<ProtectedRoute><Previsao /></ProtectedRoute>} />
             <Route path="/conciliacao" element={<ProtectedRoute><Conciliacao /></ProtectedRoute>} />

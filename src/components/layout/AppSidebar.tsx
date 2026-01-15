@@ -14,6 +14,10 @@ import {
     HelpCircle,
     ChevronsUpDown,
     CheckCircle2,
+    Tag,
+    Landmark,
+    UserCog,
+    Store,
 } from 'lucide-react';
 import { useAuthStore, useBranchStore } from '@/stores';
 import {
@@ -37,8 +41,21 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import type { UserRole } from '@/types/database';
 
-const navigationGroups = [
+interface NavItem {
+    name: string;
+    href: string;
+    icon: React.ComponentType<{ className?: string }>;
+    roles?: UserRole[];
+}
+
+interface NavGroup {
+    label: string;
+    items: NavItem[];
+}
+
+const navigationGroups: NavGroup[] = [
     {
         label: 'Principal',
         items: [
@@ -93,9 +110,32 @@ const navigationGroups = [
         label: 'Cadastros',
         items: [
             {
-                name: 'Clientes/Fornecedores',
-                href: '/cadastros',
+                name: 'Favorecidos',
+                href: '/favorecidos',
                 icon: Users,
+            },
+            {
+                name: 'Categorias',
+                href: '/categorias',
+                icon: Tag,
+            },
+            {
+                name: 'Contas Bancárias',
+                href: '/contas-bancarias',
+                icon: Landmark,
+                roles: ['admin', 'gerente'],
+            },
+            {
+                name: 'Filiais',
+                href: '/filiais',
+                icon: Store,
+                roles: ['admin'],
+            },
+            {
+                name: 'Usuários',
+                href: '/usuarios',
+                icon: UserCog,
+                roles: ['admin'],
             },
             {
                 name: 'Vendas',
@@ -137,6 +177,13 @@ export function AppSidebar() {
         .join('')
         .toUpperCase()
         .slice(0, 2);
+
+    // Filter items based on user role
+    const canAccessItem = (item: NavItem): boolean => {
+        if (!item.roles) return true;
+        if (!user?.role) return false;
+        return item.roles.includes(user.role);
+    };
 
     return (
         <Sidebar collapsible="icon" className="border-r-0">
@@ -221,32 +268,37 @@ export function AppSidebar() {
 
             {/* Navigation */}
             <SidebarContent>
-                {navigationGroups.map((group) => (
-                    <SidebarGroup key={group.label}>
-                        <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-                        <SidebarGroupContent>
-                            <SidebarMenu>
-                                {group.items.map((item) => {
-                                    const isActive = location.pathname === item.href;
-                                    return (
-                                        <SidebarMenuItem key={item.name}>
-                                            <SidebarMenuButton
-                                                asChild
-                                                isActive={isActive}
-                                                tooltip={item.name}
-                                            >
-                                                <Link to={item.href}>
-                                                    <item.icon />
-                                                    <span>{item.name}</span>
-                                                </Link>
-                                            </SidebarMenuButton>
-                                        </SidebarMenuItem>
-                                    );
-                                })}
-                            </SidebarMenu>
-                        </SidebarGroupContent>
-                    </SidebarGroup>
-                ))}
+                {navigationGroups.map((group) => {
+                    const visibleItems = group.items.filter(canAccessItem);
+                    if (visibleItems.length === 0) return null;
+
+                    return (
+                        <SidebarGroup key={group.label}>
+                            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+                            <SidebarGroupContent>
+                                <SidebarMenu>
+                                    {visibleItems.map((item) => {
+                                        const isActive = location.pathname === item.href;
+                                        return (
+                                            <SidebarMenuItem key={item.name}>
+                                                <SidebarMenuButton
+                                                    asChild
+                                                    isActive={isActive}
+                                                    tooltip={item.name}
+                                                >
+                                                    <Link to={item.href}>
+                                                        <item.icon />
+                                                        <span>{item.name}</span>
+                                                    </Link>
+                                                </SidebarMenuButton>
+                                            </SidebarMenuItem>
+                                        );
+                                    })}
+                                </SidebarMenu>
+                            </SidebarGroupContent>
+                        </SidebarGroup>
+                    );
+                })}
 
                 {/* Help Link */}
                 <SidebarGroup className="mt-auto">
