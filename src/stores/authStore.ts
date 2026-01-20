@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { getActiveSession, createSession, deleteSession } from '@/services/sessions';
 import type { UserRole, Profile } from '@/types/database';
 
 export interface AuthUser {
@@ -104,6 +105,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
                 const profile = await fetchUserProfile(initialSession.user.id);
                 if (profile) {
+                    // Atualiza ou cria sessão ativa ao restaurar autenticação
+                    await createSession(
+                        profile.id,
+                        initialSession.access_token
+                    );
                     set({ user: profile, isAuthenticated: true });
                 }
             }
@@ -114,7 +120,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
 
         // Listen for auth changes
-        supabase.auth.onAuthStateChange((event, newSession) => {
+        supabase.auth.onAuthStateChange(async (event, newSession) => {
             console.log('[Auth] onAuthStateChange event:', event);
 
             set({ session: newSession });
@@ -122,6 +128,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             // Only handle sign out here - sign in is handled by login()
             if (event === 'SIGNED_OUT') {
                 console.log('[Auth] SIGNED_OUT - clearing user state');
+                const currentUser = get().user;
+                if (currentUser) {
+                    await deleteSession(currentUser.id);
+                }
                 set({
                     user: null,
                     isAuthenticated: false,
@@ -137,6 +147,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             console.log('[Auth] login() called');
             set({ isLoading: true });
 
+            // Primeiro, tenta autenticar para obter o user ID
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password,
@@ -154,14 +165,39 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 return { success: false, error: 'Erro ao autenticar usuário' };
             }
 
+            // Verificar se existe sessão ativa para este usuário
+            const activeSession = await getActiveSession(data.user.id);
+            if (activeSession) {
+                // Usuário já está logado em outro dispositivo
+                console.log('[Auth] User already has active session');
+                // Fazer logout do Supabase para limpar esta tentativa
+                await supabase.auth.signOut();
+                set({ isLoading: false });
+                return {
+                    success: false,
+                    error: 'Usuário já está logado em outro dispositivo. Faça logout no outro dispositivo primeiro.'
+                };
+            }
+
             // Fetch profile directly in login() to ensure it completes before returning
             console.log('[Auth] Fetching profile...');
             const profile = await fetchUserProfile(data.user.id);
             console.log('[Auth] Profile result:', profile);
 
             if (!profile) {
+                await supabase.auth.signOut();
                 set({ isLoading: false });
                 return { success: false, error: 'Perfil de usuário não encontrado. Entre em contato com o administrador.' };
+            }
+
+            // Criar sessão ativa
+            const sessionCreated = await createSession(
+                data.user.id,
+                data.session?.access_token || ''
+            );
+
+            if (!sessionCreated) {
+                console.warn('[Auth] Could not create session record, but continuing login');
             }
 
             set({
@@ -223,6 +259,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     logout: async () => {
         try {
+            const currentUser = get().user;
+
+            // Remove a sessão ativa do banco
+            if (currentUser) {
+                await deleteSession(currentUser.id);
+            }
+
             await supabase.auth.signOut();
             set({
                 user: null,

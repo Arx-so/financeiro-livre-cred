@@ -1,6 +1,7 @@
 import {
     useState, useRef, useCallback, useMemo
 } from 'react';
+import { Link } from 'react-router-dom';
 import {
     FileText,
     Plus,
@@ -11,6 +12,8 @@ import {
     Calendar,
     User,
     Loader2,
+    Download,
+    FileCode,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -42,7 +45,12 @@ import {
 } from '@/components/shared';
 import { getContractStatusBadge } from '@/components/shared/StatusBadge';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import type { ContractInsert } from '@/types/database';
+import {
+    getTemplates,
+    generateContractFromTemplate,
+    exportContractToPDF,
+} from '@/services/contractTemplates';
+import type { ContractInsert, ContractTemplate } from '@/types/database';
 
 export default function Contratos() {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
@@ -58,6 +66,12 @@ export default function Contratos() {
     // Confirmation dialog
     const { confirm, dialogProps } = useConfirmDialog();
     const [isDeleting, setIsDeleting] = useState(false);
+    
+    // Template modal state
+    const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+    const [selectedTemplateId, setSelectedTemplateId] = useState('');
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+    const [pdfContractId, setPdfContractId] = useState<string | null>(null);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -89,6 +103,12 @@ export default function Contratos() {
     });
 
     const { data: favorecidos } = useFavorecidos({ isActive: true });
+
+    // Fetch templates for PDF generation
+    const { data: templates } = useQuery({
+        queryKey: ['contract-templates'],
+        queryFn: () => getTemplates({ isActive: true }),
+    });
 
     // Mutations
     const createMutation = useMutation({
@@ -238,10 +258,57 @@ export default function Contratos() {
 
     const isSaving = createMutation.isPending || updateMutation.isPending;
 
+    // Handler para exportar PDF de um contrato
+    const handleExportPdf = useCallback(async (contract: any) => {
+        if (!templates || templates.length === 0) {
+            toast.error('Nenhum template disponível. Crie um template primeiro.');
+            return;
+        }
+        
+        setPdfContractId(contract.id);
+        setSelectedTemplateId(templates[0]?.id || '');
+        setIsTemplateModalOpen(true);
+    }, [templates]);
+
+    // Handler para gerar o PDF
+    const handleGeneratePdf = useCallback(async () => {
+        if (!selectedTemplateId || !pdfContractId) {
+            toast.error('Selecione um template');
+            return;
+        }
+
+        const contract = contracts?.find((c) => c.id === pdfContractId);
+        if (!contract) {
+            toast.error('Contrato não encontrado');
+            return;
+        }
+
+        setIsGeneratingPdf(true);
+        try {
+            const content = await generateContractFromTemplate(
+                selectedTemplateId,
+                contract.favorecido_id,
+                { value: contract.value, date: contract.start_date }
+            );
+            exportContractToPDF(content, contract.title);
+            toast.success('PDF gerado com sucesso!');
+            setIsTemplateModalOpen(false);
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+            toast.error('Erro ao gerar PDF');
+        } finally {
+            setIsGeneratingPdf(false);
+        }
+    }, [selectedTemplateId, pdfContractId, contracts]);
+
     return (
         <AppLayout>
             <div className="space-y-6">
                 <PageHeader title="Vendas" description="Gerencie contratos e vendas">
+                    <Link to="/vendas/templates" className="btn-secondary">
+                        <FileCode className="w-4 h-4" />
+                        Templates
+                    </Link>
                     <Dialog open={isModalOpen} onOpenChange={(open) => { setIsModalOpen(open); if (!open) resetForm(); }}>
                         <DialogTrigger asChild>
                             <button className="btn-primary">
@@ -432,6 +499,14 @@ export default function Contratos() {
                                         />
                                     </label>
                                     <button
+                                        className="btn-secondary py-2"
+                                        onClick={() => handleExportPdf(contract)}
+                                        title="Exportar PDF"
+                                    >
+                                        <Download className="w-4 h-4" />
+                                        PDF
+                                    </button>
+                                    <button
                                         className="btn-secondary py-2 text-destructive hover:bg-destructive/10"
                                         onClick={() => handleDelete(contract.id, contract.title)}
                                     >
@@ -443,6 +518,55 @@ export default function Contratos() {
                     </div>
                 )}
             </div>
+
+            {/* Template Selection Modal for PDF */}
+            <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Exportar Contrato em PDF</DialogTitle>
+                        <DialogDescription>
+                            Selecione um template para gerar o PDF do contrato
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-4">
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">
+                                Template
+                            </label>
+                            <select
+                                className="input-financial"
+                                value={selectedTemplateId}
+                                onChange={(e) => setSelectedTemplateId(e.target.value)}
+                            >
+                                <option value="">Selecione um template</option>
+                                {templates?.map((template) => (
+                                    <option key={template.id} value={template.id}>
+                                        {template.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex justify-end gap-3 pt-4">
+                            <button
+                                type="button"
+                                className="btn-secondary"
+                                onClick={() => setIsTemplateModalOpen(false)}
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                className="btn-primary"
+                                onClick={handleGeneratePdf}
+                                disabled={!selectedTemplateId || isGeneratingPdf}
+                            >
+                                {isGeneratingPdf && <Loader2 className="w-4 h-4 animate-spin" />}
+                                Gerar PDF
+                            </button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             <ConfirmDialog {...dialogProps} isLoading={isDeleting} />
         </AppLayout>

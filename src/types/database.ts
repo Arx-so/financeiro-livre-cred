@@ -700,6 +700,45 @@ export interface Database {
           is_read?: boolean;
         };
       };
+      products: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          category_id: string | null;
+          bank_value: number;
+          bank_percentage: number;
+          company_value: number;
+          company_percentage: number;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string | null;
+          category_id?: string | null;
+          bank_value?: number;
+          bank_percentage?: number;
+          company_value?: number;
+          company_percentage?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          name?: string;
+          description?: string | null;
+          category_id?: string | null;
+          bank_value?: number;
+          bank_percentage?: number;
+          company_value?: number;
+          company_percentage?: number;
+          is_active?: boolean;
+          updated_at?: string;
+        };
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -739,6 +778,7 @@ export type FavorecidoDocument = Database['public']['Tables']['favorecido_docume
 export type ActivityLog = Database['public']['Tables']['activity_logs']['Row'];
 export type AgendaEvent = Database['public']['Tables']['agenda_events']['Row'];
 export type Notification = Database['public']['Tables']['notifications']['Row'];
+export type Product = Database['public']['Tables']['products']['Row'];
 
 // Insert types
 export type ProfileInsert = Database['public']['Tables']['profiles']['Insert'];
@@ -758,6 +798,7 @@ export type FavorecidoDocumentInsert = Database['public']['Tables']['favorecido_
 export type ActivityLogInsert = Database['public']['Tables']['activity_logs']['Insert'];
 export type AgendaEventInsert = Database['public']['Tables']['agenda_events']['Insert'];
 export type NotificationInsert = Database['public']['Tables']['notifications']['Insert'];
+export type ProductInsert = Database['public']['Tables']['products']['Insert'];
 
 // Update types
 export type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
@@ -774,3 +815,4 @@ export type SalesTargetUpdate = Database['public']['Tables']['sales_targets']['U
 export type ActivityLogUpdate = Database['public']['Tables']['activity_logs']['Update'];
 export type AgendaEventUpdate = Database['public']['Tables']['agenda_events']['Update'];
 export type NotificationUpdate = Database['public']['Tables']['notifications']['Update'];
+export type ProductUpdate = Database['public']['Tables']['products']['Update'];

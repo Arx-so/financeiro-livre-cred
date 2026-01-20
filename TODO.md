@@ -1,7 +1,8 @@
 # TODO - Sistema FinControl
 
 > Análise realizada em: 15/01/2026  
-> Status geral: ~70-75% do escopo implementado
+> Status geral: ~85% do escopo implementado  
+> Sprint 1 concluído em: 15/01/2026
 
 ---
 
@@ -17,11 +18,12 @@
 
 - [x] Tela de login funcional
 - [x] Identificação por unidade/loja
-- [ ] **Controle de sessão única** - Impedir login simultâneo do mesmo usuário
-  - Criar tabela `active_sessions` no Supabase
-  - Verificar sessão ativa antes de permitir novo login
-  - Invalidar sessão anterior ou bloquear novo acesso
-  - Implementar cleanup de sessões expiradas
+- [x] **Controle de sessão única** - Impedir login simultâneo do mesmo usuário ✅
+  - [x] Tabela `active_sessions` criada (migração 010)
+  - [x] Service `sessions.ts` com funções de gerenciamento
+  - [x] Verificação de sessão ativa antes de permitir novo login
+  - [x] Bloqueio de novo login quando sessão existe
+  - [x] Cleanup de sessões expiradas via função SQL
 - [~] Logo na tela de login - Atualmente usa ícone Wallet, substituir por logo real
   - Arquivo: `src/pages/Login.tsx`
   - Usar imagem de `public/logo.jpeg`
@@ -46,11 +48,12 @@
 - [x] Programação de pagamentos (calendário)
 - [x] Status: pendente, pago, atrasado, cancelado
 - [x] Lançamentos recorrentes (diário/semanal/mensal/anual)
-- [~] **Tela detalhada de pagamento**
-  - Criar página `/financeiro/:id` com detalhes completos
-  - Histórico de alterações
-  - Documentos anexados
-  - Timeline de status
+- [x] **Tela detalhada de pagamento** ✅
+  - [x] Página `/financeiro/:id` com detalhes completos
+  - [x] Histórico de alterações (activity logs)
+  - [x] Timeline de status
+  - [x] Botões de ação (marcar pago, cancelar)
+  - [x] Link clicável na listagem de lançamentos
 - [~] Relatórios internos na programação
   - Adicionar resumo por categoria no calendário
   - Exportar programação do período
@@ -90,28 +93,13 @@
   - Usar API MediaDevices.getUserMedia()
   - Preview antes de salvar
   - Suporte a câmera frontal em dispositivos móveis
-- [ ] **Cadastro de Produtos** (ALTA PRIORIDADE)
-  - Criar tabela `products` no banco
-    ```sql
-    CREATE TABLE products (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      name VARCHAR NOT NULL,
-      description TEXT,
-      category_id UUID REFERENCES categories(id),
-      bank_value DECIMAL(15,2) DEFAULT 0,
-      bank_percentage DECIMAL(5,2) DEFAULT 0,
-      company_value DECIMAL(15,2) DEFAULT 0,
-      company_percentage DECIMAL(5,2) DEFAULT 0,
-      is_active BOOLEAN DEFAULT true,
-      created_at TIMESTAMPTZ DEFAULT now(),
-      updated_at TIMESTAMPTZ DEFAULT now()
-    );
-    ```
-  - Criar service `products.ts`
-  - Criar hook `useProducts.ts`
-  - Criar página `Produtos/` com CRUD completo
-  - Adicionar rota no `App.tsx`
-  - Adicionar no menu lateral
+- [x] **Cadastro de Produtos** ✅
+  - [x] Tabela `products` criada (migração 011)
+  - [x] Service `products.ts` com CRUD completo
+  - [x] Hook `useProducts.ts` com React Query
+  - [x] Página `Produtos/` com Container/View pattern
+  - [x] Rota `/produtos` adicionada
+  - [x] Item "Produtos" adicionado no menu lateral
 
 ---
 
@@ -123,12 +111,13 @@
   - Campos `signed_by` e `signed_at` existem
   - [ ] Integrar com serviço de assinatura (DocuSign, ClickSign, etc.)
   - [ ] Fluxo de aprovação de assinatura
-- [ ] **Geração automática de contratos** (ALTA PRIORIDADE)
-  - Criar tabela `contract_templates`
-  - Editor de templates com variáveis
-  - Substituição automática de dados do cliente
-  - Geração de PDF a partir do template
-  - Variáveis suportadas: nome, documento, endereço, valor, data, etc.
+- [x] **Geração automática de contratos** ✅
+  - [x] Tabela `contract_templates` criada (migração 012)
+  - [x] Página `/vendas/templates` para gerenciar templates
+  - [x] Editor de templates com variáveis
+  - [x] Substituição automática de dados do cliente
+  - [x] Geração de PDF com jsPDF
+  - [x] Variáveis suportadas: {{nome}}, {{documento}}, {{email}}, {{telefone}}, {{endereco}}, {{valor}}, {{data}}, {{descricao}}
 - [ ] **Impressão de contratos**
   - Botão de imprimir na listagem
   - Preview de impressão
@@ -197,11 +186,11 @@
 
 ## Priorização
 
-### Sprint 1 - Alta Prioridade
-1. [ ] Controle de sessão única
-2. [ ] Cadastro de produtos
-3. [ ] Tela detalhada de pagamento
-4. [ ] Geração automática de contratos
+### Sprint 1 - Alta Prioridade ✅ CONCLUÍDO
+1. [x] Controle de sessão única
+2. [x] Cadastro de produtos
+3. [x] Tela detalhada de pagamento
+4. [x] Geração automática de contratos
 
 ### Sprint 2 - Média Prioridade
 5. [ ] Captura de foto via webcam
@@ -241,3 +230,13 @@
 - Hooks de página: `use[NomePagina]Page.ts`
 - Services exportam funções assíncronas para Supabase
 - Types centralizados em `src/types/database.ts`
+
+### Migrações Recentes (Sprint 1)
+- `010_active_sessions.sql` - Tabela de sessões ativas para controle de login único
+- `011_products.sql` - Tabela de produtos com valores banco/empresa
+- `012_contract_templates.sql` - Tabela de templates de contrato
+
+### Services Adicionados (Sprint 1)
+- `sessions.ts` - Gerenciamento de sessões ativas
+- `products.ts` - CRUD de produtos
+- `contractTemplates.ts` - Templates e geração de PDF

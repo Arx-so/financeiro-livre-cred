@@ -18,6 +18,7 @@ import {
     Landmark,
     UserCog,
     Store,
+    Package,
 } from 'lucide-react';
 import { useAuthStore, useBranchStore } from '@/stores';
 import {
@@ -141,6 +142,11 @@ const navigationGroups: NavGroup[] = [
                 name: 'Vendas',
                 href: '/vendas',
                 icon: FileText,
+            },
+            {
+                name: 'Produtos',
+                href: '/produtos',
+                icon: Package,
             },
         ],
     },

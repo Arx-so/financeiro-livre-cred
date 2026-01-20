@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import {
     Plus,
     Download,
@@ -288,7 +289,12 @@ export function FinanceiroView(props: FinanceiroViewProps) {
                                                 ) : (
                                                     <ArrowDownRight className="w-4 h-4 text-expense flex-shrink-0" />
                                                 )}
-                                                <span className="font-medium text-foreground">{entry.description}</span>
+                                                <Link
+                                                    to={`/financeiro/${entry.id}`}
+                                                    className="font-medium text-foreground hover:text-primary hover:underline transition-colors"
+                                                >
+                                                    {entry.description}
+                                                </Link>
                                                 {entry.is_recurring && (
                                                     <Repeat className="w-3.5 h-3.5 text-primary" title="Recorrente" />
                                                 )}

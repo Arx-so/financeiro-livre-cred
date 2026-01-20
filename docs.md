@@ -9,14 +9,16 @@ Bem-vindo ao **Fiscal Compass**! Este guia completo irá ajudá-lo a entender to
 1. [Visão Geral](#visão-geral)
 2. [Dashboard](#dashboard)
 3. [Financeiro](#financeiro)
-4. [Cadastros](#cadastros)
-5. [Conciliação Bancária](#conciliação-bancária)
-6. [Contratos](#contratos)
-7. [Relatórios](#relatórios)
-8. [Previsão de Caixa](#previsão-de-caixa)
-9. [Planejamento](#planejamento)
-10. [Programação Financeira](#programação-financeira)
-11. [Configurações e Permissões](#configurações-e-permissões)
+4. [Produtos](#produtos)
+5. [Cadastros](#cadastros)
+6. [Conciliação Bancária](#conciliação-bancária)
+7. [Contratos](#contratos)
+8. [Templates de Contrato](#templates-de-contrato)
+9. [Relatórios](#relatórios)
+10. [Previsão de Caixa](#previsão-de-caixa)
+11. [Planejamento](#planejamento)
+12. [Programação Financeira](#programação-financeira)
+13. [Configurações e Permissões](#configurações-e-permissões)
 
 ---
 
@@ -31,6 +33,18 @@ O Fiscal Compass é um sistema completo de gestão financeira empresarial que pe
 - ✅ Criar lançamentos recorrentes
 - ✅ Planejar orçamentos e metas
 - ✅ Gerenciar contratos e documentos
+- ✅ Cadastrar e gerenciar produtos
+- ✅ Gerar contratos automaticamente a partir de templates
+
+### Segurança e Sessão Única
+
+O sistema implementa **controle de sessão única** para garantir a segurança:
+
+- 🔒 **Uma sessão por usuário**: Cada usuário pode estar logado em apenas um dispositivo por vez
+- 🚫 **Bloqueio de login simultâneo**: Se você tentar fazer login enquanto já está logado em outro dispositivo, receberá uma mensagem de erro
+- ⏰ **Sessões com expiração**: As sessões expiram automaticamente após 7 dias de inatividade
+
+> 📌 **Dica**: Se precisar acessar de outro dispositivo, faça logout no dispositivo atual primeiro
 
 ### Seleção de Filial
 
@@ -115,6 +129,61 @@ Para criar lançamentos que se repetem (aluguel, salários, assinaturas):
 
 - **Importar XML**: Importe notas fiscais eletrônicas (NF-e)
 - **Exportar**: Gere arquivos Excel (.xlsx) ou CSV
+
+#### 7. Página de Detalhes do Lançamento 🆕
+
+Clique no título de qualquer lançamento para acessar a **página de detalhes** (`/financeiro/:id`):
+
+| Seção | Informações |
+|-------|-------------|
+| **Informações Gerais** | Tipo, valor, status, datas de vencimento/pagamento |
+| **Vínculos** | Favorecido, categoria, subcategoria, conta bancária |
+| **Timeline de Status** | Histórico visual de mudanças de status com datas |
+| **Atividades Recentes** | Log de todas as alterações feitas no lançamento |
+
+**Ações disponíveis**:
+- ✓ Marcar como pago (altera status para "pago")
+- 🚫 Cancelar lançamento (altera status para "cancelado")
+- ← Voltar para a listagem
+
+---
+
+## 📦 Produtos
+
+Módulo completo para gerenciamento de produtos da empresa.
+
+### Funcionalidades:
+
+#### 1. Criar Novo Produto
+Clique em **"Novo Produto"** e preencha:
+
+- **Nome**: Nome do produto (obrigatório)
+- **Descrição**: Descrição detalhada do produto
+- **Categoria**: Classificação do produto
+- **Valor Banco**: Valor referente ao banco
+- **Percentual Banco**: Percentual do banco (%)
+- **Valor Empresa**: Valor referente à empresa
+- **Percentual Empresa**: Percentual da empresa (%)
+- **Ativo**: Marcar se o produto está ativo
+
+#### 2. Listagem de Produtos
+
+Visualize todos os produtos cadastrados com:
+- Nome e descrição
+- Categoria vinculada
+- Valores (banco e empresa)
+- Status (ativo/inativo)
+
+#### 3. Ações
+
+| Ícone | Ação |
+|-------|------|
+| ✏️ | Editar produto |
+| 🗑️ | Excluir produto |
+
+### Dicas:
+- 💡 Produtos inativos não aparecem nas seleções de contratos
+- 💡 Os percentuais podem ser usados para cálculo automático de comissões
 
 ---
 
@@ -232,6 +301,80 @@ Gerencie contratos com clientes e fornecedores.
 #### Resumo
 - Cards com valores por status
 - Contratos ativos vs vencidos
+
+#### Exportar para PDF 🆕
+
+Gere PDFs dos contratos usando templates:
+1. Clique no botão **"Exportar PDF"** ao lado do contrato
+2. Selecione o template desejado
+3. O sistema substituirá as variáveis automaticamente
+4. O PDF será baixado com os dados do cliente preenchidos
+
+---
+
+## 📄 Templates de Contrato
+
+Crie e gerencie modelos de contratos para geração automática.
+
+### Acessando Templates
+
+Acesse através do menu **Vendas > Templates** ou pelo botão "Templates" na página de Contratos.
+
+### Funcionalidades:
+
+#### 1. Criar Template
+Clique em **"Novo Template"** e preencha:
+
+- **Nome**: Nome identificador do template
+- **Descrição**: Descrição do propósito do template
+- **Conteúdo**: Texto do contrato com variáveis
+
+#### 2. Variáveis Disponíveis
+
+Use variáveis entre chaves duplas que serão substituídas automaticamente:
+
+| Variável | Descrição | Exemplo |
+|----------|-----------|---------|
+| `{{nome}}` | Nome do cliente | João Silva |
+| `{{documento}}` | CPF ou CNPJ | 123.456.789-00 |
+| `{{email}}` | E-mail do cliente | joao@email.com |
+| `{{telefone}}` | Telefone | (11) 99999-9999 |
+| `{{endereco}}` | Endereço completo | Rua A, 123 - Centro |
+| `{{valor}}` | Valor do contrato | R$ 1.500,00 |
+| `{{data}}` | Data atual | 15/01/2026 |
+| `{{descricao}}` | Descrição do contrato | Serviço de consultoria |
+
+#### 3. Exemplo de Template
+
+```
+CONTRATO DE PRESTAÇÃO DE SERVIÇOS
+
+Contratante: {{nome}}
+CPF/CNPJ: {{documento}}
+Endereço: {{endereco}}
+
+Valor: {{valor}}
+Data: {{data}}
+
+Descrição do serviço:
+{{descricao}}
+
+Assinaturas:
+_________________________
+{{nome}}
+```
+
+#### 4. Gerar Contrato em PDF
+
+1. Na página de **Contratos**, clique em **"Exportar PDF"** no contrato desejado
+2. Selecione o template a ser usado
+3. O sistema gerará um PDF com todas as variáveis substituídas pelos dados reais
+4. O download será iniciado automaticamente
+
+### Dicas:
+- 💡 Crie templates diferentes para tipos de serviço (vendas, locação, consultoria)
+- 💡 Sempre preencha o favorecido no contrato para que as variáveis sejam substituídas corretamente
+- 💡 Templates inativos não aparecem na seleção de geração de PDF
 
 ---
 
@@ -386,6 +529,32 @@ No módulo **Financeiro**, use o seletor de mês ou clique em "Todos" para ver t
 
 ### Como exportar relatórios?
 Em cada módulo há botões de **"Exportar"** para gerar arquivos Excel, CSV ou PDF.
+
+### Como gerar um contrato em PDF a partir de um template?
+1. Acesse **Vendas > Contratos**
+2. Localize o contrato desejado
+3. Clique no botão **"Exportar PDF"**
+4. Selecione o template na lista
+5. O PDF será gerado e baixado automaticamente
+
+### Como criar um template de contrato?
+1. Acesse **Vendas > Templates**
+2. Clique em **"Novo Template"**
+3. Preencha nome, descrição e conteúdo
+4. Use variáveis como `{{nome}}`, `{{documento}}` no texto
+5. Salve o template
+
+### Por que não consigo fazer login?
+Possíveis causas:
+1. **Sessão ativa em outro dispositivo**: O sistema permite apenas uma sessão por usuário. Faça logout no outro dispositivo primeiro.
+2. **Credenciais incorretas**: Verifique usuário e senha.
+3. **Conta inativa**: Entre em contato com o administrador.
+
+### Como cadastrar um produto?
+1. Acesse **Cadastros > Produtos**
+2. Clique em **"Novo Produto"**
+3. Preencha nome, valores e categoria
+4. Salve o produto
 
 ---
 

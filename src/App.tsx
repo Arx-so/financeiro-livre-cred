@@ -11,6 +11,7 @@ import { useAuthStore, useBranchStore } from "@/stores";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Financeiro from "./pages/Financeiro";
+import FinanceiroDetalhe from "./pages/Financeiro/FinanceiroDetalhe";
 import Favorecidos from "./pages/Favorecidos";
 import Categorias from "./pages/Categorias";
 import ContasBancarias from "./pages/ContasBancarias";
@@ -22,6 +23,8 @@ import Programacao from "./pages/Programacao";
 import Previsao from "./pages/Previsao";
 import Conciliacao from "./pages/Conciliacao";
 import Contratos from "./pages/Contratos";
+import ContractTemplates from "./pages/Contratos/Templates";
+import Produtos from "./pages/Produtos";
 import Agenda from "./pages/Agenda";
 import Docs from "./pages/Docs";
 import NotFound from "./pages/NotFound";
@@ -102,6 +105,7 @@ function AppRoutes() {
             {/* Protected routes - only accessible when authenticated */}
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/financeiro" element={<ProtectedRoute><Financeiro /></ProtectedRoute>} />
+            <Route path="/financeiro/:id" element={<ProtectedRoute><FinanceiroDetalhe /></ProtectedRoute>} />
             <Route path="/programacao" element={<ProtectedRoute><Programacao /></ProtectedRoute>} />
             <Route path="/planejamento" element={<ProtectedRoute><Planejamento /></ProtectedRoute>} />
             <Route path="/favorecidos" element={<ProtectedRoute><Favorecidos /></ProtectedRoute>} />
@@ -113,6 +117,8 @@ function AppRoutes() {
             <Route path="/previsao" element={<ProtectedRoute><Previsao /></ProtectedRoute>} />
             <Route path="/conciliacao" element={<ProtectedRoute><Conciliacao /></ProtectedRoute>} />
             <Route path="/vendas" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
+            <Route path="/vendas/templates" element={<ProtectedRoute><ContractTemplates /></ProtectedRoute>} />
+            <Route path="/produtos" element={<ProtectedRoute><Produtos /></ProtectedRoute>} />
             <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
             <Route path="/docs" element={<ProtectedRoute><Docs /></ProtectedRoute>} />
 
