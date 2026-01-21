@@ -10,6 +10,9 @@ import type {
 
 export interface ContractWithRelations extends Contract {
   favorecido?: { id: string; name: string } | null;
+  category?: { id: string; name: string; color: string } | null;
+  seller?: { id: string; name: string } | null;
+  approver?: { id: string; name: string } | null;
   files?: ContractFile[];
 }
 
@@ -27,10 +30,13 @@ export async function getContracts(filters: ContractFilters = {}): Promise<Contr
     let query = supabase
         .from('contracts')
         .select(`
-      *,
-      favorecido:favorecidos(id, name),
-      files:contract_files(*)
-    `)
+            *,
+            favorecido:favorecidos!favorecido_id(id, name),
+            category:categories!category_id(id, name, color),
+            seller:favorecidos!seller_id(id, name),
+            approver:profiles!approved_by(id, name),
+            files:contract_files(*)
+        `)
         .order('created_at', { ascending: false });
 
     if (filters.branchId) {
@@ -72,10 +78,13 @@ export async function getContract(id: string): Promise<ContractWithRelations | n
     const { data, error } = await supabase
         .from('contracts')
         .select(`
-      *,
-      favorecido:favorecidos(id, name),
-      files:contract_files(*)
-    `)
+            *,
+            favorecido:favorecidos!favorecido_id(id, name),
+            category:categories!category_id(id, name, color),
+            seller:favorecidos!seller_id(id, name),
+            approver:profiles!approved_by(id, name),
+            files:contract_files(*)
+        `)
         .eq('id', id)
         .single();
 
@@ -257,9 +266,36 @@ export async function getContractsSummary(branchId: string): Promise<{
     );
 }
 
-// Sign contract (change status to active)
-export async function signContract(id: string): Promise<Contract> {
-    return updateContract(id, { status: 'ativo' });
+// Sign contract (change status to active and record signer)
+export async function signContract(id: string, signedBy: string): Promise<Contract> {
+    return updateContract(id, {
+        status: 'ativo',
+        signed_by: signedBy,
+        signed_at: new Date().toISOString()
+    });
+}
+
+// Submit contract for approval
+export async function submitForApproval(id: string): Promise<Contract> {
+    return updateContract(id, { status: 'em_aprovacao' });
+}
+
+// Approve contract
+export async function approveContract(id: string, approvedBy: string): Promise<Contract> {
+    return updateContract(id, {
+        status: 'aprovado',
+        approved_by: approvedBy,
+        approved_at: new Date().toISOString()
+    });
+}
+
+// Reject contract (back to draft)
+export async function rejectContract(id: string): Promise<Contract> {
+    return updateContract(id, {
+        status: 'criado',
+        approved_by: null,
+        approved_at: null
+    });
 }
 
 // End contract

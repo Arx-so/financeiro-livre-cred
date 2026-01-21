@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    Wallet, Eye, EyeOff, Loader2, Mail
+    Eye, EyeOff, Loader2, Mail
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores';
@@ -79,9 +79,11 @@ export default function Login() {
 
                 <div className="relative z-10 flex flex-col justify-center px-12 lg:px-16">
                     <div className="flex items-center gap-4 mb-8">
-                        <div className="w-16 h-16 rounded-2xl bg-primary-foreground/10 backdrop-blur flex items-center justify-center">
-                            <Wallet className="w-8 h-8 text-primary-foreground" />
-                        </div>
+                        <img
+                            src="/logo.jpeg"
+                            alt="FinControl Logo"
+                            className="w-16 h-16 rounded-2xl object-cover"
+                        />
                         <div>
                             <h1 className="text-3xl font-bold text-primary-foreground">FinControl</h1>
                             <p className="text-primary-foreground/70">Gestão Financeira Empresarial</p>
@@ -120,9 +122,11 @@ export default function Login() {
                 <div className="w-full max-w-md">
                     {/* Mobile Logo */}
                     <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-                        <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
-                            <Wallet className="w-6 h-6 text-primary-foreground" />
-                        </div>
+                        <img
+                            src="/logo.jpeg"
+                            alt="FinControl Logo"
+                            className="w-12 h-12 rounded-xl object-cover"
+                        />
                         <div>
                             <h1 className="text-xl font-bold text-foreground">FinControl</h1>
                             <p className="text-xs text-muted-foreground">Gestão Financeira</p>

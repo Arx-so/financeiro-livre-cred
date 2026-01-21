@@ -7,6 +7,7 @@ import {
     getUserBranchAccess,
     setUserBranchAccess,
     inviteUser,
+    createUser,
     type UserFilters
 } from '@/services/users';
 import type { ProfileUpdate, UserRole } from '@/types/database';
@@ -88,6 +89,28 @@ export function useInviteUser() {
     }) => inviteUser(email, name, role, branchIds),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['users'] });
+        },
+    });
+}
+
+// Hook to create a new user
+export function useCreateUser() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({
+            email, password, name, role, branchIds
+        }: {
+            email: string;
+            password: string;
+            name: string;
+            role: UserRole;
+            branchIds: string[];
+        }) => createUser(email, password, name, role, branchIds),
+        onSuccess: (result) => {
+            if (result.success) {
+                queryClient.invalidateQueries({ queryKey: ['users'] });
+            }
         },
     });
 }

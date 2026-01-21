@@ -252,6 +252,9 @@ export function getRoleText(role: UserRole): string {
         admin: 'Administrador',
         gerente: 'Gerente',
         usuario: 'Usuário',
+        financeiro: 'Financeiro',
+        vendas: 'Vendas',
+        leitura: 'Leitura',
     };
 
     return roleTexts[role] || role;
@@ -263,7 +266,136 @@ export function getRoleBadgeClass(role: UserRole): string {
         admin: 'bg-expense-muted text-expense',
         gerente: 'bg-pending-muted text-pending',
         usuario: 'bg-muted text-muted-foreground',
+        financeiro: 'bg-primary/10 text-primary',
+        vendas: 'bg-income-muted text-income',
+        leitura: 'bg-muted text-muted-foreground',
     };
 
     return classes[role] || 'bg-muted text-muted-foreground';
+}
+
+// Create new user using a separate Supabase client to avoid affecting current session
+export async function createUser(
+    email: string,
+    password: string,
+    name: string,
+    role: UserRole,
+    branchIds: string[]
+): Promise<{ success: boolean; error?: string; userId?: string }> {
+    try {
+        // First, check if user already exists by email
+        const { data: existingProfiles } = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('email', email)
+            .limit(1);
+
+        if (existingProfiles && existingProfiles.length > 0) {
+            return { success: false, error: 'Este email já está cadastrado no sistema' };
+        }
+
+        // Import createClient dynamically to create a separate instance
+        const { createClient } = await import('@supabase/supabase-js');
+
+        // Create a separate Supabase client for user creation
+        // This won't affect the current admin session
+        const signupClient = createClient(
+            import.meta.env.VITE_SUPABASE_URL,
+            import.meta.env.VITE_SUPABASE_ANON_KEY,
+            {
+                auth: {
+                    autoRefreshToken: false,
+                    persistSession: false,
+                    detectSessionInUrl: false,
+                    // Use a separate storage key to not interfere with main client
+                    storageKey: 'supabase-signup-temp',
+                },
+            }
+        );
+
+        // Create the user with the separate client
+        const { data: authData, error: authError } = await signupClient.auth.signUp({
+            email,
+            password,
+            options: {
+                data: { name },
+                // Don't require email confirmation for admin-created users
+                emailRedirectTo: `${window.location.origin}/login`,
+            },
+        });
+
+        if (authError) {
+            console.error('Error creating user:', authError);
+            return { success: false, error: authError.message };
+        }
+
+        if (!authData.user) {
+            return { success: false, error: 'Falha ao criar usuário' };
+        }
+
+        const userId = authData.user.id;
+
+        // Sign out from the temporary client immediately
+        await signupClient.auth.signOut();
+
+        // Wait for the trigger to create the profile
+        await new Promise((resolve) => { setTimeout(resolve, 1500); });
+
+        // Check if profile was created
+        const { data: profileCheck } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', userId)
+            .single();
+
+        if (!profileCheck) {
+            // Profile not created yet, try to create it manually
+            console.log('Profile not created by trigger, creating manually...');
+            const { error: insertError } = await supabase
+                .from('profiles')
+                .insert({
+                    id: userId,
+                    email,
+                    name,
+                    role,
+                });
+
+            if (insertError) {
+                console.error('Error creating profile manually:', insertError);
+            }
+        } else {
+            // Update the role and name using the main client (as admin)
+            const { error: roleError } = await supabase
+                .from('profiles')
+                .update({ role, name })
+                .eq('id', userId);
+
+            if (roleError) {
+                console.error('Error updating role:', roleError);
+            }
+        }
+
+        // Set branch access
+        if (branchIds.length > 0) {
+            await setUserBranchAccess(userId, branchIds);
+        }
+
+        // Check if email confirmation is required
+        // identities.length === 0 means email is not confirmed yet
+        const needsConfirmation = authData.user.identities?.length === 0 ||
+            authData.user.email_confirmed_at === null;
+
+        if (needsConfirmation) {
+            return {
+                success: true,
+                userId,
+                error: 'Usuário criado! O email de confirmação foi enviado para o novo usuário.'
+            };
+        }
+
+        return { success: true, userId };
+    } catch (error) {
+        console.error('Error creating user:', error);
+        return { success: false, error: 'Erro ao criar usuário. Verifique o console.' };
+    }
 }

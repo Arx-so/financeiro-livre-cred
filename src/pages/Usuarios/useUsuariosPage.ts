@@ -2,15 +2,21 @@ import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores';
 import { useBranches } from '@/hooks/useBranches';
-import { useUsers, useUpdateUserRole, useSetUserBranchAccess } from '@/hooks/useUsers';
+import { useUsers, useUpdateUserRole, useSetUserBranchAccess, useCreateUser } from '@/hooks/useUsers';
 import type { UserRole, Profile } from '@/types/database';
 
 export interface UserFormData {
+    name: string;
+    email: string;
+    password: string;
     role: UserRole;
     selectedBranches: string[];
 }
 
 const initialUserForm: UserFormData = {
+    name: '',
+    email: '',
+    password: '',
     role: 'usuario',
     selectedBranches: [],
 };
@@ -40,6 +46,7 @@ export function useUsuariosPage() {
     // Mutations
     const updateUserRole = useUpdateUserRole();
     const setUserBranchAccess = useSetUserBranchAccess();
+    const createUser = useCreateUser();
 
     // User handlers
     const resetUserForm = useCallback(() => {
@@ -50,8 +57,47 @@ export function useUsuariosPage() {
     const handleSubmitUser = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!editingUserId) return;
+        // Creating new user
+        if (!editingUserId) {
+            if (!userForm.email || !userForm.password || !userForm.name) {
+                toast.error('Preencha todos os campos obrigatórios');
+                return;
+            }
 
+            if (userForm.password.length < 6) {
+                toast.error('A senha deve ter pelo menos 6 caracteres');
+                return;
+            }
+
+            try {
+                const result = await createUser.mutateAsync({
+                    email: userForm.email,
+                    password: userForm.password,
+                    name: userForm.name,
+                    role: userForm.role,
+                    branchIds: userForm.selectedBranches,
+                });
+
+                if (result.success) {
+                    if (result.error) {
+                        // Success with a note (e.g., email confirmation required)
+                        toast.success(result.error);
+                    } else {
+                        toast.success('Usuário criado com sucesso!');
+                    }
+                    setIsUserModalOpen(false);
+                    resetUserForm();
+                } else {
+                    toast.error(result.error || 'Erro ao criar usuário');
+                }
+            } catch (err) {
+                console.error('Error creating user:', err);
+                toast.error('Erro ao criar usuário');
+            }
+            return;
+        }
+
+        // Editing existing user
         try {
             await updateUserRole.mutateAsync({ userId: editingUserId, role: userForm.role });
 
@@ -68,10 +114,19 @@ export function useUsuariosPage() {
         } catch {
             toast.error('Erro ao atualizar usuário');
         }
-    }, [editingUserId, userForm, updateUserRole, setUserBranchAccess, resetUserForm]);
+    }, [editingUserId, userForm, updateUserRole, setUserBranchAccess, createUser, resetUserForm]);
+
+    const openCreateUserModal = useCallback(() => {
+        setUserForm(initialUserForm);
+        setEditingUserId(null);
+        setIsUserModalOpen(true);
+    }, []);
 
     const openEditUserModal = useCallback((userProfile: Profile) => {
         setUserForm({
+            name: userProfile.name || '',
+            email: userProfile.email || '',
+            password: '',
             role: userProfile.role,
             selectedBranches: [],
         });
@@ -115,11 +170,13 @@ export function useUsuariosPage() {
         usersLoading,
 
         // Mutations loading states
-        isSavingUser: updateUserRole.isPending || setUserBranchAccess.isPending,
+        isSavingUser: updateUserRole.isPending || setUserBranchAccess.isPending || createUser.isPending,
+        isCreating: !editingUserId,
 
         // Handlers
         resetUserForm,
         handleSubmitUser,
+        openCreateUserModal,
         openEditUserModal,
         toggleBranchSelection,
     };

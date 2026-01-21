@@ -393,3 +393,95 @@ export function formatDate(dateStr: string): string {
     if (!dateStr) return '';
     return new Date(dateStr).toLocaleDateString('pt-BR');
 }
+
+// ============================================
+// XML EXPORT
+// ============================================
+
+export interface XMLExportOptions {
+    rootElement?: string;
+    rowElement?: string;
+    includeDeclaration?: boolean;
+    encoding?: string;
+    format?: 'generic' | 'cnab';
+}
+
+/**
+ * Export data to XML format
+ */
+export function exportToXML<T extends Record<string, unknown>>(
+    data: T[],
+    filename: string,
+    options: XMLExportOptions = {}
+): void {
+    const {
+        rootElement = 'data',
+        rowElement = 'item',
+        includeDeclaration = true,
+        encoding = 'UTF-8',
+        format = 'generic',
+    } = options;
+
+    let xmlContent = '';
+
+    if (includeDeclaration) {
+        xmlContent += `<?xml version="1.0" encoding="${encoding}"?>\n`;
+    }
+
+    if (format === 'cnab') {
+        xmlContent += generateCNABXML(data);
+    } else {
+        xmlContent += `<${rootElement}>\n`;
+        for (const row of data) {
+            xmlContent += `  <${rowElement}>\n`;
+            for (const [key, value] of Object.entries(row)) {
+                const sanitizedValue = escapeXML(String(value ?? ''));
+                xmlContent += `    <${key}>${sanitizedValue}</${key}>\n`;
+            }
+            xmlContent += `  </${rowElement}>\n`;
+        }
+        xmlContent += `</${rootElement}>`;
+    }
+
+    const blob = new Blob([xmlContent], { type: 'application/xml' });
+    downloadBlob(blob, `${filename}.xml`);
+}
+
+/**
+ * Generate CNAB-like XML format for financial entries
+ */
+function generateCNABXML<T extends Record<string, unknown>>(data: T[]): string {
+    let xml = '<CNAB>\n';
+    xml += '  <Header>\n';
+    xml += `    <DataGeracao>${new Date().toISOString().split('T')[0]}</DataGeracao>\n`;
+    xml += `    <TotalRegistros>${data.length}</TotalRegistros>\n`;
+    xml += '  </Header>\n';
+    xml += '  <Registros>\n';
+
+    for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+        xml += `    <Registro sequencia="${i + 1}">\n`;
+        for (const [key, value] of Object.entries(row)) {
+            const sanitizedValue = escapeXML(String(value ?? ''));
+            xml += `      <${key}>${sanitizedValue}</${key}>\n`;
+        }
+        xml += '    </Registro>\n';
+    }
+
+    xml += '  </Registros>\n';
+    xml += '</CNAB>';
+
+    return xml;
+}
+
+/**
+ * Escape special characters for XML
+ */
+function escapeXML(str: string): string {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+}

@@ -1,8 +1,9 @@
-export type UserRole = 'admin' | 'gerente' | 'usuario';
+export type UserRole = 'admin' | 'gerente' | 'usuario' | 'financeiro' | 'vendas' | 'leitura';
 export type FavorecidoTipo = 'cliente' | 'fornecedor' | 'funcionario' | 'ambos';
 export type EntryType = 'receita' | 'despesa';
 export type EntryStatus = 'pendente' | 'pago' | 'atrasado' | 'cancelado';
-export type ContractStatus = 'ativo' | 'pendente' | 'encerrado';
+export type ContractStatus = 'criado' | 'em_aprovacao' | 'aprovado' | 'ativo' | 'pendente' | 'encerrado';
+export type ContractRecurrenceType = 'unico' | 'mensal' | 'anual';
 export type ReconciliationStatus = 'pendente' | 'conciliado' | 'divergente';
 export type RecurrenceType = 'diario' | 'semanal' | 'mensal' | 'anual';
 export type BankAccountType = 'corrente' | 'poupanca';
@@ -420,6 +421,14 @@ export interface Database {
           status: ContractStatus;
           notes: string | null;
           created_by: string | null;
+          // New extended fields
+          category_id: string | null;
+          recurrence_type: ContractRecurrenceType;
+          seller_id: string | null;
+          approved_by: string | null;
+          approved_at: string | null;
+          signed_by: string | null;
+          signed_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -428,13 +437,21 @@ export interface Database {
           branch_id: string;
           title: string;
           favorecido_id?: string | null;
-          type: string;
+          type?: string | null;
           value: number;
           start_date: string;
-          end_date: string;
+          end_date?: string | null;
           status?: ContractStatus;
           notes?: string | null;
           created_by?: string | null;
+          // New extended fields
+          category_id?: string | null;
+          recurrence_type?: ContractRecurrenceType;
+          seller_id?: string | null;
+          approved_by?: string | null;
+          approved_at?: string | null;
+          signed_by?: string | null;
+          signed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -442,12 +459,20 @@ export interface Database {
           branch_id?: string;
           title?: string;
           favorecido_id?: string | null;
-          type?: string;
+          type?: string | null;
           value?: number;
           start_date?: string;
-          end_date?: string;
+          end_date?: string | null;
           status?: ContractStatus;
           notes?: string | null;
+          // New extended fields
+          category_id?: string | null;
+          recurrence_type?: ContractRecurrenceType;
+          seller_id?: string | null;
+          approved_by?: string | null;
+          approved_at?: string | null;
+          signed_by?: string | null;
+          signed_at?: string | null;
           updated_at?: string;
         };
       };

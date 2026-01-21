@@ -7,6 +7,7 @@ import {
     TrendingDown,
     PieChart,
     BarChart3,
+    Users,
 } from 'lucide-react';
 import {
     BarChart,
@@ -33,6 +34,7 @@ import {
     getCategoryBreakdown,
     getMonthlyComparison,
     getAgingReport,
+    getTopFavorecidos,
 } from '@/services/relatorios';
 import { exportToExcel } from '@/services/importExport';
 import {
@@ -87,6 +89,19 @@ export default function Relatorios() {
     const { data: agingDespesas } = useQuery({
         queryKey: ['aging-despesas', unidadeAtual?.id],
         queryFn: () => getAgingReport(unidadeAtual!.id, 'despesa'),
+        enabled: !!unidadeAtual?.id,
+    });
+
+    // Fetch top favorecidos
+    const { data: topClientes, isLoading: topClientesLoading } = useQuery({
+        queryKey: ['top-clientes', unidadeAtual?.id],
+        queryFn: () => getTopFavorecidos(unidadeAtual!.id, 'receita', 10),
+        enabled: !!unidadeAtual?.id,
+    });
+
+    const { data: topFornecedores, isLoading: topFornecedoresLoading } = useQuery({
+        queryKey: ['top-fornecedores', unidadeAtual?.id],
+        queryFn: () => getTopFavorecidos(unidadeAtual!.id, 'despesa', 10),
         enabled: !!unidadeAtual?.id,
     });
 
@@ -166,17 +181,35 @@ export default function Relatorios() {
                 </PageHeader>
 
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
-                    <TabsList className="bg-muted/50 p-1 rounded-lg">
-                        <TabsTrigger value="dre" className="rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                    <TabsList className="bg-muted/50 p-1 rounded-lg flex-wrap">
+                        <TabsTrigger
+                            value="dre"
+                            className="rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                        >
                             DRE
                         </TabsTrigger>
-                        <TabsTrigger value="categorias" className="rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                        <TabsTrigger
+                            value="categorias"
+                            className="rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                        >
                             Por Categoria
                         </TabsTrigger>
-                        <TabsTrigger value="mensal" className="rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                        <TabsTrigger
+                            value="favorecidos"
+                            className="rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                        >
+                            Por Favorecido
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="mensal"
+                            className="rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                        >
                             Comparativo Mensal
                         </TabsTrigger>
-                        <TabsTrigger value="aging" className="rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                        <TabsTrigger
+                            value="aging"
+                            className="rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                        >
                             Aging
                         </TabsTrigger>
                     </TabsList>
@@ -273,6 +306,91 @@ export default function Relatorios() {
                                         </ResponsiveContainer>
                                     )}
                                 </div>
+                            </div>
+                        </div>
+                    </TabsContent>
+
+                    {/* Por Favorecido Tab */}
+                    <TabsContent value="favorecidos" className="space-y-6 mt-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <div className="card-financial p-6">
+                                <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                                    <TrendingUp className="w-5 h-5 text-income" />
+                                    Top 10 Clientes (Receitas)
+                                </h3>
+                                {topClientesLoading ? (
+                                    <LoadingState />
+                                ) : !topClientes?.length ? (
+                                    <EmptyState icon={Users} message="Sem dados" />
+                                ) : (
+                                    <div className="space-y-3">
+                                        {topClientes.map((cliente, i) => (
+                                            <div
+                                                key={i}
+                                                className="flex justify-between items-center p-3 bg-muted/30 rounded-lg"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-xs bg-income/20 text-income px-2 py-0.5 rounded-full font-medium">
+                                                        #{i + 1}
+                                                    </span>
+                                                    <div>
+                                                        <span className="text-sm text-foreground font-medium">
+                                                            {cliente.name}
+                                                        </span>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {cliente.count}
+                                                            {' '}
+                                                            lançamentos
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <span className="font-mono font-semibold text-income">
+                                                    {formatCurrency(cliente.value)}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="card-financial p-6">
+                                <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                                    <TrendingDown className="w-5 h-5 text-expense" />
+                                    Top 10 Fornecedores (Despesas)
+                                </h3>
+                                {topFornecedoresLoading ? (
+                                    <LoadingState />
+                                ) : !topFornecedores?.length ? (
+                                    <EmptyState icon={Users} message="Sem dados" />
+                                ) : (
+                                    <div className="space-y-3">
+                                        {topFornecedores.map((fornecedor, i) => (
+                                            <div
+                                                key={i}
+                                                className="flex justify-between items-center p-3 bg-muted/30 rounded-lg"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-xs bg-expense/20 text-expense px-2 py-0.5 rounded-full font-medium">
+                                                        #{i + 1}
+                                                    </span>
+                                                    <div>
+                                                        <span className="text-sm text-foreground font-medium">
+                                                            {fornecedor.name}
+                                                        </span>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {fornecedor.count}
+                                                            {' '}
+                                                            lançamentos
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <span className="font-mono font-semibold text-expense">
+                                                    {formatCurrency(fornecedor.value)}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </TabsContent>

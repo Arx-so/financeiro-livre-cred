@@ -6,6 +6,10 @@ import {
     DollarSign,
     Plus,
     Loader2,
+    Copy,
+    CheckCircle,
+    Archive,
+    FileText,
 } from 'lucide-react';
 import {
     BarChart,
@@ -32,7 +36,7 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { CurrencyInput } from '@/components/ui/currency-input';
-import { useBranchStore } from '@/stores';
+import { useBranchStore, useAuthStore } from '@/stores';
 import {
     getBudgetByCategory,
     createAnnualBudget,
@@ -40,7 +44,16 @@ import {
     getSalesTargets,
     createSalesTarget,
     getSalesTargetSummary,
+    calculateSellerEarnings,
 } from '@/services/planejamento';
+import {
+    getBudgetVersions,
+    createBudgetVersion,
+    duplicateBudgetVersion,
+    approveBudgetVersion,
+    archiveBudgetVersion,
+    BudgetVersionWithApprover,
+} from '@/services/budgetVersions';
 import { useCategories } from '@/hooks/useCategorias';
 import { useVendedores } from '@/hooks/useCadastros';
 import {
@@ -51,6 +64,7 @@ import type { SalesTargetInsert } from '@/types/database';
 
 export default function Planejamento() {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
+    const user = useAuthStore((state) => state.user);
     const queryClient = useQueryClient();
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth() + 1;
@@ -60,6 +74,8 @@ export default function Planejamento() {
     const [selectedMonth, setSelectedMonth] = useState(currentMonth);
     const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
     const [isTargetModalOpen, setIsTargetModalOpen] = useState(false);
+    const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
+    const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
 
     // Budget form
     const [budgetForm, setBudgetForm] = useState({
@@ -74,6 +90,14 @@ export default function Planejamento() {
         commission_rate: '5',
         bonus_rate: '1',
     });
+
+    // Version form
+    const [versionForm, setVersionForm] = useState({
+        name: '',
+    });
+
+    // Check if user can approve
+    const canApprove = user?.role === 'admin' || user?.role === 'gerente';
 
     // Fetch data
     const { data: budgetByCategory, isLoading: budgetLoading } = useQuery({
@@ -103,6 +127,22 @@ export default function Planejamento() {
     const { data: categories } = useCategories();
     const { data: vendedores } = useVendedores();
 
+    // Fetch budget versions
+    const { data: budgetVersions } = useQuery({
+        queryKey: ['budget-versions', unidadeAtual?.id, selectedYear],
+        queryFn: () => getBudgetVersions(unidadeAtual!.id, selectedYear),
+        enabled: !!unidadeAtual?.id,
+    });
+
+    // Get selected version details
+    const selectedVersion = useMemo(
+        () => budgetVersions?.find((v) => v.id === selectedVersionId),
+        [budgetVersions, selectedVersionId]
+    );
+
+    // Check if selected version is editable
+    const isVersionEditable = !selectedVersion || selectedVersion.status === 'rascunho';
+
     // Mutations
     const createBudgetMutation = useMutation({
         mutationFn: createAnnualBudget,
@@ -128,6 +168,56 @@ export default function Planejamento() {
             toast.success('Meta criada!');
         },
         onError: () => toast.error('Erro ao criar meta'),
+    });
+
+    // Version mutations
+    const createVersionMutation = useMutation({
+        mutationFn: () => createBudgetVersion({
+            branchId: unidadeAtual!.id,
+            year: selectedYear,
+            name: versionForm.name,
+            createdBy: user!.id,
+        }),
+        onSuccess: (versionId) => {
+            queryClient.invalidateQueries({ queryKey: ['budget-versions'] });
+            setIsVersionModalOpen(false);
+            setVersionForm({ name: '' });
+            setSelectedVersionId(versionId);
+            toast.success('Versão criada!');
+        },
+        onError: () => toast.error('Erro ao criar versão'),
+    });
+
+    const duplicateVersionMutation = useMutation({
+        mutationFn: (sourceId: string) => duplicateBudgetVersion(
+            sourceId,
+            `Cópia de ${selectedVersion?.name || 'versão'}`,
+            user!.id
+        ),
+        onSuccess: (versionId) => {
+            queryClient.invalidateQueries({ queryKey: ['budget-versions'] });
+            setSelectedVersionId(versionId);
+            toast.success('Versão duplicada!');
+        },
+        onError: () => toast.error('Erro ao duplicar versão'),
+    });
+
+    const approveVersionMutation = useMutation({
+        mutationFn: (versionId: string) => approveBudgetVersion(versionId, user!.id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['budget-versions'] });
+            toast.success('Versão aprovada!');
+        },
+        onError: () => toast.error('Erro ao aprovar versão'),
+    });
+
+    const archiveVersionMutation = useMutation({
+        mutationFn: archiveBudgetVersion,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['budget-versions'] });
+            toast.success('Versão arquivada!');
+        },
+        onError: () => toast.error('Erro ao arquivar versão'),
     });
 
     // Handlers
@@ -192,23 +282,196 @@ export default function Planejamento() {
 
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
                     <TabsList className="bg-muted/50 p-1 rounded-lg">
-                        <TabsTrigger value="orcamento" className="rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                        <TabsTrigger
+                            value="orcamento"
+                            className="rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                        >
                             Orçamento
                         </TabsTrigger>
-                        <TabsTrigger value="metas" className="rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm">
+                        <TabsTrigger
+                            value="metas"
+                            className="rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                        >
                             Metas de Vendas
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="comissoes"
+                            className="rounded-md data-[state=active]:bg-card data-[state=active]:shadow-sm"
+                        >
+                            Comissões
                         </TabsTrigger>
                     </TabsList>
 
                     {/* Orçamento Tab */}
                     <TabsContent value="orcamento" className="space-y-6 mt-6">
+                        {/* Budget Versions */}
+                        <div className="card-financial p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-4">
+                                <div className="flex items-center gap-4">
+                                    <div>
+                                        <label className="block text-xs text-muted-foreground mb-1">
+                                            Versão
+                                        </label>
+                                        <select
+                                            className="input-financial min-w-[200px]"
+                                            value={selectedVersionId || ''}
+                                            onChange={(e) => setSelectedVersionId(e.target.value || null)}
+                                        >
+                                            <option value="">Todas (consolidado)</option>
+                                            {budgetVersions?.map((v) => (
+                                                <option key={v.id} value={v.id}>
+                                                    {v.name}
+                                                    {' '}
+                                                    (v{v.version})
+                                                    {' '}
+                                                    - {v.status}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    {selectedVersion && (
+                                        <div className="flex items-center gap-2">
+                                            <span
+                                                className={`text-xs px-2 py-1 rounded-full ${
+                                                    selectedVersion.status === 'aprovado'
+                                                        ? 'bg-income/10 text-income'
+                                                        : selectedVersion.status === 'arquivado'
+                                                            ? 'bg-muted text-muted-foreground'
+                                                            : 'bg-pending/10 text-pending'
+                                                }`}
+                                            >
+                                                {selectedVersion.status === 'rascunho' && 'Rascunho'}
+                                                {selectedVersion.status === 'aprovado' && 'Aprovado'}
+                                                {selectedVersion.status === 'arquivado' && 'Arquivado'}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {selectedVersion && selectedVersion.status === 'rascunho' && (
+                                        <button
+                                            className="btn-secondary py-1.5"
+                                            onClick={() => duplicateVersionMutation.mutate(selectedVersion.id)}
+                                            disabled={duplicateVersionMutation.isPending}
+                                        >
+                                            <Copy className="w-4 h-4" />
+                                            Duplicar
+                                        </button>
+                                    )}
+                                    {selectedVersion && selectedVersion.status === 'rascunho' && canApprove && (
+                                        <button
+                                            className="btn-primary py-1.5"
+                                            onClick={() => approveVersionMutation.mutate(selectedVersion.id)}
+                                            disabled={approveVersionMutation.isPending}
+                                        >
+                                            <CheckCircle className="w-4 h-4" />
+                                            Aprovar
+                                        </button>
+                                    )}
+                                    {selectedVersion && selectedVersion.status === 'aprovado' && canApprove && (
+                                        <button
+                                            className="btn-secondary py-1.5"
+                                            onClick={() => archiveVersionMutation.mutate(selectedVersion.id)}
+                                            disabled={archiveVersionMutation.isPending}
+                                        >
+                                            <Archive className="w-4 h-4" />
+                                            Arquivar
+                                        </button>
+                                    )}
+                                    <Dialog open={isVersionModalOpen} onOpenChange={setIsVersionModalOpen}>
+                                        <DialogTrigger asChild>
+                                            <button className="btn-secondary py-1.5">
+                                                <FileText className="w-4 h-4" />
+                                                Nova Versão
+                                            </button>
+                                        </DialogTrigger>
+                                        <DialogContent className="max-w-md">
+                                            <DialogHeader>
+                                                <DialogTitle>Nova Versão do Orçamento</DialogTitle>
+                                                <DialogDescription>
+                                                    Crie uma nova versão do orçamento para {selectedYear}
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <form
+                                                className="space-y-4 mt-4"
+                                                onSubmit={(e) => {
+                                                    e.preventDefault();
+                                                    createVersionMutation.mutate();
+                                                }}
+                                            >
+                                                <div>
+                                                    <label className="block text-sm font-medium mb-2">
+                                                        Nome da Versão
+                                                    </label>
+                                                    <input
+                                                        type="text"
+                                                        className="input-financial"
+                                                        placeholder={`Orçamento ${selectedYear} v${(budgetVersions?.length || 0) + 1}`}
+                                                        value={versionForm.name}
+                                                        onChange={(e) => setVersionForm({ name: e.target.value })}
+                                                        required
+                                                    />
+                                                </div>
+                                                <div className="flex justify-end gap-3 pt-4">
+                                                    <button
+                                                        type="button"
+                                                        className="btn-secondary"
+                                                        onClick={() => setIsVersionModalOpen(false)}
+                                                    >
+                                                        Cancelar
+                                                    </button>
+                                                    <button
+                                                        type="submit"
+                                                        className="btn-primary"
+                                                        disabled={createVersionMutation.isPending}
+                                                    >
+                                                        {createVersionMutation.isPending && (
+                                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                                        )}
+                                                        Criar Versão
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </DialogContent>
+                                    </Dialog>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Summary */}
                         {budgetSummary && (
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <StatCard label="Orçado Total" value={formatCurrency(budgetSummary.totalBudgeted || 0)} icon={Target} />
-                                <StatCard label="Realizado" value={formatCurrency(budgetSummary.totalActual || 0)} icon={TrendingUp} variant="income" />
-                                <StatCard label="Variação" value={formatCurrency((budgetSummary.totalActual || 0) - (budgetSummary.totalBudgeted || 0))} icon={DollarSign} variant={(budgetSummary.totalActual || 0) <= (budgetSummary.totalBudgeted || 0) ? 'income' : 'expense'} />
-                                <StatCard label="% Execução" value={`${Math.round(((budgetSummary.totalActual || 0) / (budgetSummary.totalBudgeted || 1)) * 100)}%`} icon={TrendingUp} variant="primary" />
+                                <StatCard
+                                    label="Orçado Total"
+                                    value={formatCurrency(budgetSummary.totalBudgeted || 0)}
+                                    icon={Target}
+                                />
+                                <StatCard
+                                    label="Realizado"
+                                    value={formatCurrency(budgetSummary.totalActual || 0)}
+                                    icon={TrendingUp}
+                                    variant="income"
+                                />
+                                <StatCard
+                                    label="Variação"
+                                    value={formatCurrency(
+                                        (budgetSummary.totalActual || 0) - (budgetSummary.totalBudgeted || 0)
+                                    )}
+                                    icon={DollarSign}
+                                    variant={
+                                        (budgetSummary.totalActual || 0) <= (budgetSummary.totalBudgeted || 0)
+                                            ? 'income'
+                                            : 'expense'
+                                    }
+                                />
+                                <StatCard
+                                    label="% Execução"
+                                    value={`${Math.round(
+                                        ((budgetSummary.totalActual || 0) / (budgetSummary.totalBudgeted || 1)) * 100
+                                    )}%`}
+                                    icon={TrendingUp}
+                                    variant="primary"
+                                />
                             </div>
                         )}
 
@@ -216,7 +479,7 @@ export default function Planejamento() {
                             <h3 className="font-semibold text-foreground">Orçamento por Categoria</h3>
                             <Dialog open={isBudgetModalOpen} onOpenChange={setIsBudgetModalOpen}>
                                 <DialogTrigger asChild>
-                                    <button className="btn-primary">
+                                    <button className="btn-primary" disabled={!isVersionEditable}>
                                         <Plus className="w-4 h-4" />
                                         Novo Orçamento
                                     </button>
@@ -438,6 +701,133 @@ export default function Planejamento() {
                                 })}
                             </div>
                         )}
+                    </TabsContent>
+
+                    {/* Comissões Tab */}
+                    <TabsContent value="comissoes" className="space-y-6 mt-6">
+                        <div className="flex items-center gap-4">
+                            <select
+                                className="input-financial"
+                                value={selectedMonth}
+                                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                            >
+                                {MONTHS_SHORT.map((m, i) => (
+                                    <option key={i} value={i + 1}>{m}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Summary */}
+                        {targetSummary && (
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <StatCard
+                                    label="Vendido Total"
+                                    value={formatCurrency(targetSummary.totalActual || 0)}
+                                    icon={TrendingUp}
+                                    variant="income"
+                                />
+                                <StatCard
+                                    label="Total Comissões"
+                                    value={formatCurrency(targetSummary.totalCommission || 0)}
+                                    icon={DollarSign}
+                                    variant="primary"
+                                />
+                                <StatCard
+                                    label="Total Bônus"
+                                    value={formatCurrency(targetSummary.totalBonus || 0)}
+                                    icon={DollarSign}
+                                    variant="income"
+                                />
+                                <StatCard
+                                    label="Vendedores"
+                                    value={targetSummary.totalSellers || 0}
+                                    icon={Users}
+                                />
+                            </div>
+                        )}
+
+                        <div className="card-financial overflow-hidden">
+                            <table className="w-full">
+                                <thead className="bg-muted/50">
+                                    <tr>
+                                        <th className="text-left p-4 font-medium text-foreground">
+                                            Vendedor
+                                        </th>
+                                        <th className="text-right p-4 font-medium text-foreground">
+                                            Meta
+                                        </th>
+                                        <th className="text-right p-4 font-medium text-foreground">
+                                            Vendido
+                                        </th>
+                                        <th className="text-right p-4 font-medium text-foreground">
+                                            % Comissão
+                                        </th>
+                                        <th className="text-right p-4 font-medium text-foreground">
+                                            Comissão
+                                        </th>
+                                        <th className="text-right p-4 font-medium text-foreground">
+                                            Bônus
+                                        </th>
+                                        <th className="text-right p-4 font-medium text-foreground">
+                                            Total
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {salesTargets?.map((target) => {
+                                        const earnings = calculateSellerEarnings(target);
+                                        return (
+                                            <tr
+                                                key={target.id}
+                                                className="border-t border-border hover:bg-muted/30"
+                                            >
+                                                <td className="p-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 rounded-lg bg-primary/10">
+                                                            <Users className="w-4 h-4 text-primary" />
+                                                        </div>
+                                                        <span className="font-medium">
+                                                            {target.seller?.name}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td className="p-4 text-right font-mono">
+                                                    {formatCurrency(target.target_amount)}
+                                                </td>
+                                                <td className="p-4 text-right font-mono">
+                                                    {formatCurrency(target.achieved_amount || 0)}
+                                                </td>
+                                                <td className="p-4 text-right">
+                                                    {target.commission_rate}%
+                                                </td>
+                                                <td className="p-4 text-right font-mono text-primary">
+                                                    {formatCurrency(earnings.commission)}
+                                                </td>
+                                                <td className="p-4 text-right font-mono">
+                                                    {earnings.achieved ? (
+                                                        <span className="text-income">
+                                                            {formatCurrency(earnings.bonus)}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-muted-foreground">-</span>
+                                                    )}
+                                                </td>
+                                                <td className="p-4 text-right font-mono font-semibold text-income">
+                                                    {formatCurrency(earnings.total)}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                    {(!salesTargets || salesTargets.length === 0) && (
+                                        <tr>
+                                            <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                                                Nenhuma meta definida para este período
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </TabsContent>
                 </Tabs>
             </div>

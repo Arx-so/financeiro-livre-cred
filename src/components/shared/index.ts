@@ -5,3 +5,6 @@ export { StatCard } from './StatCard';
 export { StatusBadge, getEntryStatusBadge, getContractStatusBadge } from './StatusBadge';
 export type { EntryStatusType, ContractStatusType } from './StatusBadge';
 export { SearchInput } from './SearchInput';
+export { AdvancedFilters } from './AdvancedFilters';
+export type { FilterValues } from './AdvancedFilters';
+export { WebcamCapture } from './WebcamCapture';

@@ -14,6 +14,12 @@ import {
     Loader2,
     Download,
     FileCode,
+    CheckCircle,
+    Send,
+    Tag,
+    Repeat,
+    Printer,
+    XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -38,19 +44,23 @@ import {
     signContract,
     getContractsSummary,
     ContractFilters,
+    submitForApproval,
+    approveContract,
+    rejectContract,
 } from '@/services/contratos';
-import { useFavorecidos } from '@/hooks/useCadastros';
+import { useCategories } from '@/hooks/useCategorias';
+import { useFavorecidos, useVendedores } from '@/hooks/useCadastros';
 import {
     PageHeader, EmptyState, LoadingState, StatCard, SearchInput
 } from '@/components/shared';
-import { getContractStatusBadge } from '@/components/shared/StatusBadge';
+import { getContractStatusBadge, ContractStatusType } from '@/components/shared/StatusBadge';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import {
     getTemplates,
     generateContractFromTemplate,
     exportContractToPDF,
 } from '@/services/contractTemplates';
-import type { ContractInsert, ContractTemplate } from '@/types/database';
+import type { ContractInsert, ContractRecurrenceType } from '@/types/database';
 
 export default function Contratos() {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
@@ -66,7 +76,7 @@ export default function Contratos() {
     // Confirmation dialog
     const { confirm, dialogProps } = useConfirmDialog();
     const [isDeleting, setIsDeleting] = useState(false);
-    
+
     // Template modal state
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
@@ -82,6 +92,9 @@ export default function Contratos() {
         start_date: '',
         end_date: '',
         notes: '',
+        category_id: '',
+        recurrence_type: 'unico' as ContractRecurrenceType,
+        seller_id: '',
     });
 
     // Fetch data
@@ -103,6 +116,11 @@ export default function Contratos() {
     });
 
     const { data: favorecidos } = useFavorecidos({ isActive: true });
+    const { data: categories } = useCategories();
+    const { data: vendedores } = useVendedores();
+
+    // Check if user can approve contracts
+    const canApprove = user?.role === 'admin' || user?.role === 'gerente';
 
     // Fetch templates for PDF generation
     const { data: templates } = useQuery({
@@ -155,6 +173,33 @@ export default function Contratos() {
         onError: () => toast.error('Erro ao assinar contrato'),
     });
 
+    const submitForApprovalMutation = useMutation({
+        mutationFn: submitForApproval,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['contracts'] });
+            toast.success('Contrato enviado para aprovação!');
+        },
+        onError: () => toast.error('Erro ao enviar para aprovação'),
+    });
+
+    const approveMutation = useMutation({
+        mutationFn: ({ id, approvedBy }: { id: string; approvedBy: string }) => approveContract(id, approvedBy),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['contracts'] });
+            toast.success('Contrato aprovado!');
+        },
+        onError: () => toast.error('Erro ao aprovar contrato'),
+    });
+
+    const rejectMutation = useMutation({
+        mutationFn: rejectContract,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['contracts'] });
+            toast.success('Contrato rejeitado!');
+        },
+        onError: () => toast.error('Erro ao rejeitar contrato'),
+    });
+
     const uploadFileMutation = useMutation({
         mutationFn: ({ contractId, file }: { contractId: string; file: File }) => uploadContractFile(contractId, file),
         onSuccess: () => {
@@ -174,6 +219,9 @@ export default function Contratos() {
             start_date: '',
             end_date: '',
             notes: '',
+            category_id: '',
+            recurrence_type: 'unico',
+            seller_id: '',
         });
         setEditingId(null);
     }, []);
@@ -195,6 +243,10 @@ export default function Contratos() {
             start_date: formData.start_date,
             end_date: formData.end_date || null,
             notes: formData.notes || null,
+            category_id: formData.category_id || null,
+            recurrence_type: formData.recurrence_type,
+            seller_id: formData.seller_id || null,
+            status: editingId ? undefined : 'criado',
         };
 
         if (editingId) {
@@ -228,9 +280,63 @@ export default function Contratos() {
             start_date: contract.start_date,
             end_date: contract.end_date || '',
             notes: contract.notes || '',
+            category_id: contract.category_id || '',
+            recurrence_type: contract.recurrence_type || 'unico',
+            seller_id: contract.seller_id || '',
         });
         setEditingId(contract.id);
         setIsModalOpen(true);
+    }, []);
+
+    const handleSubmitForApproval = useCallback((contractId: string) => {
+        submitForApprovalMutation.mutate(contractId);
+    }, [submitForApprovalMutation]);
+
+    const handleApprove = useCallback((contractId: string) => {
+        if (!user?.id) {
+            toast.error('Usuário não identificado');
+            return;
+        }
+        approveMutation.mutate({ id: contractId, approvedBy: user.id });
+    }, [user?.id, approveMutation]);
+
+    const handleReject = useCallback((contractId: string) => {
+        rejectMutation.mutate(contractId);
+    }, [rejectMutation]);
+
+    const handlePrint = useCallback((contract: any) => {
+        // Open print dialog with contract info
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Contrato - ${contract.title}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 40px; }
+                        h1 { color: #333; }
+                        .info { margin: 10px 0; }
+                        .label { font-weight: bold; }
+                    </style>
+                </head>
+                <body>
+                    <h1>${contract.title}</h1>
+                    <div class="info"><span class="label">Cliente:</span> ${contract.favorecido?.name || 'N/A'}</div>
+                    <div class="info"><span class="label">Valor:</span> ${formatCurrency(contract.value)}</div>
+                    <div class="info"><span class="label">Data Início:</span> ${formatDate(contract.start_date)}</div>
+                    ${contract.end_date ? `<div class="info"><span class="label">Data Fim:</span> ${formatDate(contract.end_date)}</div>` : ''}
+                    <div class="info"><span class="label">Status:</span> ${contract.status}</div>
+                    ${contract.category?.name ? `<div class="info"><span class="label">Categoria:</span> ${contract.category.name}</div>` : ''}
+                    ${contract.seller?.name ? `<div class="info"><span class="label">Vendedor:</span> ${contract.seller.name}</div>` : ''}
+                    ${contract.notes ? `<div class="info"><span class="label">Observações:</span> ${contract.notes}</div>` : ''}
+                    ${contract.approved_by ? `<div class="info"><span class="label">Aprovado por:</span> ${contract.approver?.name || 'N/A'} em ${formatDate(contract.approved_at)}</div>` : ''}
+                    ${contract.signed_by ? `<div class="info"><span class="label">Assinado por:</span> ${contract.signed_by} em ${formatDate(contract.signed_at)}</div>` : ''}
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.print();
+        }
     }, []);
 
     const handleSign = useCallback((contractId: string) => {
@@ -264,7 +370,7 @@ export default function Contratos() {
             toast.error('Nenhum template disponível. Crie um template primeiro.');
             return;
         }
-        
+
         setPdfContractId(contract.id);
         setSelectedTemplateId(templates[0]?.id || '');
         setIsTemplateModalOpen(true);
@@ -377,15 +483,57 @@ export default function Contratos() {
                                         />
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-foreground mb-2">Tipo</label>
-                                    <input
-                                        type="text"
-                                        className="input-financial"
-                                        placeholder="Ex: Venda, Prestação de Serviço"
-                                        value={formData.type}
-                                        onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                                    />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-2">Tipo</label>
+                                        <input
+                                            type="text"
+                                            className="input-financial"
+                                            placeholder="Ex: Venda, Prestação de Serviço"
+                                            value={formData.type}
+                                            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-2">Recorrência</label>
+                                        <select
+                                            className="input-financial"
+                                            value={formData.recurrence_type}
+                                            onChange={(e) => setFormData({ ...formData, recurrence_type: e.target.value as ContractRecurrenceType })}
+                                        >
+                                            <option value="unico">Único</option>
+                                            <option value="mensal">Mensal</option>
+                                            <option value="anual">Anual</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-2">Categoria</label>
+                                        <select
+                                            className="input-financial"
+                                            value={formData.category_id}
+                                            onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+                                        >
+                                            <option value="">Selecione</option>
+                                            {categories?.map((c) => (
+                                                <option key={c.id} value={c.id}>{c.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-2">Vendedor</label>
+                                        <select
+                                            className="input-financial"
+                                            value={formData.seller_id}
+                                            onChange={(e) => setFormData({ ...formData, seller_id: e.target.value })}
+                                        >
+                                            <option value="">Selecione</option>
+                                            {vendedores?.map((v) => (
+                                                <option key={v.id} value={v.id}>{v.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-foreground mb-2">Observações</label>
@@ -447,7 +595,7 @@ export default function Contratos() {
                                         </div>
                                         <div>
                                             <h3 className="font-semibold text-foreground">{contract.title}</h3>
-                                            <div className="flex items-center gap-3 mt-1">
+                                            <div className="flex flex-wrap items-center gap-3 mt-1">
                                                 {contract.favorecido && (
                                                     <span className="text-sm text-muted-foreground flex items-center gap-1">
                                                         <User className="w-3.5 h-3.5" />
@@ -459,22 +607,102 @@ export default function Contratos() {
                                                     {formatDate(contract.start_date)}
                                                     {contract.end_date && ` - ${formatDate(contract.end_date)}`}
                                                 </span>
+                                                {contract.category && (
+                                                    <span className="text-sm text-muted-foreground flex items-center gap-1">
+                                                        <Tag className="w-3.5 h-3.5" />
+                                                        {contract.category.name}
+                                                    </span>
+                                                )}
+                                                {contract.recurrence_type && contract.recurrence_type !== 'unico' && (
+                                                    <span className="text-sm text-muted-foreground flex items-center gap-1">
+                                                        <Repeat className="w-3.5 h-3.5" />
+                                                        {contract.recurrence_type === 'mensal' ? 'Mensal' : 'Anual'}
+                                                    </span>
+                                                )}
+                                                {contract.seller && (
+                                                    <span className="text-sm text-primary flex items-center gap-1">
+                                                        <User className="w-3.5 h-3.5" />
+                                                        Vendedor:
+                                                        {' '}
+                                                        {contract.seller.name}
+                                                    </span>
+                                                )}
                                             </div>
+                                            {/* Approval info */}
+                                            {contract.approved_at && (
+                                                <div className="text-xs text-muted-foreground mt-2">
+                                                    Aprovado por
+                                                    {' '}
+                                                    {contract.approver?.name}
+                                                    {' '}
+                                                    em
+                                                    {' '}
+                                                    {formatDate(contract.approved_at)}
+                                                </div>
+                                            )}
+                                            {contract.signed_at && (
+                                                <div className="text-xs text-muted-foreground">
+                                                    Assinado por
+                                                    {' '}
+                                                    {contract.signed_by}
+                                                    {' '}
+                                                    em
+                                                    {' '}
+                                                    {formatDate(contract.signed_at)}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">
-                                        {getContractStatusBadge(contract.status)}
+                                        {getContractStatusBadge(contract.status as ContractStatusType)}
                                         <span className="font-semibold font-mono text-foreground">
                                             {formatCurrency(contract.value)}
                                         </span>
                                     </div>
                                 </div>
-                                <div className="flex gap-2 mt-4 pt-4 border-t border-border">
-                                    <button className="btn-secondary py-2" onClick={() => openEditModal(contract)}>
+                                <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border">
+                                    <button
+                                        className="btn-secondary py-2"
+                                        onClick={() => openEditModal(contract)}
+                                    >
                                         <Edit className="w-4 h-4" />
                                         Editar
                                     </button>
-                                    {contract.status === 'pendente' && (
+
+                                    {/* Workflow buttons based on status */}
+                                    {contract.status === 'criado' && (
+                                        <button
+                                            className="btn-secondary py-2"
+                                            onClick={() => handleSubmitForApproval(contract.id)}
+                                            disabled={submitForApprovalMutation.isPending}
+                                        >
+                                            <Send className="w-4 h-4" />
+                                            Enviar p/ Aprovação
+                                        </button>
+                                    )}
+
+                                    {contract.status === 'em_aprovacao' && canApprove && (
+                                        <>
+                                            <button
+                                                className="btn-primary py-2"
+                                                onClick={() => handleApprove(contract.id)}
+                                                disabled={approveMutation.isPending}
+                                            >
+                                                <CheckCircle className="w-4 h-4" />
+                                                Aprovar
+                                            </button>
+                                            <button
+                                                className="btn-secondary py-2 text-destructive"
+                                                onClick={() => handleReject(contract.id)}
+                                                disabled={rejectMutation.isPending}
+                                            >
+                                                <XCircle className="w-4 h-4" />
+                                                Rejeitar
+                                            </button>
+                                        </>
+                                    )}
+
+                                    {(contract.status === 'aprovado' || contract.status === 'pendente') && (
                                         <button
                                             className="btn-secondary py-2"
                                             onClick={() => handleSign(contract.id)}
@@ -484,6 +712,7 @@ export default function Contratos() {
                                             Assinar
                                         </button>
                                     )}
+
                                     <label className="btn-secondary py-2 cursor-pointer">
                                         {uploadingContractId === contract.id ? (
                                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -505,6 +734,13 @@ export default function Contratos() {
                                     >
                                         <Download className="w-4 h-4" />
                                         PDF
+                                    </button>
+                                    <button
+                                        className="btn-secondary py-2"
+                                        onClick={() => handlePrint(contract)}
+                                        title="Imprimir"
+                                    >
+                                        <Printer className="w-4 h-4" />
                                     </button>
                                     <button
                                         className="btn-secondary py-2 text-destructive hover:bg-destructive/10"

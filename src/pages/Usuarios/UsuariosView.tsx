@@ -1,4 +1,4 @@
-import { User } from 'lucide-react';
+import { User, Plus } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import {
@@ -8,7 +8,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { PageHeader, EmptyState, LoadingState, SearchInput } from '@/components/shared';
+import {
+    PageHeader,
+    EmptyState,
+    LoadingState,
+    SearchInput,
+} from '@/components/shared';
 import { UserForm, UserCard } from './components';
 import type { useUsuariosPage } from './useUsuariosPage';
 
@@ -34,9 +39,11 @@ export function UsuariosView(props: UsuariosViewProps) {
         usersLoading,
         // Mutations loading states
         isSavingUser,
+        isCreating,
         // Handlers
         resetUserForm,
         handleSubmitUser,
+        openCreateUserModal,
         openEditUserModal,
         toggleBranchSelection,
     } = props;
@@ -52,7 +59,15 @@ export function UsuariosView(props: UsuariosViewProps) {
                 <PageHeader
                     title="Usuários"
                     description="Gerencie os usuários e suas permissões"
-                />
+                >
+                    <button
+                        className="btn-primary"
+                        onClick={openCreateUserModal}
+                    >
+                        <Plus className="w-4 h-4" />
+                        Novo Usuário
+                    </button>
+                </PageHeader>
 
                 <div className="flex flex-col md:flex-row gap-4">
                     <SearchInput
@@ -79,12 +94,22 @@ export function UsuariosView(props: UsuariosViewProps) {
                     </div>
                 )}
 
-                <Dialog open={isUserModalOpen} onOpenChange={(open) => { setIsUserModalOpen(open); if (!open) resetUserForm(); }}>
+                <Dialog
+                    open={isUserModalOpen}
+                    onOpenChange={(open) => {
+                        setIsUserModalOpen(open);
+                        if (!open) resetUserForm();
+                    }}
+                >
                     <DialogContent className="max-w-lg">
                         <DialogHeader>
-                            <DialogTitle>Gerenciar Usuário</DialogTitle>
+                            <DialogTitle>
+                                {isCreating ? 'Novo Usuário' : 'Gerenciar Usuário'}
+                            </DialogTitle>
                             <DialogDescription>
-                                Altere a função e as filiais permitidas para este usuário.
+                                {isCreating
+                                    ? 'Preencha os dados para criar um novo usuário no sistema.'
+                                    : 'Altere a função e as filiais permitidas para este usuário.'}
                             </DialogDescription>
                         </DialogHeader>
                         <UserForm
@@ -92,6 +117,7 @@ export function UsuariosView(props: UsuariosViewProps) {
                             setForm={setUserForm}
                             branches={branches.filter((b) => b.is_active)}
                             isSaving={isSavingUser}
+                            isCreating={isCreating}
                             onSubmit={handleSubmitUser}
                             onCancel={() => { setIsUserModalOpen(false); resetUserForm(); }}
                             toggleBranchSelection={toggleBranchSelection}
