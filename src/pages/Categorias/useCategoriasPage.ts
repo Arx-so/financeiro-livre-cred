@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import {
     useCategoriesWithSubcategories,
     useCreateCategory,
+    useUpdateCategory,
     useDeleteCategory,
     useCreateSubcategories,
 } from '@/hooks/useCategorias';
@@ -36,6 +37,7 @@ export function useCategoriasPage() {
 
     // Modal states
     const [isCategoriaModalOpen, setIsCategoriaModalOpen] = useState(false);
+    const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
 
     // Form states
     const [categoryForm, setCategoryForm] = useState<CategoryFormData>(initialCategoryForm);
@@ -45,6 +47,7 @@ export function useCategoriasPage() {
 
     // Mutations
     const createCategory = useCreateCategory();
+    const updateCategory = useUpdateCategory();
     const deleteCategory = useDeleteCategory();
     const createSubcategories = useCreateSubcategories();
 
@@ -53,34 +56,56 @@ export function useCategoriasPage() {
         e.preventDefault();
 
         try {
-            const newCategory = await createCategory.mutateAsync({
-                name: categoryForm.name,
-                type: categoryForm.type,
-                color: categoryForm.color,
-                is_recurring: categoryForm.is_recurring,
-                default_recurrence_type: categoryForm.is_recurring && categoryForm.default_recurrence_type
-                    ? categoryForm.default_recurrence_type : null,
-                default_recurrence_day: categoryForm.is_recurring && categoryForm.default_recurrence_day
-                    ? parseInt(categoryForm.default_recurrence_day, 10) : null,
-            });
+            if (editingCategoryId) {
+                // Update existing category
+                await updateCategory.mutateAsync({
+                    id: editingCategoryId,
+                    category: {
+                        name: categoryForm.name,
+                        type: categoryForm.type,
+                        color: categoryForm.color,
+                        is_recurring: categoryForm.is_recurring,
+                        default_recurrence_type: categoryForm.is_recurring && categoryForm.default_recurrence_type
+                            ? categoryForm.default_recurrence_type : null,
+                        default_recurrence_day: categoryForm.is_recurring && categoryForm.default_recurrence_day
+                            ? parseInt(categoryForm.default_recurrence_day, 10) : null,
+                    },
+                });
 
-            if (categoryForm.subcategories.trim()) {
-                const subcategoryNames = categoryForm.subcategories.split(',').map((s) => s.trim()).filter(Boolean);
-                if (subcategoryNames.length > 0) {
-                    await createSubcategories.mutateAsync({
-                        categoryId: newCategory.id,
-                        names: subcategoryNames,
-                    });
+                toast.success('Categoria atualizada!');
+            } else {
+                // Create new category
+                const newCategory = await createCategory.mutateAsync({
+                    name: categoryForm.name,
+                    type: categoryForm.type,
+                    color: categoryForm.color,
+                    is_recurring: categoryForm.is_recurring,
+                    default_recurrence_type: categoryForm.is_recurring && categoryForm.default_recurrence_type
+                        ? categoryForm.default_recurrence_type : null,
+                    default_recurrence_day: categoryForm.is_recurring && categoryForm.default_recurrence_day
+                        ? parseInt(categoryForm.default_recurrence_day, 10) : null,
+                });
+
+                if (categoryForm.subcategories.trim()) {
+                    const subcategoryNames = categoryForm.subcategories.split(',').map((s) => s.trim()).filter(Boolean);
+                    if (subcategoryNames.length > 0) {
+                        await createSubcategories.mutateAsync({
+                            categoryId: newCategory.id,
+                            names: subcategoryNames,
+                        });
+                    }
                 }
+
+                toast.success('Categoria criada!');
             }
 
-            toast.success('Categoria criada!');
             setIsCategoriaModalOpen(false);
+            setEditingCategoryId(null);
             setCategoryForm(initialCategoryForm);
         } catch {
-            toast.error('Erro ao criar categoria');
+            toast.error(editingCategoryId ? 'Erro ao atualizar categoria' : 'Erro ao criar categoria');
         }
-    }, [categoryForm, createCategory, createSubcategories]);
+    }, [categoryForm, editingCategoryId, createCategory, updateCategory, createSubcategories]);
 
     const handleDeleteCategory = useCallback((id: string, name: string) => {
         confirm(async () => {
@@ -102,6 +127,30 @@ export function useCategoriasPage() {
 
     const resetCategoryForm = useCallback(() => {
         setCategoryForm(initialCategoryForm);
+        setEditingCategoryId(null);
+    }, []);
+
+    const handleEditCategory = useCallback((categoria: {
+        id: string;
+        name: string;
+        type: 'receita' | 'despesa' | 'ambos';
+        color: string;
+        is_recurring: boolean;
+        default_recurrence_type: RecurrenceType | null;
+        default_recurrence_day: number | null;
+        subcategories: { id: string; name: string }[];
+    }) => {
+        setEditingCategoryId(categoria.id);
+        setCategoryForm({
+            name: categoria.name,
+            type: categoria.type,
+            color: categoria.color,
+            subcategories: categoria.subcategories.map((s) => s.name).join(', '),
+            is_recurring: categoria.is_recurring,
+            default_recurrence_type: categoria.default_recurrence_type || '',
+            default_recurrence_day: categoria.default_recurrence_day?.toString() || '',
+        });
+        setIsCategoriaModalOpen(true);
     }, []);
 
     return {
@@ -112,6 +161,7 @@ export function useCategoriasPage() {
         // Modal states
         isCategoriaModalOpen,
         setIsCategoriaModalOpen,
+        editingCategoryId,
 
         // Form states
         categoryForm,
@@ -122,11 +172,12 @@ export function useCategoriasPage() {
         categoriesLoading,
 
         // Mutations loading states
-        isSavingCategory: createCategory.isPending,
+        isSavingCategory: createCategory.isPending || updateCategory.isPending,
 
         // Handlers
         handleSubmitCategory,
         handleDeleteCategory,
+        handleEditCategory,
         resetCategoryForm,
     };
 }

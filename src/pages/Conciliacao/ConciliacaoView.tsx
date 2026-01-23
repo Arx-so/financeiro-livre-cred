@@ -113,6 +113,7 @@ export function ConciliacaoView(props: ConciliacaoViewProps) {
                         value={selectedBanco || ''}
                         onChange={(e) => setSelectedBanco(e.target.value)}
                     >
+                        <option value="">Selecione uma conta</option>
                         {bankAccounts.map((account) => (
                             <option key={account.id} value={account.id}>
                                 {account.name}

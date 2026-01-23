@@ -12,17 +12,7 @@ import { toast } from 'sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useBranchStore } from '@/stores';
 import { useFinancialEntries, useMarkAsPaid } from '@/hooks/useFinanceiro';
-
-function formatCurrency(value: number) {
-    return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-    }).format(value);
-}
-
-function formatDate(dateStr: string) {
-    return new Date(dateStr).toLocaleDateString('pt-BR');
-}
+import { formatCurrency, formatDate } from '@/lib/utils';
 
 const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',

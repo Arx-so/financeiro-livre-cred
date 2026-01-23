@@ -194,15 +194,24 @@ export async function deleteBudgetItem(id: string): Promise<void> {
     }
 }
 
-export async function getBudgetSummary(branchId: string, year: number): Promise<BudgetSummary> {
-    const { data, error } = await supabase
+export async function getBudgetSummary(
+    branchId: string,
+    year: number,
+    versionId?: string | null
+): Promise<BudgetSummary> {
+    let query = supabase
         .from('budget_items')
         .select('budgeted_amount, actual_amount')
         .eq('branch_id', branchId)
         .eq('year', year);
 
+    if (versionId) {
+        query = query.eq('version_id', versionId);
+    }
+
+    const { data, error } = await query;
+
     if (error) {
-        console.error('Error fetching budget summary:', error);
         throw error;
     }
 

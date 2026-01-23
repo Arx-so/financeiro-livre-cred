@@ -10,8 +10,8 @@ export interface ActiveSession {
     expires_at: string;
 }
 
-// Duração padrão da sessão (24 horas)
-const SESSION_DURATION_HOURS = 24;
+// Duração padrão da sessão (7 dias = 168 horas)
+const SESSION_DURATION_HOURS = 168;
 
 /**
  * Verifica se existe uma sessão ativa para o usuário

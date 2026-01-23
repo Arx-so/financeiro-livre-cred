@@ -23,6 +23,7 @@ export function CategoriasView(props: CategoriasViewProps) {
         // Modal states
         isCategoriaModalOpen,
         setIsCategoriaModalOpen,
+        editingCategoryId,
         // Form states
         categoryForm,
         setCategoryForm,
@@ -34,6 +35,7 @@ export function CategoriasView(props: CategoriasViewProps) {
         // Handlers
         handleSubmitCategory,
         handleDeleteCategory,
+        handleEditCategory,
         resetCategoryForm,
     } = props;
 
@@ -55,9 +57,9 @@ export function CategoriasView(props: CategoriasViewProps) {
                         </DialogTrigger>
                         <DialogContent>
                             <DialogHeader>
-                                <DialogTitle>Nova Categoria</DialogTitle>
+                                <DialogTitle>{editingCategoryId ? 'Editar Categoria' : 'Nova Categoria'}</DialogTitle>
                                 <DialogDescription>
-                                    Crie uma nova categoria para organizar seus lançamentos.
+                                    {editingCategoryId ? 'Atualize os dados da categoria.' : 'Crie uma nova categoria para organizar seus lançamentos.'}
                                 </DialogDescription>
                             </DialogHeader>
                             <CategoryForm
@@ -111,7 +113,10 @@ export function CategoriasView(props: CategoriasViewProps) {
                                         </div>
                                     </div>
                                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button className="btn-secondary p-2">
+                                        <button
+                                            className="btn-secondary p-2"
+                                            onClick={() => handleEditCategory(categoria)}
+                                        >
                                             <Edit className="w-4 h-4" />
                                         </button>
                                         <button

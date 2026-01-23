@@ -107,8 +107,8 @@ export default function Planejamento() {
     });
 
     const { data: budgetSummary } = useQuery({
-        queryKey: ['budget-summary', unidadeAtual?.id, selectedYear],
-        queryFn: () => getBudgetSummary(unidadeAtual!.id, selectedYear),
+        queryKey: ['budget-summary', unidadeAtual?.id, selectedYear, selectedVersionId],
+        queryFn: () => getBudgetSummary(unidadeAtual!.id, selectedYear, selectedVersionId),
         enabled: !!unidadeAtual?.id,
     });
 
@@ -259,10 +259,11 @@ export default function Planejamento() {
 
     const yearOptions = useMemo(() => {
         const years = [];
-        for (let i = 0; i <= 2; i += 1) {
+        // Inclui 2 anos anteriores e 2 anos futuros
+        for (let i = -2; i <= 2; i += 1) {
             years.push(currentYear + i);
         }
-        return years;
+        return years.sort((a, b) => b - a); // Ordem decrescente (mais recente primeiro)
     }, [currentYear]);
 
     return (
@@ -378,7 +379,10 @@ export default function Planejamento() {
                                             Arquivar
                                         </button>
                                     )}
-                                    <Dialog open={isVersionModalOpen} onOpenChange={setIsVersionModalOpen}>
+                                    <Dialog open={isVersionModalOpen} onOpenChange={(open) => {
+                                        setIsVersionModalOpen(open);
+                                        if (!open) setVersionForm({ name: '' });
+                                    }}>
                                         <DialogTrigger asChild>
                                             <button className="btn-secondary py-1.5">
                                                 <FileText className="w-4 h-4" />

@@ -48,7 +48,6 @@ const fetchUserProfile = async (userId: string): Promise<AuthUser | null> => {
             .single();
 
         if (error || !data) {
-            console.error('Error fetching profile:', error);
             return null;
         }
 
@@ -60,8 +59,7 @@ const fetchUserProfile = async (userId: string): Promise<AuthUser | null> => {
             role: profile.role,
             avatarUrl: profile.avatar_url,
         };
-    } catch (error) {
-        console.error('Error fetching user profile:', error);
+    } catch {
         return null;
     }
 };
@@ -113,21 +111,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                     set({ user: profile, isAuthenticated: true });
                 }
             }
-        } catch (error) {
-            console.error('Error initializing auth:', error);
+        } catch {
+            // Silent fail on init
         } finally {
             set({ isLoading: false, isInitialized: true });
         }
 
         // Listen for auth changes
         supabase.auth.onAuthStateChange(async (event, newSession) => {
-            console.log('[Auth] onAuthStateChange event:', event);
-
             set({ session: newSession });
 
             // Only handle sign out here - sign in is handled by login()
             if (event === 'SIGNED_OUT') {
-                console.log('[Auth] SIGNED_OUT - clearing user state');
                 const currentUser = get().user;
                 if (currentUser) {
                     await deleteSession(currentUser.id);
@@ -144,7 +139,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     login: async (email, password) => {
         try {
-            console.log('[Auth] login() called');
             set({ isLoading: true });
 
             // Primeiro, tenta autenticar para obter o user ID
@@ -152,8 +146,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 email,
                 password,
             });
-
-            console.log('[Auth] signInWithPassword result:', { user: data?.user?.id, error });
 
             if (error) {
                 set({ isLoading: false });
@@ -168,8 +160,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             // Verificar se existe sessão ativa para este usuário
             const activeSession = await getActiveSession(data.user.id);
             if (activeSession) {
-                // Usuário já está logado em outro dispositivo
-                console.log('[Auth] User already has active session');
                 // Fazer logout do Supabase para limpar esta tentativa
                 await supabase.auth.signOut();
                 set({ isLoading: false });
@@ -180,9 +170,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             }
 
             // Fetch profile directly in login() to ensure it completes before returning
-            console.log('[Auth] Fetching profile...');
             const profile = await fetchUserProfile(data.user.id);
-            console.log('[Auth] Profile result:', profile);
 
             if (!profile) {
                 await supabase.auth.signOut();
@@ -196,9 +184,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 data.session?.access_token || ''
             );
 
-            if (!sessionCreated) {
-                console.warn('[Auth] Could not create session record, but continuing login');
-            }
+            // Continue mesmo sem registro de sessão
 
             set({
                 user: profile,
@@ -207,10 +193,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 isLoading: false,
             });
 
-            console.log('[Auth] Login complete');
             return { success: true };
-        } catch (error) {
-            console.error('Login error:', error);
+        } catch {
             set({ isLoading: false });
             return { success: false, error: 'Erro ao fazer login. Tente novamente.' };
         }
@@ -234,8 +218,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             }
 
             return { success: true };
-        } catch (error) {
-            console.error('Register error:', error);
+        } catch {
             return { success: false, error: 'Erro ao criar conta. Tente novamente.' };
         }
     },
@@ -251,8 +234,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             }
 
             return { success: true };
-        } catch (error) {
-            console.error('Reset password error:', error);
+        } catch {
             return { success: false, error: 'Erro ao enviar email de recuperação.' };
         }
     },
@@ -273,8 +255,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 isAuthenticated: false,
             });
             localStorage.removeItem('fincontrol_unidade');
-        } catch (error) {
-            console.error('Logout error:', error);
+        } catch {
+            // Silent fail on logout
         }
     },
 

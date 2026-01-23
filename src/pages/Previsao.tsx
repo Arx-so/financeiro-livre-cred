@@ -6,7 +6,7 @@ import {
     DollarSign,
     Loader2,
     AlertCircle,
-    Upload
+    Download
 } from 'lucide-react';
 import {
     AreaChart,
@@ -24,17 +24,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { useBranchStore } from '@/stores';
 import { getCashFlowProjection } from '@/services/relatorios';
 import { exportToExcel } from '@/services/importExport';
-
-function formatCurrencyBR(value: number) {
-    return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL',
-    }).format(value);
-}
-
-function formatDateBR(dateStr: string) {
-    return new Date(dateStr).toLocaleDateString('pt-BR');
-}
+import { formatCurrency, formatDate } from '@/lib/utils';
 
 export default function Previsao() {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
@@ -79,7 +69,7 @@ export default function Previsao() {
 
         exportToExcel(
             projection.map((p) => ({
-                Data: formatDateBR(p.date),
+                Data: formatDate(p.date),
                 Entradas: p.income,
                 Saídas: p.expenses,
                 Saldo: p.balance,
@@ -93,7 +83,7 @@ export default function Previsao() {
     // Format data for chart
     const chartData = (projection || []).map((p) => ({
         ...p,
-        dateFormatted: formatDateBR(p.date),
+        dateFormatted: formatDate(p.date),
     }));
 
     return (
@@ -106,7 +96,7 @@ export default function Previsao() {
                         <p className="text-muted-foreground">Projeção financeira baseada em lançamentos futuros</p>
                     </div>
                     <button className="btn-primary" onClick={handleExport} disabled={!projection?.length}>
-                        <Upload className="w-4 h-4" />
+                        <Download className="w-4 h-4" />
                         Exportar Excel
                     </button>
                 </div>
@@ -141,12 +131,6 @@ export default function Previsao() {
                                 onChange={(e) => setInitialBalance(parseFloat(e.target.value) || 0)}
                             />
                         </div>
-                        <div className="flex items-end">
-                            <button className="btn-secondary w-full">
-                                <Calendar className="w-4 h-4" />
-                                Atualizar
-                            </button>
-                        </div>
                     </div>
                 </div>
 
@@ -158,7 +142,7 @@ export default function Previsao() {
                             <div>
                                 <p className="text-sm text-muted-foreground">Total Entradas</p>
                                 <p className="text-xl font-bold font-mono-numbers text-income">
-                                    {formatCurrencyBR(summary.totalIncome)}
+                                    {formatCurrency(summary.totalIncome)}
                                 </p>
                             </div>
                         </div>
@@ -169,7 +153,7 @@ export default function Previsao() {
                             <div>
                                 <p className="text-sm text-muted-foreground">Total Saídas</p>
                                 <p className="text-xl font-bold font-mono-numbers text-expense">
-                                    {formatCurrencyBR(summary.totalExpenses)}
+                                    {formatCurrency(summary.totalExpenses)}
                                 </p>
                             </div>
                         </div>
@@ -183,7 +167,7 @@ export default function Previsao() {
                                     summary.finalBalance >= 0 ? 'text-income' : 'text-expense'
                                 }`}
                                 >
-                                    {formatCurrencyBR(summary.finalBalance)}
+                                    {formatCurrency(summary.finalBalance)}
                                 </p>
                             </div>
                         </div>
@@ -197,12 +181,11 @@ export default function Previsao() {
                                     summary.minBalance >= 0 ? 'text-pending' : 'text-expense'
                                 }`}
                                 >
-                                    {formatCurrencyBR(summary.minBalance)}
+                                    {formatCurrency(summary.minBalance)}
                                 </p>
                                 {summary.minBalanceDate && (
                                     <p className="text-xs text-muted-foreground">
-                                        em
-                                        {formatDateBR(summary.minBalanceDate)}
+                                        em {formatDate(summary.minBalanceDate)}
                                     </p>
                                 )}
                             </div>
@@ -231,7 +214,7 @@ export default function Previsao() {
                                     <XAxis dataKey="dateFormatted" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                                     <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
                                     <Tooltip
-                                        formatter={(value: number) => formatCurrencyBR(value)}
+                                        formatter={(value: number) => formatCurrency(value)}
                                         contentStyle={{
                                             backgroundColor: 'hsl(var(--card))',
                                             border: '1px solid hsl(var(--border))',
@@ -281,16 +264,16 @@ export default function Previsao() {
                                         <tr key={index}>
                                             <td className="text-foreground">{day.dateFormatted}</td>
                                             <td className="text-right font-mono-numbers text-income">
-                                                {day.income > 0 ? `+${formatCurrencyBR(day.income)}` : '-'}
+                                                {day.income > 0 ? `+${formatCurrency(day.income)}` : '-'}
                                             </td>
                                             <td className="text-right font-mono-numbers text-expense">
-                                                {day.expenses > 0 ? `-${formatCurrencyBR(day.expenses)}` : '-'}
+                                                {day.expenses > 0 ? `-${formatCurrency(day.expenses)}` : '-'}
                                             </td>
                                             <td className={`text-right font-mono-numbers font-semibold ${
                                                 day.balance >= 0 ? 'text-income' : 'text-expense'
                                             }`}
                                             >
-                                                {formatCurrencyBR(day.balance)}
+                                                {formatCurrency(day.balance)}
                                             </td>
                                         </tr>
                                     )) : (

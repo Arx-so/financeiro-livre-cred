@@ -24,6 +24,7 @@ import {
 } from 'recharts';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
+import jsPDF from 'jspdf';
 import { useBranchStore } from '@/stores';
 import {
     Tabs, TabsContent, TabsList, TabsTrigger
@@ -131,8 +132,50 @@ export default function Relatorios() {
             toast.error('Sem dados para exportar');
             return;
         }
+
+        const doc = new jsPDF();
+        const pageWidth = doc.internal.pageSize.getWidth();
+
+        // Header
+        doc.setFontSize(18);
+        doc.text('Demonstrativo de Resultados (DRE)', pageWidth / 2, 20, { align: 'center' });
+
+        doc.setFontSize(10);
+        doc.text(`Período: ${dateRange.start} a ${dateRange.end}`, pageWidth / 2, 28, { align: 'center' });
+        doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, pageWidth / 2, 34, { align: 'center' });
+
+        // Content
+        let y = 50;
+        doc.setFontSize(12);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text('Receitas', 20, y);
+        doc.text(formatCurrency(dreData.receitas || 0), pageWidth - 20, y, { align: 'right' });
+        y += 10;
+
+        doc.text('Despesas', 20, y);
+        doc.text(formatCurrency(dreData.despesas || 0), pageWidth - 20, y, { align: 'right' });
+        y += 10;
+
+        doc.setDrawColor(0);
+        doc.line(20, y, pageWidth - 20, y);
+        y += 8;
+
+        const resultado = (dreData.receitas || 0) - (dreData.despesas || 0);
+        doc.text('Resultado Líquido', 20, y);
+        doc.setTextColor(resultado >= 0 ? 0 : 255, resultado >= 0 ? 128 : 0, 0);
+        doc.text(formatCurrency(resultado), pageWidth - 20, y, { align: 'right' });
+        doc.setTextColor(0);
+        y += 15;
+
+        // Margem
+        doc.setFont('helvetica', 'normal');
+        const margem = dreData.receitas ? ((resultado / dreData.receitas) * 100).toFixed(1) : '0.0';
+        doc.text(`Margem: ${margem}%`, 20, y);
+
+        doc.save(`relatorio-dre-${dateRange.start}-${dateRange.end}.pdf`);
         toast.success('Relatório PDF gerado!');
-    }, [dreData]);
+    }, [dreData, dateRange]);
 
     const handleExportExcel = useCallback(() => {
         if (!monthlyData) {
@@ -335,7 +378,7 @@ export default function Relatorios() {
                                                     </span>
                                                     <div>
                                                         <span className="text-sm text-foreground font-medium">
-                                                            {cliente.name}
+                                                            {cliente.name || 'Sem nome'}
                                                         </span>
                                                         <p className="text-xs text-muted-foreground">
                                                             {cliente.count}
@@ -375,7 +418,7 @@ export default function Relatorios() {
                                                     </span>
                                                     <div>
                                                         <span className="text-sm text-foreground font-medium">
-                                                            {fornecedor.name}
+                                                            {fornecedor.name || 'Sem nome'}
                                                         </span>
                                                         <p className="text-xs text-muted-foreground">
                                                             {fornecedor.count}

@@ -29,6 +29,7 @@ import TabelasPrecos from "./pages/TabelasPrecos";
 import FolhaPagamento from "./pages/FolhaPagamento";
 import Agenda from "./pages/Agenda";
 import Docs from "./pages/Docs";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -100,6 +101,7 @@ function AppRoutes() {
         <Routes>
             {/* Public routes - only accessible when NOT authenticated */}
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Root redirect - goes to dashboard if authenticated, login if not */}
             <Route path="/" element={<RootRedirect />} />

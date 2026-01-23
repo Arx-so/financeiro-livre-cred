@@ -102,8 +102,10 @@ export default function Agenda() {
     // Get birthdays for a specific day
     const getBirthdaysForDay = (day: number) => (birthdays || []).filter((b) => {
         if (!b.birth_date) return false;
-        const birthDay = new Date(b.birth_date).getDate();
-        return birthDay === day;
+        // Evita problemas de timezone: extrai o dia direto da string "YYYY-MM-DD"
+        const birthDay = parseInt(b.birth_date.split('-')[2], 10);
+        const birthMonth = parseInt(b.birth_date.split('-')[1], 10);
+        return birthDay === day && birthMonth === currentMonth;
     });
 
     // Navigation
