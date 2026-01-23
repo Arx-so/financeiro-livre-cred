@@ -17,6 +17,7 @@ import {
     TrendingDown,
     Clock,
     FileText,
+    Building2,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import {
@@ -55,6 +56,8 @@ function getStatusBadge(status: EntryStatus) {
 
 export function FinanceiroView(props: FinanceiroViewProps) {
     const {
+        // Branch
+        unidadeAtual,
         // Dialog
         dialogProps,
         isDeleting,
@@ -159,6 +162,7 @@ export function FinanceiroView(props: FinanceiroViewProps) {
                                 isSaving={isSaving}
                                 onSubmit={handleSubmit}
                                 onCancel={() => { setIsModalOpen(false); resetForm(); }}
+                                unidadeAtual={unidadeAtual}
                             />
                         </DialogContent>
                     </Dialog>
@@ -377,6 +381,7 @@ interface EntryFormProps {
     isSaving: boolean;
     onSubmit: (e: React.FormEvent) => void;
     onCancel: () => void;
+    unidadeAtual: { id: string; name: string; code: string } | null;
 }
 
 function EntryForm(props: EntryFormProps) {
@@ -391,10 +396,23 @@ function EntryForm(props: EntryFormProps) {
         isSaving,
         onSubmit,
         onCancel,
+        unidadeAtual,
     } = props;
 
     return (
         <form className="space-y-4 mt-4" onSubmit={onSubmit}>
+            {/* Branch Info Banner */}
+            {unidadeAtual && (
+                <div className="p-3 bg-primary/10 rounded-lg border border-primary/20 flex items-center gap-3">
+                    <Building2 className="w-5 h-5 text-primary" />
+                    <div>
+                        <span className="font-medium text-foreground">Lançando na Filial: </span>
+                        <span className="font-semibold text-primary">{unidadeAtual.name}</span>
+                        <span className="text-muted-foreground ml-2">({unidadeAtual.code})</span>
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-3 gap-4">
                 <div>
                     <label className="block text-sm font-medium text-foreground mb-2">Tipo</label>

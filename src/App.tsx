@@ -25,6 +25,8 @@ import Conciliacao from "./pages/Conciliacao";
 import Contratos from "./pages/Contratos";
 import ContractTemplates from "./pages/Contratos/Templates";
 import Produtos from "./pages/Produtos";
+import TabelasPrecos from "./pages/TabelasPrecos";
+import FolhaPagamento from "./pages/FolhaPagamento";
 import Agenda from "./pages/Agenda";
 import Docs from "./pages/Docs";
 import NotFound from "./pages/NotFound";
@@ -119,6 +121,8 @@ function AppRoutes() {
             <Route path="/vendas" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
             <Route path="/vendas/templates" element={<ProtectedRoute><ContractTemplates /></ProtectedRoute>} />
             <Route path="/produtos" element={<ProtectedRoute><Produtos /></ProtectedRoute>} />
+            <Route path="/tabelas-precos" element={<ProtectedRoute><TabelasPrecos /></ProtectedRoute>} />
+            <Route path="/folha-pagamento" element={<ProtectedRoute><FolhaPagamento /></ProtectedRoute>} />
             <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
             <Route path="/docs" element={<ProtectedRoute><Docs /></ProtectedRoute>} />
 

@@ -764,6 +764,99 @@ export interface Database {
           updated_at?: string;
         };
       };
+      product_prices: {
+        Row: {
+          id: string;
+          product_id: string;
+          branch_id: string;
+          sale_price: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          product_id: string;
+          branch_id: string;
+          sale_price: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          product_id?: string;
+          branch_id?: string;
+          sale_price?: number;
+          updated_at?: string;
+        };
+      };
+      payroll: {
+        Row: {
+          id: string;
+          branch_id: string;
+          employee_id: string;
+          reference_month: number;
+          reference_year: number;
+          base_salary: number;
+          overtime_hours: number;
+          overtime_value: number;
+          transport_allowance: number;
+          meal_allowance: number;
+          other_benefits: number;
+          inss_discount: number;
+          irrf_discount: number;
+          other_discounts: number;
+          net_salary: number;
+          status: 'pendente' | 'pago';
+          payment_date: string | null;
+          financial_entry_id: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          branch_id: string;
+          employee_id: string;
+          reference_month: number;
+          reference_year: number;
+          base_salary: number;
+          overtime_hours?: number;
+          overtime_value?: number;
+          transport_allowance?: number;
+          meal_allowance?: number;
+          other_benefits?: number;
+          inss_discount?: number;
+          irrf_discount?: number;
+          other_discounts?: number;
+          net_salary: number;
+          status?: 'pendente' | 'pago';
+          payment_date?: string | null;
+          financial_entry_id?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          branch_id?: string;
+          employee_id?: string;
+          reference_month?: number;
+          reference_year?: number;
+          base_salary?: number;
+          overtime_hours?: number;
+          overtime_value?: number;
+          transport_allowance?: number;
+          meal_allowance?: number;
+          other_benefits?: number;
+          inss_discount?: number;
+          irrf_discount?: number;
+          other_discounts?: number;
+          net_salary?: number;
+          status?: 'pendente' | 'pago';
+          payment_date?: string | null;
+          financial_entry_id?: string | null;
+          notes?: string | null;
+          updated_at?: string;
+        };
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -804,6 +897,8 @@ export type ActivityLog = Database['public']['Tables']['activity_logs']['Row'];
 export type AgendaEvent = Database['public']['Tables']['agenda_events']['Row'];
 export type Notification = Database['public']['Tables']['notifications']['Row'];
 export type Product = Database['public']['Tables']['products']['Row'];
+export type ProductPrice = Database['public']['Tables']['product_prices']['Row'];
+export type Payroll = Database['public']['Tables']['payroll']['Row'];
 
 // Insert types
 export type ProfileInsert = Database['public']['Tables']['profiles']['Insert'];
@@ -824,6 +919,8 @@ export type ActivityLogInsert = Database['public']['Tables']['activity_logs']['I
 export type AgendaEventInsert = Database['public']['Tables']['agenda_events']['Insert'];
 export type NotificationInsert = Database['public']['Tables']['notifications']['Insert'];
 export type ProductInsert = Database['public']['Tables']['products']['Insert'];
+export type ProductPriceInsert = Database['public']['Tables']['product_prices']['Insert'];
+export type PayrollInsert = Database['public']['Tables']['payroll']['Insert'];
 
 // Update types
 export type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
@@ -841,3 +938,5 @@ export type ActivityLogUpdate = Database['public']['Tables']['activity_logs']['U
 export type AgendaEventUpdate = Database['public']['Tables']['agenda_events']['Update'];
 export type NotificationUpdate = Database['public']['Tables']['notifications']['Update'];
 export type ProductUpdate = Database['public']['Tables']['products']['Update'];
+export type ProductPriceUpdate = Database['public']['Tables']['product_prices']['Update'];
+export type PayrollUpdate = Database['public']['Tables']['payroll']['Update'];

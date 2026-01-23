@@ -19,6 +19,9 @@ import {
     UserCog,
     Store,
     Package,
+    ShoppingCart,
+    DollarSign,
+    Receipt,
 } from 'lucide-react';
 import { useAuthStore, useBranchStore } from '@/stores';
 import {
@@ -115,6 +118,29 @@ const navigationGroups: NavGroup[] = [
         ],
     },
     {
+        label: 'Vendas',
+        items: [
+            {
+                name: 'Vendas',
+                href: '/vendas',
+                icon: ShoppingCart,
+                roles: ['admin', 'gerente', 'usuario', 'vendas'],
+            },
+            {
+                name: 'Produtos',
+                href: '/produtos',
+                icon: Package,
+                roles: ['admin', 'gerente', 'vendas'],
+            },
+            {
+                name: 'Tabelas de Preços',
+                href: '/tabelas-precos',
+                icon: DollarSign,
+                roles: ['admin', 'gerente', 'vendas'],
+            },
+        ],
+    },
+    {
         label: 'Cadastros',
         items: [
             {
@@ -148,16 +174,10 @@ const navigationGroups: NavGroup[] = [
                 roles: ['admin'],
             },
             {
-                name: 'Vendas',
-                href: '/vendas',
-                icon: FileText,
-                roles: ['admin', 'gerente', 'usuario', 'vendas'],
-            },
-            {
-                name: 'Produtos',
-                href: '/produtos',
-                icon: Package,
-                roles: ['admin', 'gerente', 'vendas'],
+                name: 'Folha de Pagamento',
+                href: '/folha-pagamento',
+                icon: Receipt,
+                roles: ['admin', 'gerente', 'financeiro'],
             },
         ],
     },

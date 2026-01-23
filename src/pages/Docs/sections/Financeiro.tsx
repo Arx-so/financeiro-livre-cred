@@ -2,7 +2,8 @@ import {
     Repeat,
     CheckCircle2,
     FileText,
-    AlertCircle
+    AlertCircle,
+    Building2,
 } from 'lucide-react';
 
 export function Financeiro() {
@@ -65,6 +66,20 @@ export function Financeiro() {
                         </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <div className="p-4 bg-muted rounded-lg mt-4">
+                <div className="flex gap-3">
+                    <Building2 className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                    <div>
+                        <h4 className="font-semibold text-foreground">Filial do Lançamento</h4>
+                        <p className="text-sm text-muted-foreground">
+                            O formulário de lançamento exibe claramente qual filial está selecionada no topo.
+                            Isso evita confusão e garante que os lançamentos sejam registrados na filial correta.
+                            Troque a filial no menu lateral caso necessário antes de criar um lançamento.
+                        </p>
+                    </div>
+                </div>
             </div>
 
             <h3 className="text-lg font-semibold text-foreground mt-6 flex items-center gap-2">

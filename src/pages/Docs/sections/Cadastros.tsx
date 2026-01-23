@@ -154,6 +154,56 @@ export function Cadastros() {
                 </li>
             </ul>
 
+            <h3 className="text-lg font-semibold text-foreground mt-6">Folha de Pagamento</h3>
+            <p className="text-sm text-muted-foreground mb-3">
+                Gerencie a folha de pagamento dos funcionários com cadastro completo e integração financeira:
+            </p>
+            <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                <li>
+                    <strong>Funcionário:</strong>
+                    {' '}
+                    Selecione um favorecido do tipo "Funcionário"
+                </li>
+                <li>
+                    <strong>Período:</strong>
+                    {' '}
+                    Mês e ano de referência da folha
+                </li>
+                <li>
+                    <strong>Proventos:</strong>
+                    {' '}
+                    Salário base, horas extras e valor das horas extras
+                </li>
+                <li>
+                    <strong>Benefícios:</strong>
+                    {' '}
+                    Vale transporte, vale alimentação e outros benefícios
+                </li>
+                <li>
+                    <strong>Descontos:</strong>
+                    {' '}
+                    INSS, IRRF e outros descontos
+                </li>
+                <li>
+                    <strong>Salário Líquido:</strong>
+                    {' '}
+                    Calculado automaticamente (proventos + benefícios - descontos)
+                </li>
+            </ul>
+
+            <div className="p-4 bg-muted rounded-lg mt-4">
+                <div className="flex gap-3">
+                    <Lightbulb className="w-5 h-5 text-warning shrink-0 mt-0.5" />
+                    <div>
+                        <h4 className="font-semibold text-foreground">Integração Financeira</h4>
+                        <p className="text-sm text-muted-foreground">
+                            Use o botão "Gerar Lançamento" para criar automaticamente uma despesa financeira
+                            vinculada à folha de pagamento. O lançamento será criado com o valor do salário líquido.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
             <div className="p-4 bg-primary/10 rounded-lg border border-primary/20 mt-4">
                 <div className="flex gap-3">
                     <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
