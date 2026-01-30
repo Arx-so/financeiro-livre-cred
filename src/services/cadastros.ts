@@ -182,14 +182,12 @@ export async function getFuncionarios(): Promise<Favorecido[]> {
     return getFavorecidos({ type: 'funcionario', isActive: true });
 }
 
-// Get sellers (employees who are salespeople)
-export async function getVendedores(): Promise<Favorecido[]> {
+// Get sellers (users with role 'vendas')
+export async function getVendedores(): Promise<Array<{ id: string; name: string; email: string }>> {
     const { data, error } = await supabase
-        .from('favorecidos')
-        .select('*')
-        .eq('type', 'funcionario')
-        .eq('is_active', true)
-        .eq('category', 'Vendedor')
+        .from('profiles')
+        .select('id, name, email')
+        .eq('role', 'vendas')
         .order('name');
 
     if (error) {

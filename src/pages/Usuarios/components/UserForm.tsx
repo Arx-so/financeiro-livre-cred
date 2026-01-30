@@ -1,6 +1,7 @@
 import { Loader2, Store, Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import type { UserRole } from '@/types/database';
+import { RolePermissionsPanel } from '@/components/shared/RolePermissionsPanel';
 
 interface UserFormProps {
     form: any;
@@ -106,6 +107,9 @@ export function UserForm({
                     {roleDescriptions[form.role as UserRole] || ''}
                 </p>
             </div>
+
+            {/* Permissions Panel */}
+            <RolePermissionsPanel role={form.role as UserRole} />
 
             {form.role !== 'admin' && (
                 <div>

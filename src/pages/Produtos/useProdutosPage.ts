@@ -120,7 +120,7 @@ export function useProdutosPage() {
                 toast.success('Produto criado com sucesso!');
             }
             closeModal();
-        } catch (error) {
+        } catch {
             toast.error(editingId ? 'Erro ao atualizar produto' : 'Erro ao criar produto');
         }
     }, [formData, editingId, createMutation, updateMutation, closeModal]);
@@ -131,7 +131,7 @@ export function useProdutosPage() {
             try {
                 await deleteMutation.mutateAsync(id);
                 toast.success('Produto excluído com sucesso!');
-            } catch (error) {
+            } catch {
                 toast.error('Erro ao excluir produto');
             } finally {
                 setIsDeleting(false);

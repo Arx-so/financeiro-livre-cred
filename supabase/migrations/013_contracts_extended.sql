@@ -32,7 +32,7 @@ CREATE INDEX IF NOT EXISTS idx_contracts_status ON contracts(status);
 -- Add RLS policies for new fields
 -- The existing RLS policies should cover the new columns since they're on the same table
 
--- Create function to update sales target achieved_amount when contract is created/updated
+-- Create function to update sales target actual_amount when contract is created/updated
 -- Using text cast to avoid issues with new enum values in same transaction
 CREATE OR REPLACE FUNCTION update_sales_target_from_contract()
 RETURNS TRIGGER AS $$
@@ -48,7 +48,7 @@ BEGIN
 
         -- Update the sales target for this seller/branch/period
         UPDATE sales_targets
-        SET achieved_amount = achieved_amount + NEW.value,
+        SET actual_amount = actual_amount + NEW.value,
             updated_at = now()
         WHERE branch_id = NEW.branch_id
           AND seller_id = NEW.seller_id

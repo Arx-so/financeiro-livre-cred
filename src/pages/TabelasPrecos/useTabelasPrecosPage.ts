@@ -20,7 +20,9 @@ export function useTabelasPrecosPage() {
     // Handlers
     const startEditing = useCallback((productId: string, currentPrice: number | null) => {
         setEditingProductId(productId);
-        setEditingPrice(currentPrice?.toString() || '0');
+        // Use current price or 0, but ensure it's a valid number string
+        const priceValue = currentPrice && currentPrice > 0 ? currentPrice : 0;
+        setEditingPrice(priceValue.toString());
     }, []);
 
     const cancelEditing = useCallback(() => {

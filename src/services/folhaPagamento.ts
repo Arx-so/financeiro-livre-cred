@@ -6,6 +6,7 @@ export interface PayrollWithEmployee extends Payroll {
         id: string;
         name: string;
         document: string | null;
+        categoria_contratacao?: string | null;
     } | null;
 }
 
@@ -15,6 +16,28 @@ export interface PayrollFilters {
     month?: number;
     year?: number;
     status?: 'pendente' | 'pago';
+    categoriaContratacao?: string;
+}
+
+export interface BatchPayrollConfig {
+    branch_id: string;
+    employee_ids?: string[];
+    categoria_contratacao?: string;
+    reference_month: number;
+    reference_year: number;
+    base_salary: number;
+    overtime_hours?: number;
+    overtime_value?: number;
+    transport_allowance?: number;
+    meal_allowance?: number;
+    other_benefits?: number;
+    inss_discount?: number;
+    irrf_discount?: number;
+    other_discounts?: number;
+    notes?: string;
+    is_recurring?: boolean;
+    recurrence_type?: 'infinite' | 'fixed_months';
+    recurrence_months?: number;
 }
 
 /**
@@ -25,7 +48,7 @@ export async function getPayrolls(filters: PayrollFilters = {}): Promise<Payroll
         .from('payroll')
         .select(`
             *,
-            employee:favorecidos(id, name, document)
+            employee:favorecidos(id, name, document, categoria_contratacao)
         `)
         .order('reference_year', { ascending: false })
         .order('reference_month', { ascending: false });
@@ -55,6 +78,11 @@ export async function getPayrolls(filters: PayrollFilters = {}): Promise<Payroll
     if (error) {
         console.error('Error fetching payrolls:', error);
         throw error;
+    }
+
+    // Filter by categoria_contratacao if needed (after fetching to use join data)
+    if (filters.categoriaContratacao && data) {
+        return data.filter((p) => p.employee?.categoria_contratacao === filters.categoriaContratacao);
     }
 
     return data || [];
@@ -245,4 +273,223 @@ export async function getPayrollSummary(branchId: string, month?: number, year?:
         paid: payrolls.filter((p) => p.status === 'pago').length,
         totalValue: payrolls.reduce((sum, p) => sum + (p.net_salary || 0), 0),
     };
+}
+
+/**
+ * Busca IDs de funcionários por categoria de contratação
+ */
+async function getEmployeeIdsByCategory(categoriaContratacao: string): Promise<string[]> {
+    const { data, error } = await supabase
+        .from('favorecidos')
+        .select('id')
+        .eq('type', 'funcionario')
+        .eq('categoria_contratacao', categoriaContratacao)
+        .eq('is_active', true);
+
+    if (error) {
+        console.error('Error fetching employees by category:', error);
+        throw error;
+    }
+
+    return (data || []).map((e) => e.id);
+}
+
+/**
+ * Busca funcionários por filtros (branch_id e/ou categoria_contratacao)
+ */
+export async function getEmployeesByFilters(filters: {
+    branch_id?: string;
+    categoria_contratacao?: string;
+}): Promise<Array<{ id: string; name: string; document: string | null; categoria_contratacao: string | null }>> {
+    let query = supabase
+        .from('favorecidos')
+        .select('id, name, document, categoria_contratacao')
+        .eq('type', 'funcionario')
+        .eq('is_active', true);
+
+    if (filters.categoria_contratacao) {
+        query = query.eq('categoria_contratacao', filters.categoria_contratacao);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+        console.error('Error fetching employees:', error);
+        throw error;
+    }
+
+    return data || [];
+}
+
+/**
+ * Busca categorias de contratação únicas
+ */
+export async function getHiringCategories(): Promise<string[]> {
+    const { data, error } = await supabase
+        .from('favorecidos')
+        .select('categoria_contratacao')
+        .eq('type', 'funcionario')
+        .eq('is_active', true)
+        .not('categoria_contratacao', 'is', null);
+
+    if (error) {
+        console.error('Error fetching hiring categories:', error);
+        throw error;
+    }
+
+    const categories = new Set<string>();
+    (data || []).forEach((item) => {
+        if (item.categoria_contratacao) {
+            categories.add(item.categoria_contratacao);
+        }
+    });
+
+    return Array.from(categories).sort();
+}
+
+/**
+ * Cria folhas de pagamento em lote
+ */
+export async function createBatchPayroll(config: BatchPayrollConfig): Promise<Payroll[]> {
+    // Calcular salário líquido
+    const netSalary = calculateNetSalary({
+        base_salary: config.base_salary,
+        overtime_value: config.overtime_value || 0,
+        transport_allowance: config.transport_allowance || 0,
+        meal_allowance: config.meal_allowance || 0,
+        other_benefits: config.other_benefits || 0,
+        inss_discount: config.inss_discount || 0,
+        irrf_discount: config.irrf_discount || 0,
+        other_discounts: config.other_discounts || 0,
+    });
+
+    // Buscar funcionários baseado nos filtros
+    let employeeIds: string[] = [];
+
+    if (config.employee_ids && config.employee_ids.length > 0) {
+        employeeIds = config.employee_ids;
+    } else {
+        const employees = await getEmployeesByFilters({
+            categoria_contratacao: config.categoria_contratacao,
+        });
+        employeeIds = employees.map((e) => e.id);
+    }
+
+    if (employeeIds.length === 0) {
+        throw new Error('Nenhum funcionário encontrado com os filtros especificados');
+    }
+
+    // Gerar batch_group_id
+    const batchGroupId = crypto.randomUUID();
+
+    // Preparar dados das folhas
+    const payrollsToCreate: PayrollInsert[] = [];
+    const monthNames = [
+        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+    ];
+
+    // Se for recorrente com meses fixos, criar folhas futuras
+    if (config.is_recurring && config.recurrence_type === 'fixed_months' && config.recurrence_months) {
+        for (let monthOffset = 0; monthOffset < config.recurrence_months; monthOffset++) {
+            let targetMonth = config.reference_month + monthOffset;
+            let targetYear = config.reference_year;
+
+            while (targetMonth > 12) {
+                targetMonth -= 12;
+                targetYear += 1;
+            }
+
+            for (const employeeId of employeeIds) {
+                payrollsToCreate.push({
+                    branch_id: config.branch_id,
+                    employee_id: employeeId,
+                    reference_month: targetMonth,
+                    reference_year: targetYear,
+                    base_salary: config.base_salary,
+                    overtime_hours: config.overtime_hours || 0,
+                    overtime_value: config.overtime_value || 0,
+                    transport_allowance: config.transport_allowance || 0,
+                    meal_allowance: config.meal_allowance || 0,
+                    other_benefits: config.other_benefits || 0,
+                    inss_discount: config.inss_discount || 0,
+                    irrf_discount: config.irrf_discount || 0,
+                    other_discounts: config.other_discounts || 0,
+                    net_salary: netSalary,
+                    status: 'pendente',
+                    notes: config.notes || null,
+                    is_batch: true,
+                    batch_group_id: batchGroupId,
+                    is_recurring: config.is_recurring,
+                    recurrence_type: config.recurrence_type || null,
+                    recurrence_months: config.recurrence_months || null,
+                    recurrence_end_date: config.recurrence_months
+                        ? calculateRecurrenceEndDate(config.reference_year, config.reference_month, config.recurrence_months)
+                        : null,
+                    is_recurring_template: false,
+                });
+            }
+        }
+    } else {
+        // Criar folha única ou template recorrente
+        for (const employeeId of employeeIds) {
+            payrollsToCreate.push({
+                branch_id: config.branch_id,
+                employee_id: employeeId,
+                reference_month: config.reference_month,
+                reference_year: config.reference_year,
+                base_salary: config.base_salary,
+                overtime_hours: config.overtime_hours || 0,
+                overtime_value: config.overtime_value || 0,
+                transport_allowance: config.transport_allowance || 0,
+                meal_allowance: config.meal_allowance || 0,
+                other_benefits: config.other_benefits || 0,
+                inss_discount: config.inss_discount || 0,
+                irrf_discount: config.irrf_discount || 0,
+                other_discounts: config.other_discounts || 0,
+                net_salary: netSalary,
+                status: 'pendente',
+                notes: config.notes || null,
+                is_batch: true,
+                batch_group_id: batchGroupId,
+                is_recurring: config.is_recurring || false,
+                recurrence_type: config.recurrence_type || null,
+                recurrence_months: config.recurrence_months || null,
+                recurrence_end_date: config.recurrence_months
+                    ? calculateRecurrenceEndDate(config.reference_year, config.reference_month, config.recurrence_months)
+                    : null,
+                is_recurring_template: config.is_recurring && config.recurrence_type === 'infinite',
+            });
+        }
+    }
+
+    // Inserir todas as folhas
+    const { data, error } = await supabase
+        .from('payroll')
+        .insert(payrollsToCreate)
+        .select();
+
+    if (error) {
+        console.error('Error creating batch payroll:', error);
+        throw error;
+    }
+
+    return data || [];
+}
+
+/**
+ * Calcula a data final da recorrência
+ */
+function calculateRecurrenceEndDate(startYear: number, startMonth: number, months: number): string {
+    let endMonth = startMonth + months - 1;
+    let endYear = startYear;
+
+    while (endMonth > 12) {
+        endMonth -= 12;
+        endYear += 1;
+    }
+
+    // Último dia do mês
+    const lastDay = new Date(endYear, endMonth, 0).getDate();
+    return `${endYear}-${String(endMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 }

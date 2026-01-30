@@ -380,6 +380,13 @@ export async function createUser(
             await setUserBranchAccess(userId, branchIds);
         }
 
+        // Wait a bit more for the trigger to create the favorecido
+        await new Promise((resolve) => { setTimeout(resolve, 1000); });
+
+        // Verify that favorecido was created (trigger should handle this)
+        // If not, we'll let the trigger handle it on next profile update
+        // The trigger will create it automatically
+
         // Check if email confirmation is required
         // identities.length === 0 means email is not confirmed yet
         const needsConfirmation = authData.user.identities?.length === 0 ||

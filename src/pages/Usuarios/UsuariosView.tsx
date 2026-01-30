@@ -101,8 +101,8 @@ export function UsuariosView(props: UsuariosViewProps) {
                         if (!open) resetUserForm();
                     }}
                 >
-                    <DialogContent className="max-w-lg">
-                        <DialogHeader>
+                    <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
+                        <DialogHeader className="flex-shrink-0">
                             <DialogTitle>
                                 {isCreating ? 'Novo Usuário' : 'Gerenciar Usuário'}
                             </DialogTitle>
@@ -112,16 +112,18 @@ export function UsuariosView(props: UsuariosViewProps) {
                                     : 'Altere a função e as filiais permitidas para este usuário.'}
                             </DialogDescription>
                         </DialogHeader>
-                        <UserForm
-                            form={userForm}
-                            setForm={setUserForm}
-                            branches={branches.filter((b) => b.is_active)}
-                            isSaving={isSavingUser}
-                            isCreating={isCreating}
-                            onSubmit={handleSubmitUser}
-                            onCancel={() => { setIsUserModalOpen(false); resetUserForm(); }}
-                            toggleBranchSelection={toggleBranchSelection}
-                        />
+                        <div className="flex-1 overflow-y-auto pr-2 -mr-2">
+                            <UserForm
+                                form={userForm}
+                                setForm={setUserForm}
+                                branches={branches.filter((b) => b.is_active)}
+                                isSaving={isSavingUser}
+                                isCreating={isCreating}
+                                onSubmit={handleSubmitUser}
+                                onCancel={() => { setIsUserModalOpen(false); resetUserForm(); }}
+                                toggleBranchSelection={toggleBranchSelection}
+                            />
+                        </div>
                     </DialogContent>
                 </Dialog>
             </div>

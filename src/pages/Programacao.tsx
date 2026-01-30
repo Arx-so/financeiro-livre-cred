@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { useBranchStore } from '@/stores';
 import { useFinancialEntries, useMarkAsPaid } from '@/hooks/useFinanceiro';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
@@ -19,7 +18,6 @@ const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
 
 export default function Programacao() {
-    const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
     const today = new Date();
     const [currentMonth, setCurrentMonth] = useState(today.getMonth());
     const [currentYear, setCurrentYear] = useState(today.getFullYear());
@@ -81,7 +79,7 @@ export default function Programacao() {
         try {
             await markPaid.mutateAsync({ id });
             toast.success('Lançamento marcado como pago!');
-        } catch (error) {
+        } catch {
             toast.error('Erro ao marcar como pago');
         }
     };
@@ -190,7 +188,12 @@ export default function Programacao() {
                             <div className="grid grid-cols-7 gap-1">
                                 {calendarDays.map((day, index) => {
                                     if (day === null) {
-                                        return <div key={index} className="aspect-square" />;
+                                        return (
+                                            <div
+                                                key={`empty-${currentYear}-${currentMonth}-${index}`}
+                                                className="aspect-square"
+                                            />
+                                        );
                                     }
 
                                     const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -203,7 +206,7 @@ export default function Programacao() {
 
                                     return (
                                         <button
-                                            key={index}
+                                            key={dateStr}
                                             onClick={() => setSelectedDate(dateStr)}
                                             className={`aspect-square p-1 rounded-lg border transition-all ${
                                                 isSelected
@@ -222,7 +225,7 @@ export default function Programacao() {
                                                     {day}
                                                 </span>
                                                 {dayEntries.length > 0 && (
-                                                    <div className="flex gap-0.5 mt-auto justify-center">
+                                                    <div className="flex gap-0.5 mt-2 justify-center">
                                                         {hasReceitas && (
                                                             <div className={`w-2 h-2 rounded-full ${
                                                                 isSelected ? 'bg-primary-foreground' : 'bg-income'

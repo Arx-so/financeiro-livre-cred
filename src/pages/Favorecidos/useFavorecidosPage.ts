@@ -32,6 +32,7 @@ export interface FavorecidoFormData {
     state: string;
     zip_code: string;
     category: string;
+    categoria_contratacao: string;
     notes: string;
     bank_name: string;
     bank_agency: string;
@@ -54,6 +55,7 @@ const initialFavorecidoForm: FavorecidoFormData = {
     state: '',
     zip_code: '',
     category: '',
+    categoria_contratacao: '',
     notes: '',
     bank_name: '',
     bank_agency: '',
@@ -184,6 +186,7 @@ export function useFavorecidosPage() {
             state: formData.state || null,
             zip_code: formData.zip_code || null,
             category: formData.category || null,
+            categoria_contratacao: formData.categoria_contratacao || null,
             notes: formData.notes || null,
             bank_name: formData.bank_name || null,
             bank_agency: formData.bank_agency || null,
@@ -247,6 +250,7 @@ export function useFavorecidosPage() {
             state: favorecido.state || '',
             zip_code: favorecido.zip_code || '',
             category: favorecido.category || '',
+            categoria_contratacao: favorecido.categoria_contratacao || '',
             notes: favorecido.notes || '',
             bank_name: favorecido.bank_name || '',
             bank_agency: favorecido.bank_agency || '',

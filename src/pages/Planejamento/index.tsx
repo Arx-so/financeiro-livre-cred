@@ -52,7 +52,6 @@ import {
     duplicateBudgetVersion,
     approveBudgetVersion,
     archiveBudgetVersion,
-    BudgetVersionWithApprover,
 } from '@/services/budgetVersions';
 import { useCategories } from '@/hooks/useCategorias';
 import { useVendedores } from '@/hooks/useCadastros';
@@ -145,7 +144,17 @@ export default function Planejamento() {
 
     // Mutations
     const createBudgetMutation = useMutation({
-        mutationFn: createAnnualBudget,
+        mutationFn: (params: {
+            branchId: string;
+            categoryId: string;
+            year: number;
+            annualAmount: number;
+        }) => createAnnualBudget(
+            params.branchId,
+            params.categoryId,
+            params.year,
+            params.annualAmount
+        ),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['budget-by-category'] });
             queryClient.invalidateQueries({ queryKey: ['budget-summary'] });
@@ -310,10 +319,11 @@ export default function Planejamento() {
                             <div className="flex flex-wrap items-center justify-between gap-4">
                                 <div className="flex items-center gap-4">
                                     <div>
-                                        <label className="block text-xs text-muted-foreground mb-1">
+                                        <label htmlFor="version-select" className="block text-xs text-muted-foreground mb-1">
                                             Versão
                                         </label>
                                         <select
+                                            id="version-select"
                                             className="input-financial min-w-[200px]"
                                             value={selectedVersionId || ''}
                                             onChange={(e) => setSelectedVersionId(e.target.value || null)}
@@ -323,9 +333,13 @@ export default function Planejamento() {
                                                 <option key={v.id} value={v.id}>
                                                     {v.name}
                                                     {' '}
-                                                    (v{v.version})
+                                                    (v
+                                                    {v.version}
+                                                    )
                                                     {' '}
-                                                    - {v.status}
+                                                    -
+                                                    {' '}
+                                                    {v.status}
                                                 </option>
                                             ))}
                                         </select>
@@ -379,10 +393,13 @@ export default function Planejamento() {
                                             Arquivar
                                         </button>
                                     )}
-                                    <Dialog open={isVersionModalOpen} onOpenChange={(open) => {
-                                        setIsVersionModalOpen(open);
-                                        if (!open) setVersionForm({ name: '' });
-                                    }}>
+                                    <Dialog
+                                        open={isVersionModalOpen}
+                                        onOpenChange={(open) => {
+                                            setIsVersionModalOpen(open);
+                                            if (!open) setVersionForm({ name: '' });
+                                        }}
+                                    >
                                         <DialogTrigger asChild>
                                             <button className="btn-secondary py-1.5">
                                                 <FileText className="w-4 h-4" />
@@ -393,7 +410,9 @@ export default function Planejamento() {
                                             <DialogHeader>
                                                 <DialogTitle>Nova Versão do Orçamento</DialogTitle>
                                                 <DialogDescription>
-                                                    Crie uma nova versão do orçamento para {selectedYear}
+                                                    Crie uma nova versão do orçamento para
+                                                    {' '}
+                                                    {selectedYear}
                                                 </DialogDescription>
                                             </DialogHeader>
                                             <form
@@ -404,10 +423,11 @@ export default function Planejamento() {
                                                 }}
                                             >
                                                 <div>
-                                                    <label className="block text-sm font-medium mb-2">
+                                                    <label htmlFor="version-name" className="block text-sm font-medium mb-2">
                                                         Nome da Versão
                                                     </label>
                                                     <input
+                                                        id="version-name"
                                                         type="text"
                                                         className="input-financial"
                                                         placeholder={`Orçamento ${selectedYear} v${(budgetVersions?.length || 0) + 1}`}
@@ -497,11 +517,15 @@ export default function Planejamento() {
                                     </DialogHeader>
                                     <form className="space-y-4 mt-4" onSubmit={handleCreateBudget}>
                                         <div>
-                                            <label className="block text-sm font-medium text-foreground mb-2">Categoria</label>
+                                            <label htmlFor="budget-category" className="block text-sm font-medium text-foreground mb-2">Categoria</label>
                                             <select
+                                                id="budget-category"
                                                 className="input-financial"
                                                 value={budgetForm.category_id}
-                                                onChange={(e) => setBudgetForm({ ...budgetForm, category_id: e.target.value })}
+                                                onChange={(e) => setBudgetForm({
+                                                    ...budgetForm,
+                                                    category_id: e.target.value
+                                                })}
                                                 required
                                             >
                                                 <option value="">Selecione</option>
@@ -511,10 +535,19 @@ export default function Planejamento() {
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-foreground mb-2">Valor Anual</label>
+                                            <label
+                                                htmlFor="budget-annual-amount"
+                                                className="block text-sm font-medium text-foreground mb-2"
+                                            >
+                                                Valor Anual
+                                            </label>
                                             <CurrencyInput
+                                                id="budget-annual-amount"
                                                 value={budgetForm.annual_amount}
-                                                onChange={(numValue) => setBudgetForm({ ...budgetForm, annual_amount: String(numValue) })}
+                                                onChange={(numValue) => setBudgetForm({
+                                                    ...budgetForm,
+                                                    annual_amount: String(numValue)
+                                                })}
                                                 required
                                             />
                                         </div>
@@ -564,7 +597,7 @@ export default function Planejamento() {
                                 onChange={(e) => setSelectedMonth(Number(e.target.value))}
                             >
                                 {MONTHS_SHORT.map((m, i) => (
-                                    <option key={i} value={i + 1}>{m}</option>
+                                    <option key={`month-metas-${i + 1}`} value={i + 1}>{m}</option>
                                 ))}
                             </select>
                         </div>
@@ -597,11 +630,20 @@ export default function Planejamento() {
                                     </DialogHeader>
                                     <form className="space-y-4 mt-4" onSubmit={handleCreateTarget}>
                                         <div>
-                                            <label className="block text-sm font-medium text-foreground mb-2">Vendedor</label>
+                                            <label
+                                                htmlFor="target-seller"
+                                                className="block text-sm font-medium text-foreground mb-2"
+                                            >
+                                                Vendedor
+                                            </label>
                                             <select
+                                                id="target-seller"
                                                 className="input-financial"
                                                 value={targetForm.seller_id}
-                                                onChange={(e) => setTargetForm({ ...targetForm, seller_id: e.target.value })}
+                                                onChange={(e) => setTargetForm({
+                                                    ...targetForm,
+                                                    seller_id: e.target.value
+                                                })}
                                                 required
                                             >
                                                 <option value="">Selecione</option>
@@ -611,36 +653,63 @@ export default function Planejamento() {
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-foreground mb-2">Meta</label>
+                                            <label
+                                                htmlFor="target-amount"
+                                                className="block text-sm font-medium text-foreground mb-2"
+                                            >
+                                                Meta
+                                            </label>
                                             <CurrencyInput
+                                                id="target-amount"
                                                 value={targetForm.target_amount}
-                                                onChange={(numValue) => setTargetForm({ ...targetForm, target_amount: String(numValue) })}
+                                                onChange={(numValue) => setTargetForm({
+                                                    ...targetForm,
+                                                    target_amount: String(numValue)
+                                                })}
                                                 required
                                             />
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-sm font-medium text-foreground mb-2">Comissão (%)</label>
+                                                <label
+                                                    htmlFor="target-commission"
+                                                    className="block text-sm font-medium text-foreground mb-2"
+                                                >
+                                                    Comissão (%)
+                                                </label>
                                                 <input
+                                                    id="target-commission"
                                                     type="number"
                                                     step="0.1"
                                                     min="0"
                                                     max="100"
                                                     className="input-financial"
                                                     value={targetForm.commission_rate}
-                                                    onChange={(e) => setTargetForm({ ...targetForm, commission_rate: e.target.value })}
+                                                    onChange={(e) => setTargetForm({
+                                                        ...targetForm,
+                                                        commission_rate: e.target.value
+                                                    })}
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-foreground mb-2">Bônus (%)</label>
+                                                <label
+                                                    htmlFor="target-bonus"
+                                                    className="block text-sm font-medium text-foreground mb-2"
+                                                >
+                                                    Bônus (%)
+                                                </label>
                                                 <input
+                                                    id="target-bonus"
                                                     type="number"
                                                     step="0.1"
                                                     min="0"
                                                     max="100"
                                                     className="input-financial"
                                                     value={targetForm.bonus_rate}
-                                                    onChange={(e) => setTargetForm({ ...targetForm, bonus_rate: e.target.value })}
+                                                    onChange={(e) => setTargetForm({
+                                                        ...targetForm,
+                                                        bonus_rate: e.target.value
+                                                    })}
                                                 />
                                             </div>
                                         </div>
@@ -648,7 +717,11 @@ export default function Planejamento() {
                                             <button type="button" className="btn-secondary" onClick={() => setIsTargetModalOpen(false)}>
                                                 Cancelar
                                             </button>
-                                            <button type="submit" className="btn-primary" disabled={createTargetMutation.isPending}>
+                                            <button
+                                                type="submit"
+                                                className="btn-primary"
+                                                disabled={createTargetMutation.isPending}
+                                            >
                                                 {createTargetMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                                                 Criar Meta
                                             </button>
@@ -665,7 +738,9 @@ export default function Planejamento() {
                         ) : (
                             <div className="grid gap-4">
                                 {salesTargets.map((target) => {
-                                    const percentAchieved = Math.round(((target.achieved_amount || 0) / (target.target_amount || 1)) * 100);
+                                    const percentAchieved = Math.round(
+                                        ((target.actual_amount || 0) / (target.target_amount || 1)) * 100
+                                    );
                                     return (
                                         <div key={target.id} className="card-financial p-5">
                                             <div className="flex items-center justify-between">
@@ -682,7 +757,7 @@ export default function Planejamento() {
                                                             {' '}
                                                             • Vendido:
                                                             {' '}
-                                                            {formatCurrency(target.achieved_amount || 0)}
+                                                            {formatCurrency(target.actual_amount || 0)}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -716,7 +791,7 @@ export default function Planejamento() {
                                 onChange={(e) => setSelectedMonth(Number(e.target.value))}
                             >
                                 {MONTHS_SHORT.map((m, i) => (
-                                    <option key={i} value={i + 1}>{m}</option>
+                                    <option key={`month-comissoes-${i + 1}`} value={i + 1}>{m}</option>
                                 ))}
                             </select>
                         </div>
@@ -799,10 +874,11 @@ export default function Planejamento() {
                                                     {formatCurrency(target.target_amount)}
                                                 </td>
                                                 <td className="p-4 text-right font-mono">
-                                                    {formatCurrency(target.achieved_amount || 0)}
+                                                    {formatCurrency(target.actual_amount || 0)}
                                                 </td>
                                                 <td className="p-4 text-right">
-                                                    {target.commission_rate}%
+                                                    {target.commission_rate}
+                                                    %
                                                 </td>
                                                 <td className="p-4 text-right font-mono text-primary">
                                                     {formatCurrency(earnings.commission)}

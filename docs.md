@@ -287,7 +287,32 @@ Gerencie contratos com clientes e fornecedores.
 - **Favorecido**: Cliente ou fornecedor
 - **Valor do contrato**
 - **Datas**: Início, fim e vencimento
-- **Status**: Rascunho, Ativo, Vencido, Cancelado, Encerrado
+- **Status**: Criado, Em Aprovação, Aprovado, Ativo, Vencido, Cancelado, Encerrado
+
+#### Regras para Contratos de Vendas 🆕
+
+Quando um **vendedor** é selecionado no contrato:
+
+- ✅ **Categoria automática**: A categoria é automaticamente definida como **"Vendas"**
+  - O campo de categoria fica desabilitado quando há vendedor selecionado
+  - A categoria "Vendas" deve existir no sistema
+- ✅ **Produto obrigatório**: O campo "Tipo" se torna um **select de produtos**
+  - Apenas produtos ativos aparecem na lista
+  - O valor salvo é o nome do produto cadastrado
+- 📌 **Importante**: Para contratos sem vendedor, a categoria e tipo podem ser escolhidos livremente
+
+#### Fluxo de Aprovação 🆕
+
+1. **Criar**: Contrato criado com status "Criado"
+2. **Enviar para Aprovação**: Status muda para "Em Aprovação"
+3. **Aprovar/Rejeitar**: 
+   - Gerentes e Admins podem aprovar (status: "Aprovado")
+   - Ou rejeitar (volta para "Criado")
+4. **Assinar**: Após aprovação, o contrato pode ser assinado (status: "Ativo")
+5. **Proteção**: 
+   - ⚠️ **Contratos aprovados NÃO podem ser editados**
+   - ⚠️ **Contratos aprovados NÃO podem ser excluídos**
+   - Os botões de editar e excluir ficam ocultos para contratos aprovados
 
 #### Gestão de Documentos
 - Upload de arquivos (PDF, imagens, etc.)

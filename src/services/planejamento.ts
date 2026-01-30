@@ -244,7 +244,7 @@ export async function getSalesTargets(
         .from('sales_targets')
         .select(`
       *,
-      seller:favorecidos(id, name)
+      seller:profiles(id, name, email)
     `)
         .eq('branch_id', branchId)
         .eq('year', year)

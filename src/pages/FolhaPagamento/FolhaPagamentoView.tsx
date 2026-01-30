@@ -9,6 +9,7 @@ import {
     FileText,
     CheckCircle,
     Clock,
+    Users,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import {
@@ -28,6 +29,8 @@ import {
     StatCard,
 } from '@/components/shared';
 import { formatCurrency } from '@/lib/utils';
+import { BatchPayrollForm } from './components/BatchPayrollForm';
+import { HiringCategoriesManager } from './components/HiringCategoriesManager';
 import type { useFolhaPagamentoPage } from './useFolhaPagamentoPage';
 
 type FolhaPagamentoViewProps = ReturnType<typeof useFolhaPagamentoPage>;
@@ -75,6 +78,13 @@ export function FolhaPagamentoView(props: FolhaPagamentoViewProps) {
         handleDelete,
         handleGenerateEntry,
         resetForm,
+        // Batch mode
+        isBatchMode,
+        setIsBatchMode,
+        batchConfig,
+        setBatchConfig,
+        toggleBatchMode,
+        handleBatchSubmit,
     } = props;
 
     const currentYear = new Date().getFullYear();
@@ -88,7 +98,9 @@ export function FolhaPagamentoView(props: FolhaPagamentoViewProps) {
                     title="Folha de Pagamento"
                     description="Gerencie os pagamentos dos funcionários"
                 >
-                    <Dialog
+                    <div className="flex items-center gap-2">
+                        <HiringCategoriesManager />
+                        <Dialog
                         open={isModalOpen}
                         onOpenChange={(open) => {
                             setIsModalOpen(open);
@@ -104,10 +116,14 @@ export function FolhaPagamentoView(props: FolhaPagamentoViewProps) {
                         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                                 <DialogTitle>
-                                    {editingId ? 'Editar Folha' : 'Nova Folha de Pagamento'}
+                                    {editingId ? 'Editar Folha' : isBatchMode ? 'Nova Folha em Lote' : 'Nova Folha de Pagamento'}
                                 </DialogTitle>
                                 <DialogDescription>
-                                    Preencha os dados da folha de pagamento
+                                    {editingId
+                                        ? 'Edite os dados da folha de pagamento'
+                                        : isBatchMode
+                                            ? 'Crie folhas de pagamento para múltiplos funcionários'
+                                            : 'Preencha os dados da folha de pagamento'}
                                 </DialogDescription>
                             </DialogHeader>
 
@@ -130,7 +146,43 @@ export function FolhaPagamentoView(props: FolhaPagamentoViewProps) {
                                 </div>
                             )}
 
-                            <form className="space-y-4 mt-4" onSubmit={handleSubmit}>
+                            {/* Toggle Batch Mode - Only show when creating new (not editing) */}
+                            {!editingId && (
+                                <div className="mt-4 p-3 bg-muted/30 rounded-lg border border-border">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={isBatchMode}
+                                            onChange={toggleBatchMode}
+                                            className="w-4 h-4 rounded"
+                                        />
+                                        <div className="flex items-center gap-2">
+                                            <Users className="w-4 h-4 text-muted-foreground" />
+                                            <span className="text-sm font-medium text-foreground">
+                                                Criar em lote (múltiplos funcionários)
+                                            </span>
+                                        </div>
+                                    </label>
+                                    <p className="text-xs text-muted-foreground mt-1 ml-6">
+                                        {isBatchMode
+                                            ? 'Crie folhas para vários funcionários de uma vez, com opção de recorrência'
+                                            : 'Crie uma folha individual para um funcionário'}
+                                    </p>
+                                </div>
+                            )}
+
+                            {isBatchMode && !editingId ? (
+                                <BatchPayrollForm
+                                    branchId={unidadeAtual?.id || ''}
+                                    formData={formData}
+                                    setFormData={setFormData}
+                                    batchConfig={batchConfig}
+                                    setBatchConfig={setBatchConfig}
+                                    onSubmit={handleBatchSubmit}
+                                    isSaving={isSaving}
+                                />
+                            ) : (
+                                <form className="space-y-4 mt-4" onSubmit={handleSubmit}>
                                 {/* Funcionário e Período */}
                                 <div className="grid grid-cols-3 gap-4">
                                     <div>
@@ -321,8 +373,10 @@ export function FolhaPagamentoView(props: FolhaPagamentoViewProps) {
                                     </button>
                                 </div>
                             </form>
+                            )}
                         </DialogContent>
                     </Dialog>
+                    </div>
                 </PageHeader>
 
                 {/* Summary Cards */}

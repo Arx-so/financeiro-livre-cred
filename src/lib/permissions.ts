@@ -22,7 +22,7 @@ export type Action = 'view' | 'create' | 'edit' | 'delete' | 'approve';
 // true = allowed, false = denied, 'own' = only own records
 type PermissionValue = boolean | 'own';
 
-const permissionMatrix: Record<UserRole, Record<Resource, Record<Action, PermissionValue>>> = {
+export const permissionMatrix: Record<UserRole, Record<Resource, Record<Action, PermissionValue>>> = {
     admin: {
         dashboard: { view: true, create: true, edit: true, delete: true, approve: true },
         financeiro: { view: true, create: true, edit: true, delete: true, approve: true },

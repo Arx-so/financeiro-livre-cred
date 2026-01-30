@@ -7,7 +7,11 @@ import {
     updatePayroll,
     deletePayroll,
     generateFinancialEntry,
+    getHiringCategories,
+    getEmployeesByFilters,
+    createBatchPayroll,
     PayrollFilters,
+    BatchPayrollConfig,
 } from '@/services/folhaPagamento';
 import type { PayrollInsert, PayrollUpdate } from '@/types/database';
 
@@ -75,6 +79,33 @@ export function useGenerateFinancialEntry() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['payrolls'] });
             queryClient.invalidateQueries({ queryKey: ['financial-entries'] });
+        },
+    });
+}
+
+export function useHiringCategories() {
+    return useQuery({
+        queryKey: ['hiring-categories'],
+        queryFn: () => getHiringCategories(),
+    });
+}
+
+export function useEmployeesByFilters(filters: { categoria_contratacao?: string }) {
+    return useQuery({
+        queryKey: ['employees-by-filters', filters],
+        queryFn: () => getEmployeesByFilters(filters),
+        enabled: !!filters.categoria_contratacao,
+    });
+}
+
+export function useCreateBatchPayroll() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (config: BatchPayrollConfig) => createBatchPayroll(config),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['payrolls'] });
+            queryClient.invalidateQueries({ queryKey: ['payroll-summary'] });
         },
     });
 }

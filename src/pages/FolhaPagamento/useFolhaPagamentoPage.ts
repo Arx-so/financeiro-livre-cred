@@ -9,9 +9,10 @@ import {
     useUpdatePayroll,
     useDeletePayroll,
     useGenerateFinancialEntry,
+    useCreateBatchPayroll,
 } from '@/hooks/useFolhaPagamento';
 import { useFuncionarios } from '@/hooks/useCadastros';
-import { calculateNetSalary } from '@/services/folhaPagamento';
+import { calculateNetSalary, type BatchPayrollConfig } from '@/services/folhaPagamento';
 import type { PayrollInsert, PayrollUpdate } from '@/types/database';
 
 interface FormData {
@@ -57,6 +58,14 @@ export function useFolhaPagamentoPage() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState<FormData>(initialFormData);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isBatchMode, setIsBatchMode] = useState(false);
+    const [batchConfig, setBatchConfig] = useState({
+        filterType: 'all' as 'all' | 'category',
+        categoria_contratacao: undefined as string | undefined,
+        is_recurring: false,
+        recurrence_type: null as 'infinite' | 'fixed_months' | null,
+        recurrence_months: 3,
+    });
 
     // Dialog
     const { confirm, dialogProps } = useConfirmDialog();
@@ -74,6 +83,7 @@ export function useFolhaPagamentoPage() {
     const updateMutation = useUpdatePayroll();
     const deleteMutation = useDeletePayroll();
     const generateEntryMutation = useGenerateFinancialEntry();
+    const createBatchMutation = useCreateBatchPayroll();
 
     // Calculate net salary whenever form data changes
     const calculatedNetSalary = useMemo(() => calculateNetSalary({
@@ -91,6 +101,14 @@ export function useFolhaPagamentoPage() {
     const resetForm = useCallback(() => {
         setFormData(initialFormData);
         setEditingId(null);
+        setIsBatchMode(false);
+        setBatchConfig({
+            filterType: 'all',
+            categoria_contratacao: undefined,
+            is_recurring: false,
+            recurrence_type: null,
+            recurrence_months: 3,
+        });
     }, []);
 
     const openModal = useCallback(() => {
@@ -199,7 +217,31 @@ export function useFolhaPagamentoPage() {
         }
     }, [generateEntryMutation]);
 
-    const isSaving = createMutation.isPending || updateMutation.isPending;
+    const handleBatchSubmit = useCallback(async (config: BatchPayrollConfig) => {
+        if (!unidadeAtual?.id) {
+            toast.error('Selecione uma filial');
+            return;
+        }
+
+        try {
+            const result = await createBatchMutation.mutateAsync(config);
+            const count = result.length;
+            toast.success(`${count} folha(s) de pagamento criada(s) com sucesso!`);
+            closeModal();
+        } catch (error: any) {
+            if (error?.code === '23505') {
+                toast.error('Algumas folhas já existem para os funcionários selecionados');
+            } else {
+                toast.error(error?.message || 'Erro ao criar folhas em lote');
+            }
+        }
+    }, [unidadeAtual?.id, createBatchMutation, closeModal]);
+
+    const toggleBatchMode = useCallback(() => {
+        setIsBatchMode((prev) => !prev);
+    }, []);
+
+    const isSaving = createMutation.isPending || updateMutation.isPending || createBatchMutation.isPending;
 
     return {
         // Branch
@@ -230,6 +272,14 @@ export function useFolhaPagamentoPage() {
         // Flags
         isSaving,
         isGeneratingEntry: generateEntryMutation.isPending,
+
+        // Batch mode
+        isBatchMode,
+        setIsBatchMode,
+        batchConfig,
+        setBatchConfig,
+        toggleBatchMode,
+        handleBatchSubmit,
 
         // Handlers
         openModal,

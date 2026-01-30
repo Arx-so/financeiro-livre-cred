@@ -19,9 +19,9 @@ export function Vendas() {
                     Favorecido vinculado à venda
                 </li>
                 <li>
-                    <strong>Tipo:</strong>
+                    <strong>Produto:</strong>
                     {' '}
-                    Categoria da venda (produto, serviço, etc.)
+                    Selecione um produto cadastrado (apenas produtos ativos aparecem)
                 </li>
                 <li>
                     <strong>Valor:</strong>
@@ -43,13 +43,39 @@ export function Vendas() {
                     {' '}
                     Associe um vendedor responsável pela venda
                 </li>
+                <li>
+                    <strong>Categoria:</strong>
+                    {' '}
+                    Quando um vendedor é selecionado, a categoria é automaticamente definida como &quot;Vendas&quot;
+                </li>
             </ul>
+
+            <h3 className="text-lg font-semibold text-foreground mt-6">Regras para Contratos de Vendas</h3>
+            <div className="bg-muted/30 p-4 rounded-lg border border-border">
+                <p className="text-sm text-muted-foreground mb-2">
+                    Quando um <strong>vendedor</strong> é selecionado no contrato:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                    <li>
+                        ✅ A categoria é <strong>automaticamente definida como &quot;Vendas&quot;</strong>
+                    </li>
+                    <li>
+                        ✅ O campo &quot;Tipo&quot; se torna um <strong>select de produtos</strong> (apenas produtos ativos)
+                    </li>
+                    <li>
+                        📌 Para contratos sem vendedor, a categoria e tipo podem ser escolhidos livremente
+                    </li>
+                </ul>
+            </div>
 
             <h3 className="text-lg font-semibold text-foreground mt-6">Fluxo de Aprovação</h3>
             <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
                 <li>Criar contrato e enviar para aprovação</li>
                 <li>Gerentes e Admins podem aprovar ou rejeitar</li>
                 <li>Após aprovação, o contrato pode ser assinado</li>
+                <li>
+                    ⚠️ <strong>Contratos aprovados NÃO podem ser editados nem excluídos</strong>
+                </li>
             </ul>
 
             <h3 className="text-lg font-semibold text-foreground mt-6">Gestão de Documentos</h3>

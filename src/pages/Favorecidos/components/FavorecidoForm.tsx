@@ -16,6 +16,7 @@ import { CepInput } from '@/components/ui/cep-input';
 import { LoadingState } from '@/components/shared';
 import { getActionText, formatLogDetails } from '@/services/activityLogs';
 import { formatFileSize, getFileIcon } from '@/services/cadastros';
+import { useHiringCategoriesFromStorage } from '@/pages/FolhaPagamento/components/HiringCategoriesManager';
 import type { FavorecidoTipo, BankAccountType, PixKeyType, PaymentType } from '@/types/database';
 
 interface FavorecidoFormProps {
@@ -45,6 +46,8 @@ export function FavorecidoForm(props: FavorecidoFormProps) {
         isUploadingDocument, isSaving, onPhotoSelect, onDocumentUpload, onDeleteDocument,
         onSubmit, onCancel,
     } = props;
+
+    const hiringCategories = useHiringCategoriesFromStorage();
 
     return (
         <form className="space-y-4 mt-4" onSubmit={onSubmit}>
@@ -105,6 +108,46 @@ export function FavorecidoForm(props: FavorecidoFormProps) {
                     />
                 </div>
             </div>
+
+            {/* Categoria de Contratação - Only for employees */}
+            {formData.type === 'funcionario' && (
+                <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                        Categoria de Contratação
+                    </label>
+                    <div className="flex gap-2">
+                        <select
+                            className="input-financial flex-1"
+                            value={formData.categoria_contratacao || ''}
+                            onChange={(e) => setFormData({ ...formData, categoria_contratacao: e.target.value })}
+                        >
+                            <option value="">Selecione uma categoria</option>
+                            {hiringCategories.map((cat) => (
+                                <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                        </select>
+                        <input
+                            type="text"
+                            className="input-financial flex-1"
+                            placeholder="Ou digite uma nova categoria"
+                            value={!hiringCategories.includes(formData.categoria_contratacao || '') ? (formData.categoria_contratacao || '') : ''}
+                            onChange={(e) => {
+                                const value = e.target.value.toUpperCase();
+                                setFormData({ ...formData, categoria_contratacao: value });
+                            }}
+                            onBlur={(e) => {
+                                // If user typed a custom category, keep it
+                                if (e.target.value && !hiringCategories.includes(e.target.value.toUpperCase())) {
+                                    setFormData({ ...formData, categoria_contratacao: e.target.value.toUpperCase() });
+                                }
+                            }}
+                        />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                        Selecione uma categoria pré-configurada ou digite uma nova. Configure categorias na página de Folha de Pagamento.
+                    </p>
+                </div>
+            )}
 
             <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Nome / Razão Social *</label>

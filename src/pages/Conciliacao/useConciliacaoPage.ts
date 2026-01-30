@@ -1,5 +1,5 @@
 import {
-    useState, useRef, useCallback, useMemo
+    useState, useRef, useCallback, useMemo, useEffect
 } from 'react';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -70,9 +70,11 @@ export function useConciliacaoPage() {
     });
 
     // Effect to set default bank
-    if (bankAccounts?.length && !selectedBanco) {
-        setSelectedBanco(bankAccounts[0].id);
-    }
+    useEffect(() => {
+        if (bankAccounts?.length && !selectedBanco) {
+            setSelectedBanco(bankAccounts[0].id);
+        }
+    }, [bankAccounts, selectedBanco]);
 
     // Fetch statements for selected bank
     const { data: statements, isLoading: statementsLoading } = useQuery({

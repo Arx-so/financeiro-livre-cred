@@ -167,6 +167,7 @@ export interface Database {
           photo_url: string | null;
           notes: string | null;
           is_active: boolean;
+          user_id: string | null;
           // Banking info
           bank_name: string | null;
           bank_agency: string | null;
@@ -176,6 +177,7 @@ export interface Database {
           pix_key_type: PixKeyType | null;
           preferred_payment_type: PaymentType | null;
           birth_date: string | null;
+          categoria_contratacao: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -194,6 +196,7 @@ export interface Database {
           photo_url?: string | null;
           notes?: string | null;
           is_active?: boolean;
+          user_id?: string | null;
           // Banking info
           bank_name?: string | null;
           bank_agency?: string | null;
@@ -203,6 +206,7 @@ export interface Database {
           pix_key_type?: PixKeyType | null;
           preferred_payment_type?: PaymentType | null;
           birth_date?: string | null;
+          categoria_contratacao?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -220,6 +224,7 @@ export interface Database {
           photo_url?: string | null;
           notes?: string | null;
           is_active?: boolean;
+          user_id?: string | null;
           // Banking info
           bank_name?: string | null;
           bank_agency?: string | null;
@@ -229,6 +234,7 @@ export interface Database {
           pix_key_type?: PixKeyType | null;
           preferred_payment_type?: PaymentType | null;
           birth_date?: string | null;
+          categoria_contratacao?: string | null;
           updated_at?: string;
         };
       };
@@ -809,6 +815,14 @@ export interface Database {
           payment_date: string | null;
           financial_entry_id: string | null;
           notes: string | null;
+          is_batch: boolean;
+          batch_group_id: string | null;
+          is_recurring: boolean;
+          recurrence_type: 'infinite' | 'fixed_months' | null;
+          recurrence_months: number | null;
+          recurrence_end_date: string | null;
+          is_recurring_template: boolean;
+          recurring_parent_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -832,6 +846,14 @@ export interface Database {
           payment_date?: string | null;
           financial_entry_id?: string | null;
           notes?: string | null;
+          is_batch?: boolean;
+          batch_group_id?: string | null;
+          is_recurring?: boolean;
+          recurrence_type?: 'infinite' | 'fixed_months' | null;
+          recurrence_months?: number | null;
+          recurrence_end_date?: string | null;
+          is_recurring_template?: boolean;
+          recurring_parent_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -854,6 +876,14 @@ export interface Database {
           payment_date?: string | null;
           financial_entry_id?: string | null;
           notes?: string | null;
+          is_batch?: boolean;
+          batch_group_id?: string | null;
+          is_recurring?: boolean;
+          recurrence_type?: 'infinite' | 'fixed_months' | null;
+          recurrence_months?: number | null;
+          recurrence_end_date?: string | null;
+          is_recurring_template?: boolean;
+          recurring_parent_id?: string | null;
           updated_at?: string;
         };
       };

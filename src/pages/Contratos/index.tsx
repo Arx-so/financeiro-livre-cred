@@ -50,6 +50,7 @@ import {
 } from '@/services/contratos';
 import { useCategories } from '@/hooks/useCategorias';
 import { useFavorecidos, useVendedores } from '@/hooks/useCadastros';
+import { useProducts } from '@/hooks/useProducts';
 import {
     PageHeader, EmptyState, LoadingState, StatCard, SearchInput
 } from '@/components/shared';
@@ -118,6 +119,13 @@ export default function Contratos() {
     const { data: favorecidos } = useFavorecidos({ isActive: true });
     const { data: categories } = useCategories();
     const { data: vendedores } = useVendedores();
+    const { data: products } = useProducts({ isActive: true });
+
+    // Find "Vendas" category
+    const vendasCategory = useMemo(
+        () => categories?.find((c) => c.name.toLowerCase() === 'vendas'),
+        [categories]
+    );
 
     // Check if user can approve contracts
     const canApprove = user?.role === 'admin' || user?.role === 'gerente';
@@ -145,11 +153,15 @@ export default function Contratos() {
         mutationFn: ({ id, data }: { id: string; data: Partial<ContractInsert> }) => updateContract(id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['contracts'] });
+            queryClient.invalidateQueries({ queryKey: ['contracts-summary'] });
             setIsModalOpen(false);
             resetForm();
             toast.success('Contrato atualizado!');
         },
-        onError: () => toast.error('Erro ao atualizar contrato'),
+        onError: (error: any) => {
+            const message = error?.message || 'Erro ao atualizar contrato';
+            toast.error(message);
+        },
     });
 
     const deleteMutation = useMutation({
@@ -159,7 +171,10 @@ export default function Contratos() {
             queryClient.invalidateQueries({ queryKey: ['contracts-summary'] });
             toast.success('Contrato excluído!');
         },
-        onError: () => toast.error('Erro ao excluir contrato'),
+        onError: (error: any) => {
+            const message = error?.message || 'Erro ao excluir contrato';
+            toast.error(message);
+        },
     });
 
     const signMutation = useMutation({
@@ -256,7 +271,11 @@ export default function Contratos() {
         }
     }, [formData, editingId, unidadeAtual?.id, createMutation, updateMutation]);
 
-    const handleDelete = useCallback((id: string, title: string) => {
+    const handleDelete = useCallback((id: string, title: string, status: string) => {
+        if (status === 'aprovado') {
+            toast.error('Não é possível excluir um contrato aprovado');
+            return;
+        }
         confirm(async () => {
             setIsDeleting(true);
             try {
@@ -272,6 +291,10 @@ export default function Contratos() {
     }, [confirm, deleteMutation]);
 
     const openEditModal = useCallback((contract: any) => {
+        if (contract.status === 'aprovado') {
+            toast.error('Não é possível editar um contrato aprovado');
+            return;
+        }
         setFormData({
             title: contract.title,
             favorecido_id: contract.favorecido_id || '',
@@ -485,14 +508,17 @@ export default function Contratos() {
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-foreground mb-2">Tipo</label>
-                                        <input
-                                            type="text"
+                                        <label className="block text-sm font-medium text-foreground mb-2">Produto</label>
+                                        <select
                                             className="input-financial"
-                                            placeholder="Ex: Venda, Prestação de Serviço"
                                             value={formData.type}
                                             onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                                        />
+                                        >
+                                            <option value="">Selecione um produto</option>
+                                            {products?.map((p) => (
+                                                <option key={p.id} value={p.name}>{p.name}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-foreground mb-2">Recorrência</label>
@@ -514,19 +540,37 @@ export default function Contratos() {
                                             className="input-financial"
                                             value={formData.category_id}
                                             onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+                                            disabled={!!formData.seller_id}
+                                            title={formData.seller_id ? 'Categoria definida automaticamente como "Vendas" para contratos com vendedor' : ''}
                                         >
                                             <option value="">Selecione</option>
                                             {categories?.map((c) => (
                                                 <option key={c.id} value={c.id}>{c.name}</option>
                                             ))}
                                         </select>
+                                        {formData.seller_id && vendasCategory && (
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Categoria definida automaticamente: Vendas
+                                            </p>
+                                        )}
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-foreground mb-2">Vendedor</label>
                                         <select
                                             className="input-financial"
                                             value={formData.seller_id}
-                                            onChange={(e) => setFormData({ ...formData, seller_id: e.target.value })}
+                                            onChange={(e) => {
+                                                const sellerId = e.target.value;
+                                                setFormData({
+                                                    ...formData,
+                                                    seller_id: sellerId,
+                                                    // Auto-set category to "Vendas" when seller is selected
+                                                    // Clear category if seller is removed and it was "Vendas"
+                                                    category_id: sellerId && vendasCategory
+                                                        ? vendasCategory.id
+                                                        : (formData.category_id === vendasCategory?.id ? '' : formData.category_id)
+                                                });
+                                            }}
                                         >
                                             <option value="">Selecione</option>
                                             {vendedores?.map((v) => (
@@ -661,13 +705,15 @@ export default function Contratos() {
                                     </div>
                                 </div>
                                 <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border">
-                                    <button
-                                        className="btn-secondary py-2"
-                                        onClick={() => openEditModal(contract)}
-                                    >
-                                        <Edit className="w-4 h-4" />
-                                        Editar
-                                    </button>
+                                    {contract.status !== 'aprovado' && (
+                                        <button
+                                            className="btn-secondary py-2"
+                                            onClick={() => openEditModal(contract)}
+                                        >
+                                            <Edit className="w-4 h-4" />
+                                            Editar
+                                        </button>
+                                    )}
 
                                     {/* Workflow buttons based on status */}
                                     {contract.status === 'criado' && (
@@ -742,12 +788,14 @@ export default function Contratos() {
                                     >
                                         <Printer className="w-4 h-4" />
                                     </button>
-                                    <button
-                                        className="btn-secondary py-2 text-destructive hover:bg-destructive/10"
-                                        onClick={() => handleDelete(contract.id, contract.title)}
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
+                                    {contract.status !== 'aprovado' && (
+                                        <button
+                                            className="btn-secondary py-2 text-destructive hover:bg-destructive/10"
+                                            onClick={() => handleDelete(contract.id, contract.title, contract.status)}
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         ))}
