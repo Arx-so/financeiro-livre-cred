@@ -1,0 +1,13 @@
+export { VendasVendedor } from './VendasVendedor';
+export { VendasQuantidade } from './VendasQuantidade';
+export { VendasValor } from './VendasValor';
+export { VendasProduto } from './VendasProduto';
+export { MetaRealizado } from './MetaRealizado';
+export { MetaIndividual } from './MetaIndividual';
+export { MetaEquipe } from './MetaEquipe';
+export { MetaUnidade } from './MetaUnidade';
+export { ContratosFechados } from './ContratosFechados';
+export { ContratosVendedor } from './ContratosVendedor';
+export { ContratosCanal } from './ContratosCanal';
+export { ContratosProduto } from './ContratosProduto';
+export { RankingVendas } from './RankingVendas';

@@ -29,6 +29,14 @@ const routeNames: Record<string, string> = {
     '/vendas': 'Vendas',
     '/agenda': 'Agenda',
     '/relatorios': 'Relatórios',
+    '/relatorios/executivos': 'Relatórios Executivos',
+    '/relatorios/financeiros': 'Relatórios Financeiros',
+    '/relatorios/vendas-metas': 'Vendas e Metas',
+    '/relatorios/clientes': 'Relatórios de Clientes',
+    '/relatorios/recursos-humanos': 'Recursos Humanos',
+    '/relatorios/operacoes-compliance': 'Operações e Compliance',
+    '/relatorios/marketing-canais': 'Marketing e Canais',
+    '/relatorios/estrategicos': 'Relatórios Estratégicos',
     '/docs': 'Documentação',
 };
 

@@ -22,6 +22,11 @@ import {
     ShoppingCart,
     DollarSign,
     Receipt,
+    Target,
+    Shield,
+    Megaphone,
+    Brain,
+    UserCheck,
 } from 'lucide-react';
 import { useAuthStore, useBranchStore } from '@/stores';
 import {
@@ -185,10 +190,45 @@ const navigationGroups: NavGroup[] = [
         label: 'Análises',
         items: [
             {
-                name: 'Relatórios',
-                href: '/relatorios',
-                icon: BarChart3,
+                name: 'Relatórios Executivos',
+                href: '/relatorios/executivos',
+                icon: TrendingUp,
                 // All roles can view reports (with varying levels of detail)
+            },
+            {
+                name: 'Relatórios Financeiros',
+                href: '/relatorios/financeiros',
+                icon: Wallet,
+            },
+            {
+                name: 'Vendas e Metas',
+                href: '/relatorios/vendas-metas',
+                icon: ShoppingCart,
+            },
+            {
+                name: 'Relatórios de Clientes',
+                href: '/relatorios/clientes',
+                icon: UserCheck,
+            },
+            {
+                name: 'Recursos Humanos',
+                href: '/relatorios/recursos-humanos',
+                icon: UserCog,
+            },
+            {
+                name: 'Operações e Compliance',
+                href: '/relatorios/operacoes-compliance',
+                icon: Shield,
+            },
+            {
+                name: 'Marketing e Canais',
+                href: '/relatorios/marketing-canais',
+                icon: Megaphone,
+            },
+            {
+                name: 'Relatórios Estratégicos',
+                href: '/relatorios/estrategicos',
+                icon: Brain,
             },
         ],
     },

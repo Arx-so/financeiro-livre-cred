@@ -1,0 +1,12 @@
+export { DashboardGeral } from './DashboardGeral';
+export { Faturamento } from './Faturamento';
+export { MargemProduto } from './MargemProduto';
+export { TicketMedio } from './TicketMedio';
+export { ResultadoOperacional } from './ResultadoOperacional';
+export { ReceitaProduto } from './ReceitaProduto';
+export { CustosFixosVariaveis } from './CustosFixosVariaveis';
+export { Comissoes } from './Comissoes';
+export { LucroOperacional } from './LucroOperacional';
+export { ComparativoMensal } from './ComparativoMensal';
+export { PrevistoRealizado } from './PrevistoRealizado';
+export { CrescimentoRetracao } from './CrescimentoRetracao';

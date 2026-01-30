@@ -50,6 +50,8 @@ export function FolhaPagamentoView(props: FolhaPagamentoViewProps) {
         setFilterMonth,
         filterYear,
         setFilterYear,
+        filterCategory,
+        setFilterCategory,
         isModalOpen,
         setIsModalOpen,
         editingId,
@@ -65,6 +67,7 @@ export function FolhaPagamentoView(props: FolhaPagamentoViewProps) {
         payrollsLoading,
         summary,
         funcionarios,
+        hiringCategories,
         calculatedNetSalary,
 
         // Flags
@@ -430,6 +433,16 @@ export function FolhaPagamentoView(props: FolhaPagamentoViewProps) {
                                 <option key={year} value={year}>{year}</option>
                             ))}
                         </select>
+                        <select
+                            className="input-financial w-auto"
+                            value={filterCategory}
+                            onChange={(e) => setFilterCategory(e.target.value)}
+                        >
+                            <option value="">Todas as categorias</option>
+                            {hiringCategories.map((cat) => (
+                                <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                        </select>
                     </div>
                 </div>
 
@@ -447,6 +460,7 @@ export function FolhaPagamentoView(props: FolhaPagamentoViewProps) {
                             <thead>
                                 <tr>
                                     <th>Funcionário</th>
+                                    <th>Categoria</th>
                                     <th>Período</th>
                                     <th className="text-right">Salário Base</th>
                                     <th className="text-right">Benefícios</th>
@@ -476,6 +490,9 @@ export function FolhaPagamentoView(props: FolhaPagamentoViewProps) {
                                                         {payroll.employee?.name || 'Funcionário'}
                                                     </span>
                                                 </div>
+                                            </td>
+                                            <td className="text-muted-foreground">
+                                                {payroll.employee?.categoria_contratacao || '-'}
                                             </td>
                                             <td className="text-muted-foreground">
                                                 {monthNames[payroll.reference_month - 1]}

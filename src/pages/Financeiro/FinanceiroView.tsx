@@ -33,6 +33,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
     PageHeader, EmptyState, LoadingState, StatCard, SearchInput
 } from '@/components/shared';
+import { FavorecidoForm } from '@/pages/Favorecidos/components/FavorecidoForm';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import type { useFinanceiroPage } from './useFinanceiroPage';
 import type { EntryType, EntryStatus, RecurrenceType } from '@/types/database';
@@ -101,6 +102,18 @@ export function FinanceiroView(props: FinanceiroViewProps) {
         openEditModal,
         handleExport,
         handleImportNFE,
+        // Favorecido modal
+        isFavorecidoModalOpen,
+        setIsFavorecidoModalOpen,
+        favorecidoFormData,
+        setFavorecidoFormData,
+        photoPreview,
+        favorecidoFileInputRef,
+        favorecidoDocumentInputRef,
+        handlePhotoSelect,
+        handleSubmitFavorecido,
+        resetFavorecidoForm,
+        isSavingFavorecido,
     } = props;
 
     return (
@@ -365,6 +378,37 @@ export function FinanceiroView(props: FinanceiroViewProps) {
             </div>
 
             <ConfirmDialog {...dialogProps} isLoading={isDeleting} />
+            
+            {/* Favorecido Modal */}
+            <Dialog open={isFavorecidoModalOpen} onOpenChange={(open) => { setIsFavorecidoModalOpen(open); if (!open) resetFavorecidoForm(); }}>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Novo Favorecido</DialogTitle>
+                        <DialogDescription>
+                            Cadastre um novo favorecido para usar neste lançamento.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <FavorecidoForm
+                        formData={favorecidoFormData}
+                        setFormData={setFavorecidoFormData}
+                        editingId={null}
+                        photoPreview={photoPreview}
+                        fileInputRef={favorecidoFileInputRef}
+                        documentInputRef={favorecidoDocumentInputRef}
+                        favorecidoDocuments={[]}
+                        documentsLoading={false}
+                        favorecidoLogs={[]}
+                        logsLoading={false}
+                        isUploadingDocument={false}
+                        isSaving={isSavingFavorecido}
+                        onPhotoSelect={handlePhotoSelect}
+                        onDocumentUpload={() => {}}
+                        onDeleteDocument={() => {}}
+                        onSubmit={handleSubmitFavorecido}
+                        onCancel={() => { setIsFavorecidoModalOpen(false); resetFavorecidoForm(); }}
+                    />
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }
@@ -485,16 +529,26 @@ function EntryForm(props: EntryFormProps) {
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-foreground mb-2">Favorecido</label>
-                    <select
-                        className="input-financial"
-                        value={formData.favorecido_id}
-                        onChange={(e) => setFormData({ ...formData, favorecido_id: e.target.value })}
-                    >
-                        <option value="">Selecione</option>
-                        {favorecidos.map((f) => (
-                            <option key={f.id} value={f.id}>{f.name}</option>
-                        ))}
-                    </select>
+                    <div className="flex gap-2">
+                        <select
+                            className="input-financial flex-1"
+                            value={formData.favorecido_id}
+                            onChange={(e) => setFormData({ ...formData, favorecido_id: e.target.value })}
+                        >
+                            <option value="">Selecione</option>
+                            {favorecidos.map((f) => (
+                                <option key={f.id} value={f.id}>{f.name}</option>
+                            ))}
+                        </select>
+                        <button
+                            type="button"
+                            onClick={() => setIsFavorecidoModalOpen(true)}
+                            className="btn-secondary px-3"
+                            title="Adicionar novo favorecido"
+                        >
+                            <Plus className="w-4 h-4" />
+                        </button>
+                    </div>
                 </div>
             </div>
 

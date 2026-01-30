@@ -323,9 +323,9 @@ export async function getSalesTargetSummary(
             const commission = Number(target.actual_amount) * (Number(target.commission_rate) / 100);
             acc.totalCommission += commission;
 
-            // Bonus only if target achieved
+            // Bonus only if target achieved (now using fixed amount)
             if (Number(target.actual_amount) >= Number(target.target_amount)) {
-                const bonus = Number(target.actual_amount) * (Number(target.bonus_rate) / 100);
+                const bonus = Number(target.bonus_amount) || 0;
                 acc.totalBonus += bonus;
             }
 
@@ -352,7 +352,7 @@ export function calculateSellerEarnings(target: SalesTarget): {
 } {
     const achieved = Number(target.actual_amount) >= Number(target.target_amount);
     const commission = Number(target.actual_amount) * (Number(target.commission_rate) / 100);
-    const bonus = achieved ? Number(target.actual_amount) * (Number(target.bonus_rate) / 100) : 0;
+    const bonus = achieved ? (Number(target.bonus_amount) || 0) : 0;
 
     return {
         commission,

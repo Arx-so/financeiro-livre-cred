@@ -87,7 +87,7 @@ export default function Planejamento() {
         seller_id: '',
         target_amount: '',
         commission_rate: '5',
-        bonus_rate: '1',
+        bonus_amount: '0',
     });
 
     // Version form
@@ -172,7 +172,7 @@ export default function Planejamento() {
             queryClient.invalidateQueries({ queryKey: ['sales-target-summary'] });
             setIsTargetModalOpen(false);
             setTargetForm({
-                seller_id: '', target_amount: '', commission_rate: '5', bonus_rate: '1'
+                seller_id: '', target_amount: '', commission_rate: '5', bonus_amount: '0'
             });
             toast.success('Meta criada!');
         },
@@ -253,7 +253,7 @@ export default function Planejamento() {
             month: selectedMonth,
             target_amount: parseFloat(targetForm.target_amount) || 0,
             commission_rate: parseFloat(targetForm.commission_rate) || 5,
-            bonus_rate: parseFloat(targetForm.bonus_rate) || 1,
+            bonus_amount: parseFloat(targetForm.bonus_amount) || 0,
         };
 
         createTargetMutation.mutate(targetData);
@@ -696,19 +696,13 @@ export default function Planejamento() {
                                                     htmlFor="target-bonus"
                                                     className="block text-sm font-medium text-foreground mb-2"
                                                 >
-                                                    Bônus (%)
+                                                    Bônus (R$)
                                                 </label>
-                                                <input
-                                                    id="target-bonus"
-                                                    type="number"
-                                                    step="0.1"
-                                                    min="0"
-                                                    max="100"
-                                                    className="input-financial"
-                                                    value={targetForm.bonus_rate}
-                                                    onChange={(e) => setTargetForm({
+                                                <CurrencyInput
+                                                    value={targetForm.bonus_amount}
+                                                    onChange={(numValue) => setTargetForm({
                                                         ...targetForm,
-                                                        bonus_rate: e.target.value
+                                                        bonus_amount: String(numValue)
                                                     })}
                                                 />
                                             </div>

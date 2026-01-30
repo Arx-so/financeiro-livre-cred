@@ -11,7 +11,6 @@ export interface ProductPriceWithProduct extends ProductPrice {
 }
 
 export interface ProductPriceFilters {
-    branchId?: string;
     search?: string;
 }
 
@@ -26,10 +25,6 @@ export async function getProductPrices(filters: ProductPriceFilters = {}): Promi
             product:products(id, name, description, is_active)
         `)
         .order('created_at', { ascending: false });
-
-    if (filters.branchId) {
-        query = query.eq('branch_id', filters.branchId);
-    }
 
     const { data, error } = await query;
 
@@ -50,9 +45,10 @@ export async function getProductPrices(filters: ProductPriceFilters = {}): Promi
 }
 
 /**
- * Busca todos os produtos com seus preços para uma filial
+ * Busca todos os produtos com seus preços
+ * Preços são os mesmos para todas as filiais
  */
-export async function getProductsWithPrices(branchId: string): Promise<Array<{
+export async function getProductsWithPrices(): Promise<Array<{
     id: string;
     name: string;
     description: string | null;
@@ -72,11 +68,10 @@ export async function getProductsWithPrices(branchId: string): Promise<Array<{
         throw productsError;
     }
 
-    // Get prices for this branch
+    // Get all prices (no branch filter needed)
     const { data: prices, error: pricesError } = await supabase
         .from('product_prices')
-        .select('id, product_id, sale_price')
-        .eq('branch_id', branchId);
+        .select('id, product_id, sale_price');
 
     if (pricesError) {
         console.error('Error fetching prices:', pricesError);
@@ -98,10 +93,10 @@ export async function getProductsWithPrices(branchId: string): Promise<Array<{
 
 /**
  * Cria ou atualiza um preço de produto (upsert)
+ * Preços são os mesmos para todas as filiais
  */
 export async function upsertProductPrice(
     productId: string,
-    branchId: string,
     salePrice: number,
 ): Promise<ProductPrice> {
     const { data, error } = await supabase
@@ -109,11 +104,10 @@ export async function upsertProductPrice(
         .upsert(
             {
                 product_id: productId,
-                branch_id: branchId,
                 sale_price: salePrice,
             },
             {
-                onConflict: 'product_id,branch_id',
+                onConflict: 'product_id',
             },
         )
         .select()

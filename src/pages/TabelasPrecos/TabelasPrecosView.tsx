@@ -1,4 +1,4 @@
-import { DollarSign, Package, Edit, Check, X, Loader2, Building2, ChevronsUpDown, CheckCircle2 } from 'lucide-react';
+import { DollarSign, Package, Edit, Check, X, Loader2 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import {
     PageHeader,
@@ -8,23 +8,12 @@ import {
 } from '@/components/shared';
 import { formatCurrency } from '@/lib/utils';
 import { CurrencyInput } from '@/components/ui/currency-input';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { useBranchStore } from '@/stores';
-import { useBranches } from '@/hooks/useBranches';
 import type { useTabelasPrecosPage } from './useTabelasPrecosPage';
 
 type TabelasPrecosViewProps = ReturnType<typeof useTabelasPrecosPage>;
 
 export function TabelasPrecosView(props: TabelasPrecosViewProps) {
     const {
-        // Branch
-        unidadeAtual,
-
         // State
         searchTerm,
         setSearchTerm,
@@ -46,72 +35,27 @@ export function TabelasPrecosView(props: TabelasPrecosViewProps) {
         handlePriceKeyDown,
     } = props;
 
-    const { unidades, setUnidadeAtual } = useBranchStore();
-    const { data: allBranches } = useBranches({ isActive: true });
-
     return (
         <AppLayout>
             <div className="space-y-6">
                 {/* Page Header */}
                 <PageHeader
                     title="Tabelas de Preços"
-                    description="Defina os preços de venda dos produtos por filial"
+                    description="Defina os preços de venda dos produtos (preços são os mesmos para todas as filiais)"
                 />
 
-                {/* Branch Selector */}
-                <div className="flex items-center gap-4">
-                    <div className="flex-1 p-4 bg-primary/10 rounded-lg border border-primary/20">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <DollarSign className="w-5 h-5 text-primary" />
-                                <div>
-                                    <span className="font-medium text-foreground">
-                                        Filial:
-                                        {' '}
-                                        {unidadeAtual?.name || 'Selecione uma filial'}
-                                    </span>
-                                    {unidadeAtual && (
-                                        <span className="text-sm text-muted-foreground ml-2">
-                                            (
-                                            {unidadeAtual.code}
-                                            )
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <button className="btn-secondary flex items-center gap-2">
-                                        <Building2 className="w-4 h-4" />
-                                        Trocar Filial
-                                        <ChevronsUpDown className="w-4 h-4" />
-                                    </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-56">
-                                    {(allBranches || unidades).map((branch) => (
-                                        <DropdownMenuItem
-                                            key={branch.id}
-                                            onClick={() => setUnidadeAtual(branch)}
-                                            className="flex items-center gap-2 cursor-pointer"
-                                        >
-                                            <Building2 className="w-4 h-4" />
-                                            <div className="flex-1">
-                                                <span className="font-medium">{branch.name}</span>
-                                                <span className="ml-2 text-xs text-muted-foreground">
-                                                    {branch.code}
-                                                </span>
-                                            </div>
-                                            {unidadeAtual?.id === branch.id && (
-                                                <CheckCircle2 className="w-4 h-4 text-primary" />
-                                            )}
-                                        </DropdownMenuItem>
-                                    ))}
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                {/* Info Banner */}
+                <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
+                    <div className="flex items-center gap-3">
+                        <DollarSign className="w-5 h-5 text-primary" />
+                        <div>
+                            <span className="font-medium text-foreground">
+                                Preços Globais
+                            </span>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Os preços definidos aqui são aplicados para todas as filiais.
+                            </p>
                         </div>
-                        <p className="text-sm text-muted-foreground mt-2">
-                            Os preços definidos aqui são específicos para esta filial.
-                        </p>
                     </div>
                 </div>
 

@@ -82,36 +82,11 @@ export default function Login() {
                         <img
                             src="/logo.jpeg"
                             alt="FinControl Logo"
-                            className="w-16 h-16 rounded-2xl object-cover"
+                            className="w-32 h-32 rounded-2xl object-cover"
                         />
                         <div>
-                            <h1 className="text-3xl font-bold text-primary-foreground">FinControl</h1>
+                            <h1 className="text-3xl font-bold text-primary-foreground">Gestor Livre</h1>
                             <p className="text-primary-foreground/70">Gestão Financeira Empresarial</p>
-                        </div>
-                    </div>
-
-                    <h2 className="text-4xl lg:text-5xl font-bold text-primary-foreground mb-6 leading-tight">
-                        Controle total
-                        <br />
-                        das suas finanças
-                    </h2>
-
-                    <p className="text-lg text-primary-foreground/80 max-w-md">
-                        Sistema completo para gestão de contas a pagar, receber, planejamento orçamentário e muito mais.
-                    </p>
-
-                    <div className="mt-12 grid grid-cols-3 gap-6">
-                        <div className="text-center">
-                            <p className="text-3xl font-bold text-primary-foreground">+500</p>
-                            <p className="text-sm text-primary-foreground/60">Empresas</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-3xl font-bold text-primary-foreground">R$2B+</p>
-                            <p className="text-sm text-primary-foreground/60">Gerenciados</p>
-                        </div>
-                        <div className="text-center">
-                            <p className="text-3xl font-bold text-primary-foreground">99.9%</p>
-                            <p className="text-sm text-primary-foreground/60">Uptime</p>
                         </div>
                     </div>
                 </div>
@@ -125,11 +100,11 @@ export default function Login() {
                         <img
                             src="/logo.jpeg"
                             alt="FinControl Logo"
-                            className="w-12 h-12 rounded-xl object-cover"
+                            className="w-32 h-32 rounded-xl object-cover"
                         />
                         <div>
-                            <h1 className="text-xl font-bold text-foreground">FinControl</h1>
-                            <p className="text-xs text-muted-foreground">Gestão Financeira</p>
+                            <h1 className="text-xl font-bold text-foreground">Gestor Livre</h1>
+                            <p className="text-xs text-muted-foreground">Sistema de Gestão personalizado da Livre Cred</p>
                         </div>
                     </div>
 

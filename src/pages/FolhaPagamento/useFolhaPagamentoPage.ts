@@ -10,6 +10,7 @@ import {
     useDeletePayroll,
     useGenerateFinancialEntry,
     useCreateBatchPayroll,
+    useHiringCategories,
 } from '@/hooks/useFolhaPagamento';
 import { useFuncionarios } from '@/hooks/useCadastros';
 import { calculateNetSalary, type BatchPayrollConfig } from '@/services/folhaPagamento';
@@ -54,6 +55,7 @@ export function useFolhaPagamentoPage() {
     // State
     const [filterMonth, setFilterMonth] = useState(currentDate.getMonth() + 1);
     const [filterYear, setFilterYear] = useState(currentDate.getFullYear());
+    const [filterCategory, setFilterCategory] = useState<string>('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState<FormData>(initialFormData);
@@ -74,9 +76,11 @@ export function useFolhaPagamentoPage() {
     const { data: payrolls, isLoading: payrollsLoading } = usePayrolls({
         month: filterMonth,
         year: filterYear,
+        categoriaContratacao: filterCategory || undefined,
     });
     const { data: summary } = usePayrollSummary(filterMonth, filterYear);
     const { data: funcionarios } = useFuncionarios();
+    const { data: hiringCategories = [] } = useHiringCategories();
 
     // Mutations
     const createMutation = useCreatePayroll();
@@ -252,6 +256,8 @@ export function useFolhaPagamentoPage() {
         setFilterMonth,
         filterYear,
         setFilterYear,
+        filterCategory,
+        setFilterCategory,
         isModalOpen,
         setIsModalOpen,
         editingId,
@@ -267,6 +273,7 @@ export function useFolhaPagamentoPage() {
         payrollsLoading,
         summary,
         funcionarios: funcionarios || [],
+        hiringCategories,
         calculatedNetSalary,
 
         // Flags

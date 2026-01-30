@@ -1,11 +1,8 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import { useBranchStore } from '@/stores';
 import { useProductsWithPrices, useUpsertProductPrice } from '@/hooks/useTabelasPrecos';
 
 export function useTabelasPrecosPage() {
-    const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
-
     // State
     const [searchTerm, setSearchTerm] = useState('');
     const [editingProductId, setEditingProductId] = useState<string | null>(null);
@@ -51,9 +48,6 @@ export function useTabelasPrecosPage() {
     }, [savePrice, cancelEditing]);
 
     return {
-        // Branch
-        unidadeAtual,
-
         // State
         searchTerm,
         setSearchTerm,

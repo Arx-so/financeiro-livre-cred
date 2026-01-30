@@ -583,7 +583,7 @@ export interface Database {
           target_amount: number;
           actual_amount: number;
           commission_rate: number;
-          bonus_rate: number;
+          bonus_amount: number;
           created_at: string;
           updated_at: string;
         };
@@ -596,7 +596,7 @@ export interface Database {
           target_amount: number;
           actual_amount?: number;
           commission_rate?: number;
-          bonus_rate?: number;
+          bonus_amount?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -608,7 +608,7 @@ export interface Database {
           target_amount?: number;
           actual_amount?: number;
           commission_rate?: number;
-          bonus_rate?: number;
+          bonus_amount?: number;
           updated_at?: string;
         };
       };

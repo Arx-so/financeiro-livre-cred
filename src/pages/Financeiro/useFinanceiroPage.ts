@@ -16,7 +16,7 @@ import {
     calculateRecurringDates,
 } from '@/hooks/useFinanceiro';
 import { useCategories, useSubcategories } from '@/hooks/useCategorias';
-import { useFavorecidos } from '@/hooks/useCadastros';
+import { useFavorecidos, useCreateFavorecido, useUploadFavorecidoPhoto } from '@/hooks/useCadastros';
 import { getBankAccounts } from '@/services/conciliacao';
 import {
     exportToExcel, exportToCSV, parseExcel, parseCSV, parseXML, parseNFE
@@ -92,6 +92,35 @@ export function useFinanceiroPage() {
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
+    
+    // Favorecido modal state
+    const [isFavorecidoModalOpen, setIsFavorecidoModalOpen] = useState(false);
+    const [favorecidoFormData, setFavorecidoFormData] = useState<any>({
+        type: 'cliente',
+        name: '',
+        document: '',
+        email: '',
+        phone: '',
+        address: '',
+        city: '',
+        state: '',
+        zip_code: '',
+        category: '',
+        categoria_contratacao: '',
+        notes: '',
+        bank_name: '',
+        bank_agency: '',
+        bank_account: '',
+        bank_account_type: '',
+        pix_key: '',
+        pix_key_type: '',
+        preferred_payment_type: '',
+        birth_date: '',
+    });
+    const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const favorecidoFileInputRef = useRef<HTMLInputElement>(null);
+    const favorecidoDocumentInputRef = useRef<HTMLInputElement>(null);
 
     // Form state
     const [formData, setFormData] = useState<FinanceiroFormData>(initialFormData);
@@ -112,12 +141,16 @@ export function useFinanceiroPage() {
     const { data: summary } = useFinancialSummary(undefined, startDate, endDate);
     const { data: categories } = useCategories();
     const { data: subcategories } = useSubcategories(formData.category_id);
-    const { data: favorecidos } = useFavorecidos({ isActive: true });
+    const { data: favorecidos, refetch: refetchFavorecidos } = useFavorecidos({ isActive: true });
     const { data: bankAccounts } = useQuery({
         queryKey: ['bank-accounts', unidadeAtual?.id],
         queryFn: () => getBankAccounts(unidadeAtual?.id),
         enabled: !!unidadeAtual?.id,
     });
+    
+    // Favorecido mutations
+    const createFavorecido = useCreateFavorecido();
+    const uploadPhoto = useUploadFavorecidoPhoto();
 
     // Mutations
     const createEntry = useCreateFinancialEntry();
@@ -397,6 +430,94 @@ export function useFinanceiroPage() {
         const [year, month] = filterMonth.split('-').map(Number);
         return new Date(year, month - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
     }, [filterMonth]);
+    
+    // Favorecido handlers
+    const resetFavorecidoForm = useCallback(() => {
+        setFavorecidoFormData({
+            type: 'cliente',
+            name: '',
+            document: '',
+            email: '',
+            phone: '',
+            address: '',
+            city: '',
+            state: '',
+            zip_code: '',
+            category: '',
+            categoria_contratacao: '',
+            notes: '',
+            bank_name: '',
+            bank_agency: '',
+            bank_account: '',
+            bank_account_type: '',
+            pix_key: '',
+            pix_key_type: '',
+            preferred_payment_type: '',
+            birth_date: '',
+        });
+        setSelectedPhoto(null);
+        setPhotoPreview(null);
+    }, []);
+    
+    const handlePhotoSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setSelectedPhoto(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPhotoPreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    }, []);
+    
+    const handleSubmitFavorecido = useCallback(async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        try {
+            const favorecidoData = {
+                type: favorecidoFormData.type,
+                name: favorecidoFormData.name,
+                document: favorecidoFormData.document || null,
+                email: favorecidoFormData.email || null,
+                phone: favorecidoFormData.phone || null,
+                address: favorecidoFormData.address || null,
+                city: favorecidoFormData.city || null,
+                state: favorecidoFormData.state || null,
+                zip_code: favorecidoFormData.zip_code || null,
+                category: favorecidoFormData.category || null,
+                categoria_contratacao: favorecidoFormData.categoria_contratacao || null,
+                notes: favorecidoFormData.notes || null,
+                bank_name: favorecidoFormData.bank_name || null,
+                bank_agency: favorecidoFormData.bank_agency || null,
+                bank_account: favorecidoFormData.bank_account || null,
+                bank_account_type: favorecidoFormData.bank_account_type || null,
+                pix_key: favorecidoFormData.pix_key || null,
+                pix_key_type: favorecidoFormData.pix_key_type || null,
+                preferred_payment_type: favorecidoFormData.preferred_payment_type || null,
+                birth_date: favorecidoFormData.birth_date || null,
+            };
+            
+            const newFavorecido = await createFavorecido.mutateAsync(favorecidoData);
+            
+            // Upload photo if selected
+            if (selectedPhoto && newFavorecido.id) {
+                await uploadPhoto.mutateAsync({ favorecidoId: newFavorecido.id, file: selectedPhoto });
+            }
+            
+            // Refresh favorecidos list
+            await refetchFavorecidos();
+            
+            // Select the new favorecido in the entry form
+            setFormData((prev) => ({ ...prev, favorecido_id: newFavorecido.id }));
+            
+            toast.success('Favorecido criado com sucesso!');
+            setIsFavorecidoModalOpen(false);
+            resetFavorecidoForm();
+        } catch (error) {
+            toast.error('Erro ao criar favorecido');
+        }
+    }, [favorecidoFormData, selectedPhoto, createFavorecido, uploadPhoto, refetchFavorecidos, setFormData]);
 
     return {
         // Branch
@@ -457,5 +578,18 @@ export function useFinanceiroPage() {
         handleExport,
         handleImport,
         handleImportNFE,
+        
+        // Favorecido modal
+        isFavorecidoModalOpen,
+        setIsFavorecidoModalOpen,
+        favorecidoFormData,
+        setFavorecidoFormData,
+        photoPreview,
+        favorecidoFileInputRef,
+        favorecidoDocumentInputRef,
+        handlePhotoSelect,
+        handleSubmitFavorecido,
+        resetFavorecidoForm,
+        isSavingFavorecido: createFavorecido.isPending || uploadPhoto.isPending,
     };
 }

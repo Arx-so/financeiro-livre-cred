@@ -18,6 +18,14 @@ import ContasBancarias from "./pages/ContasBancarias";
 import Filiais from "./pages/Filiais";
 import Usuarios from "./pages/Usuarios";
 import Relatorios from "./pages/Relatorios";
+import RelatoriosExecutivos from "./pages/Relatorios/Executivos";
+import RelatoriosFinanceiros from "./pages/Relatorios/Financeiros";
+import RelatoriosVendasMetas from "./pages/Relatorios/VendasMetas";
+import RelatoriosClientes from "./pages/Relatorios/Clientes";
+import RelatoriosRecursosHumanos from "./pages/Relatorios/RecursosHumanos";
+import RelatoriosOperacoesCompliance from "./pages/Relatorios/OperacoesCompliance";
+import RelatoriosMarketingCanais from "./pages/Relatorios/MarketingCanais";
+import RelatoriosEstrategicos from "./pages/Relatorios/Estrategicos";
 import Planejamento from "./pages/Planejamento";
 import Programacao from "./pages/Programacao";
 import Previsao from "./pages/Previsao";
@@ -117,7 +125,15 @@ function AppRoutes() {
             <Route path="/contas-bancarias" element={<ProtectedRoute><ContasBancarias /></ProtectedRoute>} />
             <Route path="/filiais" element={<ProtectedRoute><Filiais /></ProtectedRoute>} />
             <Route path="/usuarios" element={<ProtectedRoute><Usuarios /></ProtectedRoute>} />
-            <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
+            <Route path="/relatorios" element={<Navigate to="/relatorios/executivos" replace />} />
+            <Route path="/relatorios/executivos" element={<ProtectedRoute><RelatoriosExecutivos /></ProtectedRoute>} />
+            <Route path="/relatorios/financeiros" element={<ProtectedRoute><RelatoriosFinanceiros /></ProtectedRoute>} />
+            <Route path="/relatorios/vendas-metas" element={<ProtectedRoute><RelatoriosVendasMetas /></ProtectedRoute>} />
+            <Route path="/relatorios/clientes" element={<ProtectedRoute><RelatoriosClientes /></ProtectedRoute>} />
+            <Route path="/relatorios/recursos-humanos" element={<ProtectedRoute><RelatoriosRecursosHumanos /></ProtectedRoute>} />
+            <Route path="/relatorios/operacoes-compliance" element={<ProtectedRoute><RelatoriosOperacoesCompliance /></ProtectedRoute>} />
+            <Route path="/relatorios/marketing-canais" element={<ProtectedRoute><RelatoriosMarketingCanais /></ProtectedRoute>} />
+            <Route path="/relatorios/estrategicos" element={<ProtectedRoute><RelatoriosEstrategicos /></ProtectedRoute>} />
             <Route path="/previsao" element={<ProtectedRoute><Previsao /></ProtectedRoute>} />
             <Route path="/conciliacao" element={<ProtectedRoute><Conciliacao /></ProtectedRoute>} />
             <Route path="/vendas" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
