@@ -176,6 +176,7 @@ export function FinanceiroView(props: FinanceiroViewProps) {
                                 onSubmit={handleSubmit}
                                 onCancel={() => { setIsModalOpen(false); resetForm(); }}
                                 unidadeAtual={unidadeAtual}
+                                onOpenFavorecidoModal={() => setIsFavorecidoModalOpen(true)}
                             />
                         </DialogContent>
                     </Dialog>
@@ -216,10 +217,9 @@ export function FinanceiroView(props: FinanceiroViewProps) {
                             value={searchTerm}
                             onChange={setSearchTerm}
                             placeholder="Buscar lançamentos..."
-                            className="max-w-xs"
                         />
                         <select
-                            className="input-financial"
+                            className="input-financial max-w-xs"
                             value={filterTipo}
                             onChange={(e) => setFilterTipo(e.target.value as 'todos' | EntryType)}
                         >
@@ -378,7 +378,7 @@ export function FinanceiroView(props: FinanceiroViewProps) {
             </div>
 
             <ConfirmDialog {...dialogProps} isLoading={isDeleting} />
-            
+
             {/* Favorecido Modal */}
             <Dialog open={isFavorecidoModalOpen} onOpenChange={(open) => { setIsFavorecidoModalOpen(open); if (!open) resetFavorecidoForm(); }}>
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -426,6 +426,7 @@ interface EntryFormProps {
     onSubmit: (e: React.FormEvent) => void;
     onCancel: () => void;
     unidadeAtual: { id: string; name: string; code: string } | null;
+    onOpenFavorecidoModal: () => void;
 }
 
 function EntryForm(props: EntryFormProps) {
@@ -441,6 +442,7 @@ function EntryForm(props: EntryFormProps) {
         onSubmit,
         onCancel,
         unidadeAtual,
+        onOpenFavorecidoModal,
     } = props;
 
     return (
@@ -452,7 +454,11 @@ function EntryForm(props: EntryFormProps) {
                     <div>
                         <span className="font-medium text-foreground">Lançando na Filial: </span>
                         <span className="font-semibold text-primary">{unidadeAtual.name}</span>
-                        <span className="text-muted-foreground ml-2">({unidadeAtual.code})</span>
+                        <span className="text-muted-foreground ml-2">
+                            (
+                            {unidadeAtual.code}
+                            )
+                        </span>
                     </div>
                 </div>
             )}
@@ -542,11 +548,11 @@ function EntryForm(props: EntryFormProps) {
                         </select>
                         <button
                             type="button"
-                            onClick={() => setIsFavorecidoModalOpen(true)}
-                            className="btn-secondary px-3"
+                            onClick={onOpenFavorecidoModal}
+                            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium text-primary border-2 border-primary bg-primary/10 hover:bg-primary/20 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors shrink-0"
                             title="Adicionar novo favorecido"
                         >
-                            <Plus className="w-4 h-4" />
+                            <Plus className="w-5 h-5" />
                         </button>
                     </div>
                 </div>

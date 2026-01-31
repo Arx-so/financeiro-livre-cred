@@ -3,7 +3,7 @@ export function Vendas() {
         <div className="space-y-6">
             <h2 className="text-2xl font-bold text-foreground">Vendas</h2>
             <p className="text-muted-foreground">
-                Gerencie vendas, produtos e tabelas de preços.
+                Gerencie vendas e produtos.
             </p>
 
             <h3 className="text-lg font-semibold text-foreground">Criar Nova Venda</h3>
@@ -109,28 +109,6 @@ export function Vendas() {
                     <strong>Status:</strong>
                     {' '}
                     Ativo ou Inativo
-                </li>
-            </ul>
-
-            <h3 className="text-lg font-semibold text-foreground mt-6">Tabelas de Preços</h3>
-            <p className="text-sm text-muted-foreground mb-3">
-                Defina os preços de venda dos produtos para cada filial:
-            </p>
-            <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                <li>
-                    <strong>Por Filial:</strong>
-                    {' '}
-                    Cada filial pode ter preços diferentes para os mesmos produtos
-                </li>
-                <li>
-                    <strong>Edição Inline:</strong>
-                    {' '}
-                    Clique no botão de editar para alterar o preço diretamente na tabela
-                </li>
-                <li>
-                    <strong>Filtro por Produto:</strong>
-                    {' '}
-                    Busque produtos pelo nome
                 </li>
             </ul>
 

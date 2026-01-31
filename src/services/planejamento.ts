@@ -35,6 +35,42 @@ export interface SalesTargetSummary {
 // BUDGET ITEMS
 // ============================================
 
+/**
+ * Aggrega lançamentos financeiros por categoria e mês para calcular o "realizado"
+ * do orçamento (soma dos valores dos lançamentos com a mesma categoria no período).
+ */
+async function getBudgetActualsFromEntries(
+    branchId: string,
+    year: number
+): Promise<Map<string, Map<number, number>>> {
+    const startDate = `${year}-01-01`;
+    const endDate = `${year}-12-31`;
+    const { data: entries, error } = await supabase
+        .from('financial_entries')
+        .select('category_id, due_date, value')
+        .eq('branch_id', branchId)
+        .gte('due_date', startDate)
+        .lte('due_date', endDate)
+        .neq('status', 'cancelado');
+
+    if (error) throw error;
+
+    const byCategoryMonth = new Map<string, Map<number, number>>();
+    for (const entry of entries || []) {
+        const catId = entry.category_id ?? 'uncategorized';
+        const d = new Date(entry.due_date);
+        if (d.getFullYear() !== year) continue;
+        const month = d.getMonth() + 1;
+        if (!byCategoryMonth.has(catId)) {
+            byCategoryMonth.set(catId, new Map());
+        }
+        const monthMap = byCategoryMonth.get(catId)!;
+        const prev = monthMap.get(month) ?? 0;
+        monthMap.set(month, prev + Number(entry.value));
+    }
+    return byCategoryMonth;
+}
+
 export async function getBudgetItems(
     branchId: string,
     year: number
@@ -68,9 +104,12 @@ export async function getBudgetByCategory(
   actualAnnual: number;
   months: { month: number; budgeted: number; actual: number }[];
 }[]> {
-    const items = await getBudgetItems(branchId, year);
+    const [items, actualsMap] = await Promise.all([
+        getBudgetItems(branchId, year),
+        getBudgetActualsFromEntries(branchId, year),
+    ]);
 
-    // Group by category
+    // Group by category; "actual" vem dos lançamentos (financial_entries) da mesma categoria/mês
     const grouped = new Map<string, {
     categoryId: string;
     categoryName: string;
@@ -93,9 +132,10 @@ export async function getBudgetByCategory(
         }
 
         const category = grouped.get(catId)!;
+        const actual = actualsMap.get(catId)?.get(item.month) ?? 0;
         category.months.set(item.month, {
             budgeted: Number(item.budgeted_amount),
-            actual: Number(item.actual_amount),
+            actual,
         });
     }
 
@@ -201,34 +241,38 @@ export async function getBudgetSummary(
 ): Promise<BudgetSummary> {
     let query = supabase
         .from('budget_items')
-        .select('budgeted_amount, actual_amount')
+        .select('category_id, month, budgeted_amount')
         .eq('branch_id', branchId)
         .eq('year', year);
 
     if (versionId) {
-        query = query.eq('version_id', versionId);
+        query = query.eq('budget_version_id', versionId);
     }
 
-    const { data, error } = await query;
+    const { data: items, error } = await query;
 
     if (error) {
         throw error;
     }
 
-    const summary = (data || []).reduce(
-        (acc, item) => {
-            acc.totalBudgeted += Number(item.budgeted_amount);
-            acc.totalActual += Number(item.actual_amount);
-            return acc;
-        },
-        { totalBudgeted: 0, totalActual: 0, executionRate: 0 }
-    );
+    const actualsMap = await getBudgetActualsFromEntries(branchId, year);
 
-    summary.executionRate = summary.totalBudgeted > 0
-        ? (summary.totalActual / summary.totalBudgeted) * 100
-        : 0;
+    let totalBudgeted = 0;
+    let totalActual = 0;
+    for (const item of items || []) {
+        totalBudgeted += Number(item.budgeted_amount);
+        const catId = item.category_id ?? 'uncategorized';
+        const month = item.month;
+        totalActual += actualsMap.get(catId)?.get(month) ?? 0;
+    }
 
-    return summary;
+    const executionRate = totalBudgeted > 0 ? (totalActual / totalBudgeted) * 100 : 0;
+
+    return {
+        totalBudgeted,
+        totalActual,
+        executionRate,
+    };
 }
 
 // ============================================
