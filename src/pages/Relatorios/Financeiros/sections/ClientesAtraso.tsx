@@ -71,9 +71,6 @@ export function ClientesAtraso() {
         toast.success('Relatório Excel gerado!');
     };
 
-    if (isLoading) return <LoadingState />;
-    if (!data || data.length === 0) return <EmptyState icon={Clock} message="Nenhum cliente em atraso" />;
-
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -95,6 +92,12 @@ export function ClientesAtraso() {
                 </div>
             </div>
 
+            {isLoading && <LoadingState />}
+            {!isLoading && (!data || data.length === 0) && (
+                <EmptyState icon={Clock} message="Nenhum cliente em atraso" />
+            )}
+            {!isLoading && data && data.length > 0 && (
+            <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <StatCard label="Total em Atraso" value={formatCurrency(totalAtraso)} icon={Clock} variant="expense" />
                 <StatCard label="Clientes em Atraso" value={clientesAtraso.toString()} icon={Clock} variant="expense" />
@@ -133,6 +136,8 @@ export function ClientesAtraso() {
                     </table>
                 </div>
             </div>
+            </>
+            )}
         </div>
     );
 }

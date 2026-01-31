@@ -68,9 +68,6 @@ export function BaseAtivaClientes() {
         toast.success('Relatório Excel gerado!');
     };
 
-    if (isLoading) return <LoadingState />;
-    if (!data) return <EmptyState icon={Users} message="Sem dados disponíveis" />;
-
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -92,6 +89,12 @@ export function BaseAtivaClientes() {
                 </div>
             </div>
 
+            {isLoading && <LoadingState />}
+            {!isLoading && !data && (
+                <EmptyState icon={Users} message="Sem dados disponíveis" />
+            )}
+            {!isLoading && data && (
+            <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 <StatCard label="Total" value={data.total.toString()} icon={Users} variant="income" />
                 <StatCard label="Ativos" value={data.ativos.toString()} icon={Users} variant="income" />
@@ -99,6 +102,8 @@ export function BaseAtivaClientes() {
                 <StatCard label="Novos" value={data.novos.toString()} icon={Users} variant="income" />
                 <StatCard label="Crescimento" value={`${data.crescimento.toFixed(2)}%`} icon={Users} variant={data.crescimento >= 0 ? 'income' : 'expense'} />
             </div>
+            </>
+            )}
         </div>
     );
 }

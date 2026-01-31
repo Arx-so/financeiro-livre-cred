@@ -79,16 +79,12 @@ export function InadimplenciaAtrasos() {
         toast.success('Relatório Excel gerado!');
     };
 
-    if (isLoading) return <LoadingState />;
-    if (!data || data.length === 0) return <EmptyState icon={TrendingDown} message="Sem inadimplência registrada" />;
-
-    // Agrupar por faixa de dias
-    const faixas = {
+    const faixas = data ? {
         '1-30': data.filter(d => d.diasAtraso >= 1 && d.diasAtraso <= 30).reduce((sum, d) => sum + d.valor, 0),
         '31-60': data.filter(d => d.diasAtraso >= 31 && d.diasAtraso <= 60).reduce((sum, d) => sum + d.valor, 0),
         '61-90': data.filter(d => d.diasAtraso >= 61 && d.diasAtraso <= 90).reduce((sum, d) => sum + d.valor, 0),
         '90+': data.filter(d => d.diasAtraso > 90).reduce((sum, d) => sum + d.valor, 0),
-    };
+    } : { '1-30': 0, '31-60': 0, '61-90': 0, '90+': 0 };
 
     const chartData = [
         { faixa: '1-30 dias', valor: faixas['1-30'] },
@@ -118,6 +114,12 @@ export function InadimplenciaAtrasos() {
                 </div>
             </div>
 
+            {isLoading && <LoadingState />}
+            {!isLoading && (!data || data.length === 0) && (
+                <EmptyState icon={TrendingDown} message="Sem inadimplência registrada" />
+            )}
+            {!isLoading && data && data.length > 0 && (
+            <>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <StatCard label="Total Inadimplência" value={formatCurrency(totalInadimplencia)} icon={TrendingDown} variant="expense" />
                 <StatCard label="1-30 dias" value={formatCurrency(faixas['1-30'])} icon={TrendingDown} variant="expense" />
@@ -173,6 +175,8 @@ export function InadimplenciaAtrasos() {
                     </table>
                 </div>
             </div>
+            </>
+            )}
         </div>
     );
 }

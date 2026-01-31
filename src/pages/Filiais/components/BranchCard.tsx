@@ -28,7 +28,7 @@ export function BranchCard({
                         <h3 className="font-semibold text-foreground">{branch.name}</h3>
                         <div className="flex items-center gap-2">
                             <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-mono">
-                                {branch.code}
+                                {branch.code || '-'}
                             </span>
                             {branch.is_active ? (
                                 <span className="text-xs px-2 py-0.5 rounded-full bg-income-muted text-income">Ativa</span>
@@ -41,18 +41,14 @@ export function BranchCard({
             </div>
 
             <div className="space-y-2 text-sm">
-                {branch.phone && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <Phone className="w-4 h-4" />
-                        <span>{branch.phone}</span>
-                    </div>
-                )}
-                {branch.address && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <MapPin className="w-4 h-4" />
-                        <span className="truncate">{branch.address}</span>
-                    </div>
-                )}
+                <div className="flex items-center gap-2 text-muted-foreground">
+                    <Phone className="w-4 h-4 shrink-0" />
+                    <span>{branch.phone || '-'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                    <MapPin className="w-4 h-4 shrink-0" />
+                    <span className="truncate">{branch.address || '-'}</span>
+                </div>
             </div>
 
             <div className="flex gap-2 mt-4 pt-4 border-t border-border">

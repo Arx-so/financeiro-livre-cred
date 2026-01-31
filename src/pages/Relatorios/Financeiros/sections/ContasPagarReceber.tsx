@@ -89,14 +89,11 @@ export function ContasPagarReceber() {
         toast.success('Relatório Excel gerado!');
     };
 
-    if (isLoading) return <LoadingState />;
-    if (!data) return <EmptyState icon={FileText} message="Sem dados disponíveis" />;
-
-    const chartData = [
+    const chartData = data ? [
         { name: 'Pago', valor: data.pago },
         { name: 'Pendente', valor: data.pendente },
         { name: 'Atrasado', valor: data.atrasado },
-    ];
+    ] : [];
 
     return (
         <div className="space-y-6">
@@ -127,6 +124,12 @@ export function ContasPagarReceber() {
                 </div>
             </div>
 
+            {isLoading && <LoadingState />}
+            {!isLoading && !data && (
+                <EmptyState icon={FileText} message="Sem dados disponíveis" />
+            )}
+            {!isLoading && data && (
+            <>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <StatCard label="Total" value={formatCurrency(data.total)} icon={FileText} variant="income" />
                 <StatCard label="Pago" value={formatCurrency(data.pago)} icon={FileText} variant="income" />
@@ -182,6 +185,8 @@ export function ContasPagarReceber() {
                     </table>
                 </div>
             </div>
+            </>
+            )}
         </div>
     );
 }

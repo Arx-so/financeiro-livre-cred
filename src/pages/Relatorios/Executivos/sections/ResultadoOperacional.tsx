@@ -64,9 +64,6 @@ export function ResultadoOperacional() {
         toast.success('Relatório Excel gerado!');
     };
 
-    if (isLoading) return <LoadingState />;
-    if (!data) return <EmptyState icon={FileText} message="Sem dados para o período" />;
-
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -101,6 +98,12 @@ export function ResultadoOperacional() {
                 </div>
             </div>
 
+            {isLoading && <LoadingState />}
+            {!isLoading && !data && (
+                <EmptyState icon={FileText} message="Sem dados para o período" />
+            )}
+            {!isLoading && data && (
+            <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <StatCard label="Receita Bruta" value={formatCurrency(data.receita_bruta)} icon={FileText} variant="income" />
                 <StatCard label="Receita Líquida" value={formatCurrency(data.receita_liquida)} icon={FileText} variant="income" />
@@ -125,6 +128,8 @@ export function ResultadoOperacional() {
                     ))}
                 </div>
             </div>
+            </>
+            )}
         </div>
     );
 }

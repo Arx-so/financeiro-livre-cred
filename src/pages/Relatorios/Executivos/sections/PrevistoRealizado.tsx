@@ -83,9 +83,6 @@ export function PrevistoRealizado() {
         toast.success('Relatório Excel gerado!');
     };
 
-    if (isLoading) return <LoadingState />;
-    if (!data || data.length === 0) return <EmptyState icon={Target} message="Sem dados para o período" />;
-
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -113,6 +110,12 @@ export function PrevistoRealizado() {
                 </div>
             </div>
 
+            {isLoading && <LoadingState />}
+            {!isLoading && (!data || data.length === 0) && (
+                <EmptyState icon={Target} message="Sem dados para o período" />
+            )}
+            {!isLoading && data && data.length > 0 && (
+            <>
             <div className="card-financial p-6">
                 <h3 className="font-semibold text-foreground mb-4">Comparativo Previsto × Realizado</h3>
                 <div className="h-[400px]">
@@ -161,6 +164,8 @@ export function PrevistoRealizado() {
                     </table>
                 </div>
             </div>
+            </>
+            )}
         </div>
     );
 }

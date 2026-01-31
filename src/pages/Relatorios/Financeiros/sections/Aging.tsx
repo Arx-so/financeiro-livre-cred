@@ -71,9 +71,6 @@ export function Aging() {
         toast.success('Relatório Excel gerado!');
     };
 
-    if (isLoading) return <LoadingState />;
-    if (!data || data.length === 0) return <EmptyState icon={Calendar} message="Sem valores pendentes" />;
-
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -103,6 +100,12 @@ export function Aging() {
                 </div>
             </div>
 
+            {isLoading && <LoadingState />}
+            {!isLoading && (!data || data.length === 0) && (
+                <EmptyState icon={Calendar} message="Sem valores pendentes" />
+            )}
+            {!isLoading && data && data.length > 0 && (
+            <>
             <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                 <StatCard label={`Total ${tipo === 'receita' ? 'a Receber' : 'a Pagar'}`} value={formatCurrency(total)} icon={Calendar} variant={tipo === 'receita' ? 'income' : 'expense'} />
             </div>
@@ -145,6 +148,8 @@ export function Aging() {
                     </table>
                 </div>
             </div>
+            </>
+            )}
         </div>
     );
 }

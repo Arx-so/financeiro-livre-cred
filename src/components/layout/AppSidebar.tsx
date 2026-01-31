@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard,
@@ -34,13 +35,18 @@ import {
     SidebarFooter,
     SidebarGroup,
     SidebarGroupContent,
-    SidebarGroupLabel,
     SidebarHeader,
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
     SidebarRail,
 } from '@/components/ui/sidebar';
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from '@/components/ui/accordion';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -237,6 +243,16 @@ export function AppSidebar() {
     const location = useLocation();
     const navigate = useNavigate();
 
+    // Abre o accordion da seção que contém a rota atual; apenas um aberto por vez
+    const activeGroupLabel = navigationGroups.find((g) =>
+        g.items.some((i) => i.href === location.pathname),
+    )?.label;
+    const [openSection, setOpenSection] = useState<string | undefined>(activeGroupLabel);
+
+    useEffect(() => {
+        if (activeGroupLabel) setOpenSection(activeGroupLabel);
+    }, [location.pathname, activeGroupLabel]);
+
     const handleLogout = async () => {
         await logout();
         navigate('/login');
@@ -337,47 +353,63 @@ export function AppSidebar() {
                 </SidebarMenu>
             </SidebarHeader>
 
-            {/* Navigation */}
+            {/* Navigation - accordion: uma seção aberta por vez, sem scroll */}
             <SidebarContent>
-                {navigationGroups.map((group) => {
-                    const visibleItems = group.items.filter(canAccessItem);
-                    if (visibleItems.length === 0) return null;
+                <Accordion
+                    type="single"
+                    collapsible
+                    value={openSection ?? ''}
+                    onValueChange={(v) => setOpenSection(v || undefined)}
+                    className="flex flex-col gap-0 border-0"
+                >
+                    {navigationGroups.map((group) => {
+                        const visibleItems = group.items.filter(canAccessItem);
+                        if (visibleItems.length === 0) return null;
 
-                    return (
-                        <SidebarGroup key={group.label}>
-                            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
-                            <SidebarGroupContent>
-                                <SidebarMenu>
-                                    {visibleItems.map((item) => {
-                                        const isActive = location.pathname === item.href;
-                                        return (
-                                            <SidebarMenuItem key={item.name}>
-                                                <SidebarMenuButton
-                                                    asChild
-                                                    isActive={isActive}
-                                                    tooltip={item.name}
-                                                >
-                                                    <Link to={item.href}>
-                                                        <item.icon />
-                                                        <span>{item.name}</span>
-                                                    </Link>
-                                                </SidebarMenuButton>
-                                            </SidebarMenuItem>
-                                        );
-                                    })}
-                                </SidebarMenu>
-                            </SidebarGroupContent>
-                        </SidebarGroup>
-                    );
-                })}
+                        return (
+                            <AccordionItem
+                                key={group.label}
+                                value={group.label}
+                                className="border-b-0 border-sidebar-border/50 last:border-0"
+                            >
+                                <AccordionTrigger className="flex h-8 shrink-0 items-center rounded-md px-2 py-0 text-xs font-medium text-sidebar-foreground/70 hover:no-underline hover:bg-sidebar-accent hover:text-sidebar-accent-foreground [&>svg]:size-4 group-data-[collapsible=icon]:hidden">
+                                    <span className="flex-1 text-left">{group.label}</span>
+                                </AccordionTrigger>
+                                <AccordionContent className="overflow-hidden pb-1 pt-0">
+                                    <SidebarGroupContent>
+                                        <SidebarMenu>
+                                            {visibleItems.map((item) => {
+                                                const isActive = location.pathname === item.href;
+                                                return (
+                                                    <SidebarMenuItem key={item.name}>
+                                                        <SidebarMenuButton
+                                                            asChild
+                                                            isActive={isActive}
+                                                            tooltip={item.name}
+                                                        >
+                                                            <Link to={item.href} preventScrollReset>
+                                                                <item.icon />
+                                                                <span>{item.name}</span>
+                                                            </Link>
+                                                        </SidebarMenuButton>
+                                                    </SidebarMenuItem>
+                                                );
+                                            })}
+                                        </SidebarMenu>
+                                    </SidebarGroupContent>
+                                </AccordionContent>
+                            </AccordionItem>
+                        );
+                    })}
+                </Accordion>
 
                 {/* Help Link */}
-                <SidebarGroup className="mt-auto">
+                <SidebarGroup className="mt-auto border-t border-sidebar-border/50 pt-2">
                     <SidebarGroupContent>
                         <SidebarMenu>
                             <SidebarMenuItem>
                                 <SidebarMenuButton asChild tooltip="Ajuda">
-                                    <Link to="/docs">
+                                    <Link to="/docs" preventScrollReset>
                                         <HelpCircle />
                                         <span>Documentação</span>
                                     </Link>

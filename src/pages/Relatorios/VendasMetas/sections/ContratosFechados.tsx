@@ -85,9 +85,6 @@ export function ContratosFechados() {
         toast.success('Relatório Excel gerado!');
     };
 
-    if (isLoading) return <LoadingState />;
-    if (!data || data.length === 0) return <EmptyState icon={ShoppingCart} message="Sem dados para o período" />;
-
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -132,6 +129,12 @@ export function ContratosFechados() {
                 </div>
             </div>
 
+            {isLoading && <LoadingState />}
+            {!isLoading && (!data || data.length === 0) && (
+                <EmptyState icon={ShoppingCart} message="Sem dados para o período" />
+            )}
+            {!isLoading && data && data.length > 0 && (
+            <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <StatCard label="Total Contratos" value={totalQuantidade.toString()} icon={ShoppingCart} variant="income" />
                 <StatCard label="Valor Total" value={formatCurrency(totalValor)} icon={ShoppingCart} variant="income" />
@@ -175,6 +178,8 @@ export function ContratosFechados() {
                     </table>
                 </div>
             </div>
+            </>
+            )}
         </div>
     );
 }

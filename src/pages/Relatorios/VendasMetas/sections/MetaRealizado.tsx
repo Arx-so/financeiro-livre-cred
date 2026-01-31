@@ -86,14 +86,11 @@ export function MetaRealizado() {
         toast.success('Relatório Excel gerado!');
     };
 
-    if (isLoading) return <LoadingState />;
-    if (!data || data.length === 0) return <EmptyState icon={Target} message="Sem dados para o período" />;
-
-    const chartData = data.map(item => ({
+    const chartData = data?.map(item => ({
         name: item.vendedor || item.equipe || item.unidade || '',
         meta: item.meta,
         realizado: item.realizado,
-    }));
+    })) ?? [];
 
     return (
         <div className="space-y-6">
@@ -139,6 +136,12 @@ export function MetaRealizado() {
                 </div>
             </div>
 
+            {isLoading && <LoadingState />}
+            {!isLoading && (!data || data.length === 0) && (
+                <EmptyState icon={Target} message="Sem dados para o período" />
+            )}
+            {!isLoading && data && data.length > 0 && (
+            <>
             <div className="card-financial p-6">
                 <h3 className="font-semibold text-foreground mb-4">Meta × Realizado</h3>
                 <div className="h-[400px]">
@@ -187,6 +190,8 @@ export function MetaRealizado() {
                     </table>
                 </div>
             </div>
+            </>
+            )}
         </div>
     );
 }

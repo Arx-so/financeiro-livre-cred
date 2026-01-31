@@ -79,27 +79,22 @@ export function FavorecidoCard({ favorecido, onEdit, onDelete }: FavorecidoCardP
             </div>
 
             <div className="space-y-2 text-sm">
-                {favorecido.email && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <Mail className="w-4 h-4" />
-                        <span className="truncate">{favorecido.email}</span>
-                    </div>
-                )}
-                {favorecido.phone && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <Phone className="w-4 h-4" />
-                        <span>{favorecido.phone}</span>
-                    </div>
-                )}
-                {favorecido.city && (
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <MapPin className="w-4 h-4" />
-                        <span>
-                            {favorecido.city}
-                            {favorecido.state ? ` - ${favorecido.state}` : ''}
-                        </span>
-                    </div>
-                )}
+                <div className="flex items-center gap-2 text-muted-foreground">
+                    <Mail className="w-4 h-4 shrink-0" />
+                    <span className="truncate">{favorecido.email || '-'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                    <Phone className="w-4 h-4 shrink-0" />
+                    <span>{favorecido.phone || '-'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                    <MapPin className="w-4 h-4 shrink-0" />
+                    <span>
+                        {favorecido.city
+                            ? `${favorecido.city}${favorecido.state ? ` - ${favorecido.state}` : ''}`
+                            : '-'}
+                    </span>
+                </div>
             </div>
 
             <div className="flex gap-2 mt-4 pt-4 border-t border-border">

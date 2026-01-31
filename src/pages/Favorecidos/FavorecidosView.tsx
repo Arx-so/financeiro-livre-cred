@@ -9,7 +9,9 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
-import { PageHeader, EmptyState, LoadingState, SearchInput } from '@/components/shared';
+import {
+    PageHeader, EmptyState, LoadingState, SearchInput
+} from '@/components/shared';
 import { FavorecidoCard, FavorecidoForm } from './components';
 import type { useFavorecidosPage } from './useFavorecidosPage';
 import type { FavorecidoTipo } from '@/types/database';
@@ -86,7 +88,7 @@ export function FavorecidosView(props: FavorecidosViewProps) {
                         </select>
                         <Dialog open={isModalOpen} onOpenChange={(open) => { setIsModalOpen(open); if (!open) resetForm(); }}>
                             <DialogTrigger asChild>
-                                <button className="btn-primary">
+                                <button className="btn-primary min-w-40">
                                     <Plus className="w-4 h-4" />
                                     Novo Cadastro
                                 </button>

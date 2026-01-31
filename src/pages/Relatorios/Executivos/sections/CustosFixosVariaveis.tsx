@@ -90,9 +90,6 @@ export function CustosFixosVariaveis() {
         toast.success('Relatório Excel gerado!');
     };
 
-    if (isLoading) return <LoadingState />;
-    if (!data || data.length === 0) return <EmptyState icon={TrendingDown} message="Sem dados para o período" />;
-
     const chartData = [
         { name: 'Custos Fixos', valor: totalFixos },
         { name: 'Custos Variáveis', valor: totalVariaveis },
@@ -132,6 +129,12 @@ export function CustosFixosVariaveis() {
                 </div>
             </div>
 
+            {isLoading && <LoadingState />}
+            {!isLoading && (!data || data.length === 0) && (
+                <EmptyState icon={TrendingDown} message="Sem dados para o período" />
+            )}
+            {!isLoading && data && data.length > 0 && (
+            <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <StatCard label="Total Custos Fixos" value={formatCurrency(totalFixos)} icon={TrendingDown} variant="expense" />
                 <StatCard label="Total Custos Variáveis" value={formatCurrency(totalVariaveis)} icon={TrendingDown} variant="expense" />
@@ -181,6 +184,8 @@ export function CustosFixosVariaveis() {
                     </table>
                 </div>
             </div>
+            </>
+            )}
         </div>
     );
 }

@@ -85,19 +85,11 @@ export function ReceitaProdutoConvenio() {
         toast.success('Relatório Excel gerado!');
     };
 
-    if (isLoading) return <LoadingState />;
-    if (!data || data.length === 0) return <EmptyState icon={DollarSign} message="Sem dados para o período" />;
-
-    // Agrupar por produto para o gráfico
     const produtoData = new Map<string, number>();
-    for (const item of data) {
+    if (data) for (const item of data) {
         produtoData.set(item.produto, (produtoData.get(item.produto) || 0) + item.receita);
     }
-
-    const chartData = Array.from(produtoData.entries()).map(([produto, receita]) => ({
-        produto,
-        receita,
-    })).sort((a, b) => b.receita - a.receita).slice(0, 10);
+    const chartData = data ? Array.from(produtoData.entries()).map(([produto, receita]) => ({ produto, receita })).sort((a, b) => b.receita - a.receita).slice(0, 10) : [];
 
     return (
         <div className="space-y-6">
@@ -133,6 +125,12 @@ export function ReceitaProdutoConvenio() {
                 </div>
             </div>
 
+            {isLoading && <LoadingState />}
+            {!isLoading && (!data || data.length === 0) && (
+                <EmptyState icon={DollarSign} message="Sem dados para o período" />
+            )}
+            {!isLoading && data && data.length > 0 && (
+            <>
             <div className="card-financial p-6">
                 <h3 className="font-semibold text-foreground mb-4">Receita por Produto</h3>
                 <div className="h-[300px]">
@@ -173,6 +171,8 @@ export function ReceitaProdutoConvenio() {
                     </table>
                 </div>
             </div>
+            </>
+            )}
         </div>
     );
 }

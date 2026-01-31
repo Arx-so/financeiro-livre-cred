@@ -89,9 +89,6 @@ export function TicketMedio() {
         toast.success('Relatório Excel gerado!');
     };
 
-    if (isLoading) return <LoadingState />;
-    if (!data || data.length === 0) return <EmptyState icon={Target} message="Sem dados para o período" />;
-
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -126,6 +123,12 @@ export function TicketMedio() {
                 </div>
             </div>
 
+            {isLoading && <LoadingState />}
+            {!isLoading && (!data || data.length === 0) && (
+                <EmptyState icon={Target} message="Sem dados para o período" />
+            )}
+            {!isLoading && data && data.length > 0 && (
+            <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <StatCard label="Ticket Médio Geral" value={formatCurrency(ticketMedioGeral)} icon={Target} variant="income" />
                 <StatCard label="Total de Vendas" value={data.reduce((sum, d) => sum + d.quantidadeVendas, 0).toString()} icon={Target} variant="income" />
@@ -146,6 +149,8 @@ export function TicketMedio() {
                     </ResponsiveContainer>
                 </div>
             </div>
+            </>
+            )}
         </div>
     );
 }

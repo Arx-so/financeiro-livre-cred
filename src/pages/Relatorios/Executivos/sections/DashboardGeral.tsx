@@ -83,9 +83,6 @@ export function DashboardGeral() {
         toast.success('Relatório Excel gerado!');
     };
 
-    if (isLoading) return <LoadingState />;
-    if (!data) return <EmptyState icon={BarChart3} message="Sem dados para o período" />;
-
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -120,6 +117,12 @@ export function DashboardGeral() {
                 </div>
             </div>
 
+            {isLoading && <LoadingState />}
+            {!isLoading && !data && (
+                <EmptyState icon={BarChart3} message="Sem dados para o período" />
+            )}
+            {!isLoading && data && (
+            <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <StatCard label="Receita Bruta" value={formatCurrency(data.receitaBruta)} icon={BarChart3} variant="income" />
                 <StatCard label="Receita Líquida" value={formatCurrency(data.receitaLiquida)} icon={BarChart3} variant="income" />
@@ -131,6 +134,8 @@ export function DashboardGeral() {
                 <StatCard label="Total de Vendas" value={formatCurrency(data.totalVendas)} icon={BarChart3} variant="income" />
                 <StatCard label="Total de Contratos" value={data.totalContratos.toString()} icon={BarChart3} variant="income" />
             </div>
+            </>
+            )}
         </div>
     );
 }

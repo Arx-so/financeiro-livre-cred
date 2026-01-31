@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
     TrendingUp,
     TrendingDown,
@@ -9,7 +10,7 @@ import {
     Calendar,
 } from 'lucide-react';
 import {
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import { Link } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -20,6 +21,7 @@ import {
     useRecentTransactions,
     useUpcomingPayments,
 } from '@/hooks/useFinanceiro';
+import { getCategoryBreakdown } from '@/services/relatorios';
 import {
     StatCard, LoadingState, EmptyState
 } from '@/components/shared';
@@ -51,26 +53,25 @@ export default function Dashboard() {
     const { data: recentTransactions, isLoading: recentLoading } = useRecentTransactions(5, undefined, selectedYear);
     const { data: upcomingPayments, isLoading: upcomingLoading } = useUpcomingPayments(15);
 
+    // Receitas por categoria (todas do período, não só as 5 transações recentes)
+    const { data: categoryBreakdownReceitas, isLoading: categoryLoading } = useQuery({
+        queryKey: ['dashboard-receitas-por-categoria', unidadeAtual?.id, yearStartDate, yearEndDate],
+        queryFn: () => getCategoryBreakdown(unidadeAtual!.id, 'receita', yearStartDate, yearEndDate),
+        enabled: !!unidadeAtual?.id,
+    });
+
     // Prepare chart data
     const chartData = useMemo(() => monthlyData || [], [monthlyData]);
 
-    // Calculate category breakdown from recent transactions
-    const categoryData = useMemo(() => (recentTransactions || [])
-        .filter((t) => t.type === 'receita')
-        .reduce((acc, t) => {
-            const catName = t.category?.name || 'Outros';
-            const existing = acc.find((c) => c.name === catName);
-            if (existing) {
-                existing.value += Number(t.value);
-            } else {
-                acc.push({
-                    name: catName,
-                    value: Number(t.value),
-                    color: t.category?.color || 'hsl(var(--muted-foreground))',
-                });
-            }
-            return acc;
-        }, [] as { name: string; value: number; color: string }[]), [recentTransactions]);
+    // Dados do gráfico de pizza: receitas por categoria no período
+    const categoryData = useMemo(
+        () => (categoryBreakdownReceitas || []).map((c) => ({
+            name: c.name,
+            value: c.value,
+            color: c.color || 'hsl(var(--muted-foreground))',
+        })),
+        [categoryBreakdownReceitas],
+    );
 
     const isLoading = summaryLoading || monthlyLoading;
 
@@ -182,7 +183,9 @@ export default function Dashboard() {
                     <div className="card-financial p-6">
                         <h3 className="font-semibold text-foreground mb-4">Receitas por Categoria</h3>
                         <div className="h-[300px]">
-                            {categoryData.length === 0 ? (
+                            {categoryLoading ? (
+                                <LoadingState />
+                            ) : categoryData.length === 0 ? (
                                 <EmptyState icon={TrendingUp} message="Sem dados" />
                             ) : (
                                 <ResponsiveContainer width="100%" height="100%">
@@ -190,17 +193,24 @@ export default function Dashboard() {
                                         <Pie
                                             data={categoryData}
                                             cx="50%"
-                                            cy="50%"
+                                            cy="45%"
                                             innerRadius={60}
                                             outerRadius={80}
                                             paddingAngle={5}
                                             dataKey="value"
+                                            nameKey="name"
                                         >
                                             {categoryData.map((entry, index) => (
                                                 <Cell key={`cell-${index}`} fill={entry.color} />
                                             ))}
                                         </Pie>
                                         <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                                        <Legend
+                                            verticalAlign="bottom"
+                                            formatter={(value, entry: { payload?: { value?: number } }) =>
+                                                `${value} (${formatCurrency(entry?.payload?.value ?? 0)})`
+                                            }
+                                        />
                                     </PieChart>
                                 </ResponsiveContainer>
                             )}

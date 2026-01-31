@@ -94,14 +94,11 @@ export function ContratosAprovadosReprovados() {
         toast.success('Relatório Excel gerado!');
     };
 
-    if (isLoading) return <LoadingState />;
-    if (!data) return <EmptyState icon={FileCheck} message="Sem dados para o período" />;
-
-    const pieData = [
+    const pieData = data ? [
         { name: 'Aprovados', value: data.aprovados },
         { name: 'Reprovados', value: data.reprovados },
         { name: 'Pendentes', value: data.pendentes },
-    ];
+    ] : [];
 
     return (
         <div className="space-y-6">
@@ -137,6 +134,12 @@ export function ContratosAprovadosReprovados() {
                 </div>
             </div>
 
+            {isLoading && <LoadingState />}
+            {!isLoading && !data && (
+                <EmptyState icon={FileCheck} message="Sem dados para o período" />
+            )}
+            {!isLoading && data && (
+            <>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <StatCard label="Aprovados" value={data.aprovados.toString()} icon={FileCheck} variant="income" />
                 <StatCard label="Reprovados" value={data.reprovados.toString()} icon={FileCheck} variant="expense" />
@@ -203,6 +206,8 @@ export function ContratosAprovadosReprovados() {
                     </div>
                 </div>
             </div>
+            </>
+            )}
         </div>
     );
 }

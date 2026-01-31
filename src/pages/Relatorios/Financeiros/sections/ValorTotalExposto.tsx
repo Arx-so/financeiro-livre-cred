@@ -71,9 +71,6 @@ export function ValorTotalExposto() {
         toast.success('Relatório Excel gerado!');
     };
 
-    if (isLoading) return <LoadingState />;
-    if (!data) return <EmptyState icon={DollarSign} message="Sem dados disponíveis" />;
-
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -95,6 +92,12 @@ export function ValorTotalExposto() {
                 </div>
             </div>
 
+            {isLoading && <LoadingState />}
+            {!isLoading && !data && (
+                <EmptyState icon={DollarSign} message="Sem dados disponíveis" />
+            )}
+            {!isLoading && data && (
+            <>
             <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                 <StatCard label="Valor Total Exposto" value={formatCurrency(data.total)} icon={DollarSign} variant="expense" />
             </div>
@@ -135,6 +138,8 @@ export function ValorTotalExposto() {
                     </table>
                 </div>
             </div>
+            </>
+            )}
         </div>
     );
 }
