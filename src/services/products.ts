@@ -1,34 +1,57 @@
 import { supabase } from '@/lib/supabase';
-import type { Product, ProductInsert, ProductUpdate } from '@/types/database';
+import type { Product, ProductInsert, ProductUpdate, ProductCategory } from '@/types/database';
 
 export interface ProductWithCategory extends Product {
-    category?: { id: string; name: string; color: string } | null;
+    product_category?: { id: string; name: string; code: string | null } | null;
 }
 
 export interface ProductFilters {
     search?: string;
-    categoryId?: string;
+    productCategoryId?: string;
+    categoryId?: string; // alias para productCategoryId (compatibilidade)
     isActive?: boolean;
+}
+
+/**
+ * Busca todas as categorias de produto
+ */
+export async function getProductCategories(): Promise<ProductCategory[]> {
+    const { data, error } = await supabase
+        .from('product_categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+
+    if (error) {
+        console.error('Error fetching product categories:', error);
+        throw error;
+    }
+
+    return data || [];
 }
 
 /**
  * Busca todos os produtos com filtros opcionais
  */
 export async function getProducts(filters: ProductFilters = {}): Promise<ProductWithCategory[]> {
+    const categoryId = filters.productCategoryId ?? filters.categoryId;
+
     let query = supabase
         .from('products')
         .select(`
             *,
-            category:categories(id, name, color)
+            product_category:product_categories!product_category_id(id, name, code)
         `)
         .order('name', { ascending: true });
 
     if (filters.search) {
-        query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
+        query = query.or(
+            `name.ilike.%${filters.search}%,description.ilike.%${filters.search}%,code.ilike.%${filters.search}%`
+        );
     }
 
-    if (filters.categoryId) {
-        query = query.eq('category_id', filters.categoryId);
+    if (categoryId) {
+        query = query.eq('product_category_id', categoryId);
     }
 
     if (filters.isActive !== undefined) {
@@ -53,7 +76,7 @@ export async function getProduct(id: string): Promise<ProductWithCategory | null
         .from('products')
         .select(`
             *,
-            category:categories(id, name, color)
+            product_category:product_categories!product_category_id(id, name, code)
         `)
         .eq('id', id)
         .single();
@@ -107,10 +130,7 @@ export async function updateProduct(id: string, product: ProductUpdate): Promise
  * Deleta um produto
  */
 export async function deleteProduct(id: string): Promise<void> {
-    const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', id);
+    const { error } = await supabase.from('products').delete().eq('id', id);
 
     if (error) {
         console.error('Error deleting product:', error);
@@ -133,9 +153,7 @@ export async function getProductsSummary(): Promise<{
     active: number;
     inactive: number;
 }> {
-    const { data, error } = await supabase
-        .from('products')
-        .select('is_active');
+    const { data, error } = await supabase.from('products').select('is_active');
 
     if (error) {
         console.error('Error fetching products summary:', error);

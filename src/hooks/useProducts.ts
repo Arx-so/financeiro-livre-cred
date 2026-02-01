@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     getProducts,
     getProduct,
+    getProductCategories,
     createProduct,
     updateProduct,
     deleteProduct,
@@ -12,6 +13,17 @@ import {
 import type { ProductInsert, ProductUpdate } from '@/types/database';
 
 const QUERY_KEY = 'products';
+const PRODUCT_CATEGORIES_KEY = 'product_categories';
+
+/**
+ * Hook para buscar categorias de produto
+ */
+export function useProductCategories() {
+    return useQuery({
+        queryKey: [PRODUCT_CATEGORIES_KEY],
+        queryFn: getProductCategories,
+    });
+}
 
 /**
  * Hook para buscar todos os produtos

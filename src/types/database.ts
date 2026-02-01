@@ -12,6 +12,21 @@ export type PaymentType = 'pix' | 'ted' | 'boleto' | 'cartao' | 'dinheiro';
 export type AgendaEventType = 'lembrete' | 'aniversario' | 'festividade' | 'feriado';
 export type AgendaRecurrenceType = 'yearly' | 'monthly' | 'weekly' | 'none';
 
+/** Outras taxas do produto: cadastro, operação, seguro */
+export interface ProductOtherFees {
+    cadastro?: number;
+    operacao?: number;
+    seguro?: number;
+    [key: string]: number | undefined;
+}
+
+/** Comissão recebida da instituição: por produto, prazo, valor liberado */
+export interface ProductCommissionReceivedBy {
+    by_product?: number;
+    by_term?: number;
+    by_value?: number;
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -427,8 +442,8 @@ export interface Database {
           status: ContractStatus;
           notes: string | null;
           created_by: string | null;
-          // New extended fields
           category_id: string | null;
+          product_id: string | null;
           recurrence_type: ContractRecurrenceType;
           seller_id: string | null;
           approved_by: string | null;
@@ -450,8 +465,8 @@ export interface Database {
           status?: ContractStatus;
           notes?: string | null;
           created_by?: string | null;
-          // New extended fields
           category_id?: string | null;
+          product_id?: string | null;
           recurrence_type?: ContractRecurrenceType;
           seller_id?: string | null;
           approved_by?: string | null;
@@ -471,8 +486,8 @@ export interface Database {
           end_date?: string | null;
           status?: ContractStatus;
           notes?: string | null;
-          // New extended fields
           category_id?: string | null;
+          product_id?: string | null;
           recurrence_type?: ContractRecurrenceType;
           seller_id?: string | null;
           approved_by?: string | null;
@@ -731,16 +746,11 @@ export interface Database {
           is_read?: boolean;
         };
       };
-      products: {
+      product_categories: {
         Row: {
           id: string;
           name: string;
-          description: string | null;
-          category_id: string | null;
-          bank_value: number;
-          bank_percentage: number;
-          company_value: number;
-          company_percentage: number;
+          code: string | null;
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -748,25 +758,129 @@ export interface Database {
         Insert: {
           id?: string;
           name: string;
-          description?: string | null;
-          category_id?: string | null;
-          bank_value?: number;
-          bank_percentage?: number;
-          company_value?: number;
-          company_percentage?: number;
+          code?: string | null;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           name?: string;
+          code?: string | null;
+          is_active?: boolean;
+          updated_at?: string;
+        };
+      };
+      products: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          code: string | null;
+          product_category_id: string | null;
+          commercial_description: string | null;
+          bank_value: number;
+          bank_percentage: number;
+          company_value: number;
+          company_percentage: number;
+          is_active: boolean;
+          eligible_client_type: string | null;
+          target_audience: string[] | null;
+          value_min: number | null;
+          value_max: number | null;
+          term_months_min: number | null;
+          term_months_max: number | null;
+          interest_rate_min: number | null;
+          interest_rate_max: number | null;
+          billing_type: string[] | null;
+          iof_applicable: boolean;
+          other_fees: ProductOtherFees | null;
+          specific_rules: Record<string, unknown> | null;
+          commission_type: 'fixa' | 'percentual' | null;
+          commission_pct: number | null;
+          commission_min: number | null;
+          commission_max: number | null;
+          commission_received_by: ProductCommissionReceivedBy | null;
+          commission_payment_day: number | null;
+          required_docs: string[] | null;
+          required_docs_other: string | null;
+          convention_bank: string | null;
+          operation_channel: string | null;
+          requires_internal_approval: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
           description?: string | null;
-          category_id?: string | null;
+          code?: string | null;
+          product_category_id?: string | null;
+          commercial_description?: string | null;
           bank_value?: number;
           bank_percentage?: number;
           company_value?: number;
           company_percentage?: number;
           is_active?: boolean;
+          eligible_client_type?: string | null;
+          target_audience?: string[] | null;
+          value_min?: number | null;
+          value_max?: number | null;
+          term_months_min?: number | null;
+          term_months_max?: number | null;
+          interest_rate_min?: number | null;
+          interest_rate_max?: number | null;
+          billing_type?: string[] | null;
+          iof_applicable?: boolean;
+          other_fees?: ProductOtherFees | null;
+          specific_rules?: Record<string, unknown> | null;
+          commission_type?: 'fixa' | 'percentual' | null;
+          commission_pct?: number | null;
+          commission_min?: number | null;
+          commission_max?: number | null;
+          commission_received_by?: ProductCommissionReceivedBy | null;
+          commission_payment_day?: number | null;
+          required_docs?: string[] | null;
+          required_docs_other?: string | null;
+          convention_bank?: string | null;
+          operation_channel?: string | null;
+          requires_internal_approval?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          name?: string;
+          description?: string | null;
+          code?: string | null;
+          product_category_id?: string | null;
+          commercial_description?: string | null;
+          bank_value?: number;
+          bank_percentage?: number;
+          company_value?: number;
+          company_percentage?: number;
+          is_active?: boolean;
+          eligible_client_type?: string | null;
+          target_audience?: string[] | null;
+          value_min?: number | null;
+          value_max?: number | null;
+          term_months_min?: number | null;
+          term_months_max?: number | null;
+          interest_rate_min?: number | null;
+          interest_rate_max?: number | null;
+          billing_type?: string[] | null;
+          iof_applicable?: boolean;
+          other_fees?: ProductOtherFees | null;
+          specific_rules?: Record<string, unknown> | null;
+          commission_type?: 'fixa' | 'percentual' | null;
+          commission_pct?: number | null;
+          commission_min?: number | null;
+          commission_max?: number | null;
+          commission_received_by?: ProductCommissionReceivedBy | null;
+          commission_payment_day?: number | null;
+          required_docs?: string[] | null;
+          required_docs_other?: string | null;
+          convention_bank?: string | null;
+          operation_channel?: string | null;
+          requires_internal_approval?: boolean;
           updated_at?: string;
         };
       };
@@ -902,6 +1016,7 @@ export type FavorecidoDocument = Database['public']['Tables']['favorecido_docume
 export type ActivityLog = Database['public']['Tables']['activity_logs']['Row'];
 export type AgendaEvent = Database['public']['Tables']['agenda_events']['Row'];
 export type Notification = Database['public']['Tables']['notifications']['Row'];
+export type ProductCategory = Database['public']['Tables']['product_categories']['Row'];
 export type Product = Database['public']['Tables']['products']['Row'];
 export type Payroll = Database['public']['Tables']['payroll']['Row'];
 
@@ -923,6 +1038,7 @@ export type FavorecidoDocumentInsert = Database['public']['Tables']['favorecido_
 export type ActivityLogInsert = Database['public']['Tables']['activity_logs']['Insert'];
 export type AgendaEventInsert = Database['public']['Tables']['agenda_events']['Insert'];
 export type NotificationInsert = Database['public']['Tables']['notifications']['Insert'];
+export type ProductCategoryInsert = Database['public']['Tables']['product_categories']['Insert'];
 export type ProductInsert = Database['public']['Tables']['products']['Insert'];
 export type PayrollInsert = Database['public']['Tables']['payroll']['Insert'];
 
@@ -941,5 +1057,6 @@ export type SalesTargetUpdate = Database['public']['Tables']['sales_targets']['U
 export type ActivityLogUpdate = Database['public']['Tables']['activity_logs']['Update'];
 export type AgendaEventUpdate = Database['public']['Tables']['agenda_events']['Update'];
 export type NotificationUpdate = Database['public']['Tables']['notifications']['Update'];
+export type ProductCategoryUpdate = Database['public']['Tables']['product_categories']['Update'];
 export type ProductUpdate = Database['public']['Tables']['products']['Update'];
 export type PayrollUpdate = Database['public']['Tables']['payroll']['Update'];

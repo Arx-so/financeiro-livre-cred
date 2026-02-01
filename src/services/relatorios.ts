@@ -902,7 +902,8 @@ export async function getMargemProdutoData(
         .select(`
             value,
             type,
-            category:categories(name)
+            category:categories(name),
+            product:products!product_id(name)
         `)
         .eq('branch_id', branchId)
         .gte('start_date', startDate)
@@ -914,7 +915,7 @@ export async function getMargemProdutoData(
     const produtoData = new Map<string, { receita: number; quantidade: number }>();
 
     for (const contract of contracts || []) {
-        const produto = (contract.category as any)?.name || contract.type || 'Outros';
+        const produto = (contract.product as any)?.name || (contract.category as any)?.name || contract.type || 'Outros';
         const valor = Number(contract.value);
 
         if (!produtoData.has(produto)) {
@@ -993,7 +994,8 @@ export async function getReceitaProdutoData(
         .select(`
             value,
             type,
-            category:categories(name)
+            category:categories(name),
+            product:products!product_id(name)
         `)
         .eq('branch_id', branchId)
         .gte('start_date', startDate)
@@ -1006,7 +1008,7 @@ export async function getReceitaProdutoData(
     let totalReceita = 0;
 
     for (const contract of data || []) {
-        const produto = (contract.category as any)?.name || contract.type || 'Outros';
+        const produto = (contract.product as any)?.name || (contract.category as any)?.name || contract.type || 'Outros';
         const valor = Number(contract.value);
         totalReceita += valor;
 
@@ -1420,6 +1422,7 @@ export async function getReceitaProdutoConvenioData(
             value,
             type,
             category:categories(name),
+            product:products!product_id(name),
             favorecido:favorecidos(name)
         `)
         .eq('branch_id', branchId)
@@ -1432,7 +1435,7 @@ export async function getReceitaProdutoConvenioData(
     const produtoConvenioData = new Map<string, { receita: number; quantidade: number }>();
 
     for (const contract of data || []) {
-        const produto = (contract.category as any)?.name || contract.type || 'Outros';
+        const produto = (contract.product as any)?.name || (contract.category as any)?.name || contract.type || 'Outros';
         const convenio = (contract.favorecido as any)?.name || 'Sem Convênio';
         const key = `${produto}|${convenio}`;
         const valor = Number(contract.value);
@@ -1467,8 +1470,10 @@ export async function getComissoesReportData(
         .from('contracts')
         .select(`
             value,
+            type,
             seller:profiles!seller_id(name),
             category:categories(name),
+            product:products!product_id(name),
             start_date
         `)
         .eq('branch_id', branchId)
@@ -1487,7 +1492,7 @@ export async function getComissoesReportData(
 
     for (const contract of data || []) {
         const vendedor = (contract.seller as any)?.name || 'Não informado';
-        const produto = (contract.category as any)?.name || contract.type || 'Outros';
+        const produto = (contract.product as any)?.name || (contract.category as any)?.name || contract.type || 'Outros';
         const periodo = contract.start_date.substring(0, 7);
         const valor = Number(contract.value);
         const comissao = valor * 0.05;
@@ -1673,8 +1678,10 @@ export async function getVendasVendedorData(
         .from('contracts')
         .select(`
             value,
+            type,
             seller:profiles!seller_id(name),
-            category:categories(name)
+            category:categories(name),
+            product:products!product_id(name)
         `)
         .eq('branch_id', branchId)
         .gte('start_date', startDate)
@@ -1688,7 +1695,7 @@ export async function getVendasVendedorData(
 
     for (const contract of data || []) {
         const vendedor = (contract.seller as any)?.name || 'Não informado';
-        const produto = (contract.category as any)?.name || contract.type || 'Outros';
+        const produto = (contract.product as any)?.name || (contract.category as any)?.name || contract.type || 'Outros';
         const valor = Number(contract.value);
 
         if (!vendedorData.has(vendedor)) {
@@ -1721,7 +1728,9 @@ export async function getVendasProdutoData(
         .from('contracts')
         .select(`
             value,
+            type,
             category:categories(name),
+            product:products!product_id(name),
             seller:profiles!seller_id(name)
         `)
         .eq('branch_id', branchId)
@@ -1734,7 +1743,7 @@ export async function getVendasProdutoData(
     const produtoData = new Map<string, { quantidade: number; valor: number; vendedores: Set<string> }>();
 
     for (const contract of data || []) {
-        const produto = (contract.category as any)?.name || contract.type || 'Outros';
+        const produto = (contract.product as any)?.name || (contract.category as any)?.name || contract.type || 'Outros';
         const vendedor = (contract.seller as any)?.name || 'Não informado';
         const valor = Number(contract.value);
 
@@ -1840,9 +1849,10 @@ export async function getContratosFechadosData(
         .select(`
             value,
             start_date,
+            type,
             seller:profiles!seller_id(name),
             category:categories(name),
-            type
+            product:products!product_id(name)
         `)
         .eq('branch_id', branchId)
         .gte('start_date', startDate)
@@ -1883,7 +1893,7 @@ export async function getContratosFechadosData(
         if (agrupamento === 'vendedor') {
             key = (contract.seller as any)?.name || 'Não informado';
         } else if (agrupamento === 'produto') {
-            key = (contract.category as any)?.name || contract.type || 'Outros';
+            key = (contract.product as any)?.name || (contract.category as any)?.name || contract.type || 'Outros';
         } else {
             key = contract.type || 'Outros';
         }
@@ -1970,8 +1980,10 @@ export async function getClientesProdutoData(
         .from('contracts')
         .select(`
             value,
+            type,
             favorecido:favorecidos(id, name),
-            category:categories(name)
+            category:categories(name),
+            product:products!product_id(name)
         `)
         .eq('branch_id', branchId)
         .eq('status', 'ativo');
@@ -1981,7 +1993,7 @@ export async function getClientesProdutoData(
     const produtoData = new Map<string, { clientes: Set<string>; receita: number }>();
 
     for (const contract of data || []) {
-        const produto = (contract.category as any)?.name || contract.type || 'Outros';
+        const produto = (contract.product as any)?.name || (contract.category as any)?.name || contract.type || 'Outros';
         const cliente = (contract.favorecido as any)?.id || '';
         const valor = Number(contract.value);
 

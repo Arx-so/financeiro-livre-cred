@@ -11,6 +11,7 @@ import type {
 export interface ContractWithRelations extends Contract {
   favorecido?: { id: string; name: string } | null;
   category?: { id: string; name: string; color: string } | null;
+  product?: { id: string; name: string; code: string | null } | null;
   seller?: { id: string; name: string } | null;
   approver?: { id: string; name: string } | null;
   files?: ContractFile[];
@@ -20,6 +21,7 @@ export interface ContractFilters {
   branchId?: string;
   status?: ContractStatus;
   favorecidoId?: string;
+  productId?: string;
   search?: string;
   startDate?: string;
   endDate?: string;
@@ -33,6 +35,7 @@ export async function getContracts(filters: ContractFilters = {}): Promise<Contr
             *,
             favorecido:favorecidos!favorecido_id(id, name),
             category:categories!category_id(id, name, color),
+            product:products!product_id(id, name, code),
             seller:profiles!seller_id(id, name, email),
             approver:profiles!approved_by(id, name),
             files:contract_files(*)
@@ -49,6 +52,10 @@ export async function getContracts(filters: ContractFilters = {}): Promise<Contr
 
     if (filters.favorecidoId) {
         query = query.eq('favorecido_id', filters.favorecidoId);
+    }
+
+    if (filters.productId) {
+        query = query.eq('product_id', filters.productId);
     }
 
     if (filters.search) {
@@ -81,6 +88,7 @@ export async function getContract(id: string): Promise<ContractWithRelations | n
             *,
             favorecido:favorecidos!favorecido_id(id, name),
             category:categories!category_id(id, name, color),
+            product:products!product_id(id, name, code),
             seller:profiles!seller_id(id, name, email),
             approver:profiles!approved_by(id, name),
             files:contract_files(*)

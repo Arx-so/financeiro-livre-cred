@@ -26,6 +26,8 @@ export function ProdutosView(props: ProdutosViewProps) {
         // State
         searchTerm,
         setSearchTerm,
+        filterCategory,
+        setFilterCategory,
         filterActive,
         setFilterActive,
         isModalOpen,
@@ -42,7 +44,7 @@ export function ProdutosView(props: ProdutosViewProps) {
         products,
         productsLoading,
         summary,
-        categories,
+        productCategories,
 
         // Flags
         isSaving,
@@ -76,7 +78,7 @@ export function ProdutosView(props: ProdutosViewProps) {
                                 Novo Produto
                             </button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                        <DialogContent className="max-w-2xl max-h-[90vh] min-w-[640px] overflow-y-auto">
                             <DialogHeader>
                                 <DialogTitle>
                                     {editingId ? 'Editar Produto' : 'Novo Produto'}
@@ -88,7 +90,7 @@ export function ProdutosView(props: ProdutosViewProps) {
                             <ProductForm
                                 formData={formData}
                                 setFormData={setFormData}
-                                categories={categories}
+                                productCategories={productCategories}
                                 editingId={editingId}
                                 isSaving={isSaving}
                                 onSubmit={handleSubmit}
@@ -122,13 +124,25 @@ export function ProdutosView(props: ProdutosViewProps) {
                 )}
 
                 {/* Filters */}
-                <div className="flex flex-col md:flex-row gap-4 items-center">
+                <div className="flex flex-col md:flex-row gap-4 items-center flex-wrap">
                     <SearchInput
                         value={searchTerm}
                         onChange={setSearchTerm}
-                        placeholder="Buscar produtos..."
+                        placeholder="Buscar por nome ou código..."
                         className="max-w-md"
                     />
+                    <select
+                        className="input-financial w-auto"
+                        value={filterCategory}
+                        onChange={(e) => setFilterCategory(e.target.value)}
+                    >
+                        <option value="">Todas as categorias</option>
+                        {productCategories?.map((cat) => (
+                            <option key={cat.id} value={cat.id}>
+                                {cat.name}
+                            </option>
+                        ))}
+                    </select>
                     <select
                         className="input-financial w-auto"
                         value={filterActive}

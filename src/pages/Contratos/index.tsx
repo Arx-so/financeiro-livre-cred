@@ -70,6 +70,7 @@ export default function Contratos() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [searchTerm, setSearchTerm] = useState('');
+    const [filterProductId, setFilterProductId] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [uploadingContractId, setUploadingContractId] = useState<string | null>(null);
@@ -94,6 +95,7 @@ export default function Contratos() {
         end_date: '',
         notes: '',
         category_id: '',
+        product_id: '',
         recurrence_type: 'unico' as ContractRecurrenceType,
         seller_id: '',
     });
@@ -102,7 +104,8 @@ export default function Contratos() {
     const filters: ContractFilters = useMemo(() => ({
         branchId: unidadeAtual?.id,
         search: searchTerm || undefined,
-    }), [unidadeAtual?.id, searchTerm]);
+        productId: filterProductId || undefined,
+    }), [unidadeAtual?.id, searchTerm, filterProductId]);
 
     const { data: contracts, isLoading } = useQuery({
         queryKey: ['contracts', filters],
@@ -235,6 +238,7 @@ export default function Contratos() {
             end_date: '',
             notes: '',
             category_id: '',
+            product_id: '',
             recurrence_type: 'unico',
             seller_id: '',
         });
@@ -259,6 +263,7 @@ export default function Contratos() {
             end_date: formData.end_date || null,
             notes: formData.notes || null,
             category_id: formData.category_id || null,
+            product_id: formData.product_id || null,
             recurrence_type: formData.recurrence_type,
             seller_id: formData.seller_id || null,
             status: editingId ? undefined : 'criado',
@@ -304,6 +309,7 @@ export default function Contratos() {
             end_date: contract.end_date || '',
             notes: contract.notes || '',
             category_id: contract.category_id || '',
+            product_id: contract.product_id || '',
             recurrence_type: contract.recurrence_type || 'unico',
             seller_id: contract.seller_id || '',
         });
@@ -350,6 +356,7 @@ export default function Contratos() {
                     ${contract.end_date ? `<div class="info"><span class="label">Data Fim:</span> ${formatDate(contract.end_date)}</div>` : ''}
                     <div class="info"><span class="label">Status:</span> ${contract.status}</div>
                     ${contract.category?.name ? `<div class="info"><span class="label">Categoria:</span> ${contract.category.name}</div>` : ''}
+                    ${contract.product?.name ? `<div class="info"><span class="label">Produto:</span> ${contract.product.name}${contract.product.code ? ` (${contract.product.code})` : ''}</div>` : ''}
                     ${contract.seller?.name ? `<div class="info"><span class="label">Vendedor:</span> ${contract.seller.name}</div>` : ''}
                     ${contract.notes ? `<div class="info"><span class="label">Observações:</span> ${contract.notes}</div>` : ''}
                     ${contract.approved_by ? `<div class="info"><span class="label">Aprovado por:</span> ${contract.approver?.name || 'N/A'} em ${formatDate(contract.approved_at)}</div>` : ''}
@@ -508,18 +515,41 @@ export default function Contratos() {
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-foreground mb-2">Produto</label>
+                                        <label className="block text-sm font-medium text-foreground mb-2">Produto (cadastro)</label>
                                         <select
                                             className="input-financial"
-                                            value={formData.type}
-                                            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                                            value={formData.product_id}
+                                            onChange={(e) => {
+                                                const productId = e.target.value;
+                                                const product = products?.find((p) => p.id === productId);
+                                                setFormData({
+                                                    ...formData,
+                                                    product_id: productId,
+                                                    type: product?.name || formData.type,
+                                                });
+                                            }}
                                         >
                                             <option value="">Selecione um produto</option>
                                             {products?.map((p) => (
-                                                <option key={p.id} value={p.name}>{p.name}</option>
+                                                <option key={p.id} value={p.id}>
+                                                    {p.name}
+                                                    {p.code ? ` (${p.code})` : ''}
+                                                </option>
                                             ))}
                                         </select>
                                     </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-2">Tipo / descrição</label>
+                                        <input
+                                            type="text"
+                                            className="input-financial"
+                                            placeholder="Ex: Empréstimo Consignado"
+                                            value={formData.type}
+                                            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-foreground mb-2">Recorrência</label>
                                         <select
@@ -613,14 +643,27 @@ export default function Contratos() {
                     </div>
                 )}
 
-                {/* Search */}
-                <div className="flex gap-4">
+                {/* Search and filters */}
+                <div className="flex flex-wrap gap-4 items-center">
                     <SearchInput
                         value={searchTerm}
                         onChange={setSearchTerm}
                         placeholder="Buscar contratos..."
                         className="max-w-md"
                     />
+                    <select
+                        className="input-financial w-auto min-w-[200px]"
+                        value={filterProductId}
+                        onChange={(e) => setFilterProductId(e.target.value)}
+                    >
+                        <option value="">Todos os produtos</option>
+                        {products?.map((p) => (
+                            <option key={p.id} value={p.id}>
+                                {p.name}
+                                {p.code ? ` (${p.code})` : ''}
+                            </option>
+                        ))}
+                    </select>
                 </div>
 
                 {/* Contracts List */}
@@ -655,6 +698,13 @@ export default function Contratos() {
                                                     <span className="text-sm text-muted-foreground flex items-center gap-1">
                                                         <Tag className="w-3.5 h-3.5" />
                                                         {contract.category.name}
+                                                    </span>
+                                                )}
+                                                {contract.product && (
+                                                    <span className="text-sm text-muted-foreground flex items-center gap-1">
+                                                        <Tag className="w-3.5 h-3.5" />
+                                                        {contract.product.name}
+                                                        {contract.product.code ? ` (${contract.product.code})` : ''}
                                                     </span>
                                                 )}
                                                 {contract.recurrence_type && contract.recurrence_type !== 'unico' && (
