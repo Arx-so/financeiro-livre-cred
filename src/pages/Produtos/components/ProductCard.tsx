@@ -114,28 +114,36 @@ export function ProductCard({ product, onEdit, onDelete, onToggleActive }: Produ
                 </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-border">
+            <div className="mt-4 pt-4 border-t border-border space-y-3">
                 <div>
-                    <p className="text-xs text-muted-foreground mb-1">Valor Banco</p>
-                    <p className="font-semibold font-mono text-foreground">
-                        {formatCurrency(product.bank_value)}
-                        {product.bank_percentage > 0 && (
-                            <span className="text-xs text-muted-foreground ml-1">
-                                ({product.bank_percentage}%)
-                            </span>
-                        )}
+                    <p className="text-xs text-muted-foreground mb-1">Total</p>
+                    <p className="font-semibold font-mono text-primary">
+                        {formatCurrency((product.bank_value ?? 0) + (product.company_value ?? 0))}
                     </p>
                 </div>
-                <div>
-                    <p className="text-xs text-muted-foreground mb-1">Valor Empresa</p>
-                    <p className="font-semibold font-mono text-foreground">
-                        {formatCurrency(product.company_value)}
-                        {product.company_percentage > 0 && (
-                            <span className="text-xs text-muted-foreground ml-1">
-                                ({product.company_percentage}%)
-                            </span>
-                        )}
-                    </p>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <p className="text-xs text-muted-foreground mb-1">Valor Banco</p>
+                        <p className="font-semibold font-mono text-foreground">
+                            {formatCurrency(product.bank_value)}
+                            {product.bank_percentage > 0 && (
+                                <span className="text-xs text-muted-foreground ml-1">
+                                    ({product.bank_percentage}%)
+                                </span>
+                            )}
+                        </p>
+                    </div>
+                    <div>
+                        <p className="text-xs text-muted-foreground mb-1">Valor Empresa</p>
+                        <p className="font-semibold font-mono text-foreground">
+                            {formatCurrency(product.company_value)}
+                            {product.company_percentage > 0 && (
+                                <span className="text-xs text-muted-foreground ml-1">
+                                    ({product.company_percentage}%)
+                                </span>
+                            )}
+                        </p>
+                    </div>
                 </div>
             </div>
 

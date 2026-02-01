@@ -462,8 +462,8 @@ export function ProductForm({
                     Repartição do valor
                 </h4>
                 <p className="text-xs text-muted-foreground mb-3">
-                    Valor de referência e percentuais. Valores do banco e da empresa são calculados
-                    automaticamente.
+                    Valor de referência e percentuais (banco + empresa = 100%). Ao alterar um, o outro
+                    é preenchido automaticamente. Valores em R$ são calculados a partir do valor de referência.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
@@ -489,9 +489,16 @@ export function ProductForm({
                             className="input-financial"
                             placeholder="0"
                             value={formData.bank_percentage}
-                            onChange={(e) =>
-                                setFormData({ ...formData, bank_percentage: e.target.value })
-                            }
+                            onChange={(e) => {
+                                const raw = e.target.value;
+                                const bank = Math.min(100, Math.max(0, parseFloat(raw) || 0));
+                                const company = Math.round((100 - bank) * 100) / 100;
+                                setFormData({
+                                    ...formData,
+                                    bank_percentage: raw === '' ? '' : String(bank),
+                                    company_percentage: raw === '' ? '100' : String(company),
+                                });
+                            }}
                         />
                     </div>
                     <div>
@@ -506,9 +513,16 @@ export function ProductForm({
                             className="input-financial"
                             placeholder="0"
                             value={formData.company_percentage}
-                            onChange={(e) =>
-                                setFormData({ ...formData, company_percentage: e.target.value })
-                            }
+                            onChange={(e) => {
+                                const raw = e.target.value;
+                                const company = Math.min(100, Math.max(0, parseFloat(raw) || 0));
+                                const bank = Math.round((100 - company) * 100) / 100;
+                                setFormData({
+                                    ...formData,
+                                    company_percentage: raw === '' ? '' : String(company),
+                                    bank_percentage: raw === '' ? '100' : String(bank),
+                                });
+                            }}
                         />
                     </div>
                 </div>
