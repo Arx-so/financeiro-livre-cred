@@ -342,7 +342,7 @@ export async function createUser(
         await new Promise((resolve) => { setTimeout(resolve, 1500); });
 
         // Check if profile was created
-        const { data: profileCheck } = await supabase
+        let { data: profileCheck } = await supabase
             .from('profiles')
             .select('id')
             .eq('id', userId)
@@ -362,7 +362,13 @@ export async function createUser(
 
             if (insertError) {
                 console.error('Error creating profile manually:', insertError);
+                return {
+                    success: false,
+                    error: insertError.message || 'Não foi possível criar o perfil do usuário. Tente novamente.',
+                    userId,
+                };
             }
+            profileCheck = { id: userId };
         } else {
             // Update the role and name using the main client (as admin)
             const { error: roleError } = await supabase
@@ -375,8 +381,8 @@ export async function createUser(
             }
         }
 
-        // Set branch access
-        if (branchIds.length > 0) {
+        // Only set branch access after we're sure the profile exists (avoids user_branch_access_user_id_fkey)
+        if (profileCheck && branchIds.length > 0) {
             await setUserBranchAccess(userId, branchIds);
         }
 
