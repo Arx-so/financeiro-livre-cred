@@ -806,6 +806,7 @@ export interface Database {
           convention_bank: string | null;
           operation_channel: string | null;
           requires_internal_approval: boolean;
+          recurrence_type: ContractRecurrenceType | null;
           created_at: string;
           updated_at: string;
         };
@@ -844,6 +845,7 @@ export interface Database {
           convention_bank?: string | null;
           operation_channel?: string | null;
           requires_internal_approval?: boolean;
+          recurrence_type?: ContractRecurrenceType | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -881,6 +883,7 @@ export interface Database {
           convention_bank?: string | null;
           operation_channel?: string | null;
           requires_internal_approval?: boolean;
+          recurrence_type?: ContractRecurrenceType | null;
           updated_at?: string;
         };
       };

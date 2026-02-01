@@ -62,6 +62,7 @@ import {
     exportContractToPDF,
 } from '@/services/contractTemplates';
 import type { ContractInsert, ContractRecurrenceType } from '@/types/database';
+import { ProductRulesPanel } from './components/ProductRulesPanel';
 
 export default function Contratos() {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
@@ -79,11 +80,12 @@ export default function Contratos() {
     const { confirm, dialogProps } = useConfirmDialog();
     const [isDeleting, setIsDeleting] = useState(false);
 
-    // Template modal state
+    // Template modal state (usado para PDF download e impressão — mesmo PDF)
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const [selectedTemplateId, setSelectedTemplateId] = useState('');
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
     const [pdfContractId, setPdfContractId] = useState<string | null>(null);
+    const [pdfIntent, setPdfIntent] = useState<'download' | 'print'>('download');
 
     // Form state
     const [formData, setFormData] = useState({
@@ -123,6 +125,11 @@ export default function Contratos() {
     const { data: categories } = useCategories();
     const { data: vendedores } = useVendedores();
     const { data: products } = useProducts({ isActive: true });
+
+    const selectedProduct = useMemo(
+        () => (formData.product_id ? products?.find((p) => p.id === formData.product_id) : null),
+        [products, formData.product_id]
+    );
 
     // Find "Vendas" category
     const vendasCategory = useMemo(
@@ -252,13 +259,44 @@ export default function Contratos() {
             toast.error('Selecione uma filial');
             return;
         }
+        if (!formData.product_id) {
+            toast.error('É obrigatório vincular a venda a um produto.');
+            return;
+        }
+
+        const value = parseFloat(formData.value) || 0;
+        const product = products?.find((p) => p.id === formData.product_id) ?? null;
+
+        if (product) {
+            if (product.value_min != null && value < product.value_min) {
+                toast.error(`O valor da venda deve ser no mínimo ${formatCurrency(product.value_min)} (regra do produto).`);
+                return;
+            }
+            if (product.value_max != null && value > product.value_max) {
+                toast.error(`O valor da venda deve ser no máximo ${formatCurrency(product.value_max)} (regra do produto).`);
+                return;
+            }
+            if (formData.start_date && formData.end_date) {
+                const start = new Date(formData.start_date);
+                const end = new Date(formData.end_date);
+                const months = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
+                if (product.term_months_min != null && months < product.term_months_min) {
+                    toast.error(`O prazo deve ser no mínimo ${product.term_months_min} meses (regra do produto).`);
+                    return;
+                }
+                if (product.term_months_max != null && months > product.term_months_max) {
+                    toast.error(`O prazo deve ser no máximo ${product.term_months_max} meses (regra do produto).`);
+                    return;
+                }
+            }
+        }
 
         const contractData: ContractInsert = {
             branch_id: unidadeAtual.id,
             title: formData.title,
             favorecido_id: formData.favorecido_id || null,
             type: formData.type || null,
-            value: parseFloat(formData.value) || 0,
+            value,
             start_date: formData.start_date,
             end_date: formData.end_date || null,
             notes: formData.notes || null,
@@ -274,7 +312,7 @@ export default function Contratos() {
         } else {
             createMutation.mutate(contractData);
         }
-    }, [formData, editingId, unidadeAtual?.id, createMutation, updateMutation]);
+    }, [formData, editingId, unidadeAtual?.id, products, createMutation, updateMutation]);
 
     const handleDelete = useCallback((id: string, title: string, status: string) => {
         if (status === 'aprovado') {
@@ -300,22 +338,31 @@ export default function Contratos() {
             toast.error('Não é possível editar um contrato aprovado');
             return;
         }
+        const product = contract.product_id
+            ? products?.find((p) => p.id === contract.product_id)
+            : null;
+        const categoryByProductName = product?.product_category?.name
+            ? categories?.find(
+                (c) => c.name.toLowerCase() === product.product_category!.name.toLowerCase()
+            )
+            : null;
+        const categoryIdFromProduct = categoryByProductName?.id ?? (vendasCategory?.id || '');
         setFormData({
             title: contract.title,
             favorecido_id: contract.favorecido_id || '',
-            type: contract.type || '',
+            type: product ? (product.commercial_description || product.name) : (contract.type || ''),
             value: contract.value?.toString() || '',
             start_date: contract.start_date,
             end_date: contract.end_date || '',
             notes: contract.notes || '',
-            category_id: contract.category_id || '',
+            category_id: product ? categoryIdFromProduct : (contract.category_id || ''),
             product_id: contract.product_id || '',
-            recurrence_type: contract.recurrence_type || 'unico',
+            recurrence_type: product?.recurrence_type ?? contract.recurrence_type ?? 'unico',
             seller_id: contract.seller_id || '',
         });
         setEditingId(contract.id);
         setIsModalOpen(true);
-    }, []);
+    }, [products, categories, vendasCategory]);
 
     const handleSubmitForApproval = useCallback((contractId: string) => {
         submitForApprovalMutation.mutate(contractId);
@@ -334,40 +381,15 @@ export default function Contratos() {
     }, [rejectMutation]);
 
     const handlePrint = useCallback((contract: any) => {
-        // Open print dialog with contract info
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-            printWindow.document.write(`
-                <html>
-                <head>
-                    <title>Contrato - ${contract.title}</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; padding: 40px; }
-                        h1 { color: #333; }
-                        .info { margin: 10px 0; }
-                        .label { font-weight: bold; }
-                    </style>
-                </head>
-                <body>
-                    <h1>${contract.title}</h1>
-                    <div class="info"><span class="label">Cliente:</span> ${contract.favorecido?.name || 'N/A'}</div>
-                    <div class="info"><span class="label">Valor:</span> ${formatCurrency(contract.value)}</div>
-                    <div class="info"><span class="label">Data Início:</span> ${formatDate(contract.start_date)}</div>
-                    ${contract.end_date ? `<div class="info"><span class="label">Data Fim:</span> ${formatDate(contract.end_date)}</div>` : ''}
-                    <div class="info"><span class="label">Status:</span> ${contract.status}</div>
-                    ${contract.category?.name ? `<div class="info"><span class="label">Categoria:</span> ${contract.category.name}</div>` : ''}
-                    ${contract.product?.name ? `<div class="info"><span class="label">Produto:</span> ${contract.product.name}${contract.product.code ? ` (${contract.product.code})` : ''}</div>` : ''}
-                    ${contract.seller?.name ? `<div class="info"><span class="label">Vendedor:</span> ${contract.seller.name}</div>` : ''}
-                    ${contract.notes ? `<div class="info"><span class="label">Observações:</span> ${contract.notes}</div>` : ''}
-                    ${contract.approved_by ? `<div class="info"><span class="label">Aprovado por:</span> ${contract.approver?.name || 'N/A'} em ${formatDate(contract.approved_at)}</div>` : ''}
-                    ${contract.signed_by ? `<div class="info"><span class="label">Assinado por:</span> ${contract.signed_by} em ${formatDate(contract.signed_at)}</div>` : ''}
-                </body>
-                </html>
-            `);
-            printWindow.document.close();
-            printWindow.print();
+        if (!templates || templates.length === 0) {
+            toast.error('Nenhum template disponível. Crie um template primeiro.');
+            return;
         }
-    }, []);
+        setPdfContractId(contract.id);
+        setPdfIntent('print');
+        setSelectedTemplateId(templates[0]?.id || '');
+        setIsTemplateModalOpen(true);
+    }, [templates]);
 
     const handleSign = useCallback((contractId: string) => {
         if (!user?.name) {
@@ -394,14 +416,14 @@ export default function Contratos() {
 
     const isSaving = createMutation.isPending || updateMutation.isPending;
 
-    // Handler para exportar PDF de um contrato
-    const handleExportPdf = useCallback(async (contract: any) => {
+    // Handler para exportar PDF de um contrato (abre modal de template)
+    const handleExportPdf = useCallback((contract: any) => {
         if (!templates || templates.length === 0) {
             toast.error('Nenhum template disponível. Crie um template primeiro.');
             return;
         }
-
         setPdfContractId(contract.id);
+        setPdfIntent('download');
         setSelectedTemplateId(templates[0]?.id || '');
         setIsTemplateModalOpen(true);
     }, [templates]);
@@ -426,8 +448,8 @@ export default function Contratos() {
                 contract.favorecido_id,
                 { value: contract.value, date: contract.start_date }
             );
-            exportContractToPDF(content, contract.title);
-            toast.success('PDF gerado com sucesso!');
+            exportContractToPDF(content, contract.title, pdfIntent);
+            toast.success(pdfIntent === 'print' ? 'PDF aberto para impressão.' : 'PDF gerado com sucesso!');
             setIsTemplateModalOpen(false);
         } catch (error) {
             console.error('Error generating PDF:', error);
@@ -435,7 +457,7 @@ export default function Contratos() {
         } finally {
             setIsGeneratingPdf(false);
         }
-    }, [selectedTemplateId, pdfContractId, contracts]);
+    }, [selectedTemplateId, pdfContractId, pdfIntent, contracts]);
 
     return (
         <AppLayout>
@@ -452,7 +474,7 @@ export default function Contratos() {
                                 Novo Contrato
                             </button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-lg">
+                        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                                 <DialogTitle>{editingId ? 'Editar Contrato' : 'Novo Contrato'}</DialogTitle>
                                 <DialogDescription>
@@ -519,17 +541,27 @@ export default function Contratos() {
                                         <select
                                             className="input-financial"
                                             value={formData.product_id}
+                                            required
                                             onChange={(e) => {
                                                 const productId = e.target.value;
                                                 const product = products?.find((p) => p.id === productId);
+                                                const categoryByProductName = product?.product_category?.name
+                                                    ? categories?.find(
+                                                        (c) => c.name.toLowerCase() === product.product_category!.name.toLowerCase()
+                                                    )
+                                                    : null;
+                                                const categoryId =
+                                                    categoryByProductName?.id ?? (vendasCategory?.id || '');
                                                 setFormData({
                                                     ...formData,
                                                     product_id: productId,
-                                                    type: product?.name || formData.type,
+                                                    type: product ? (product.commercial_description || product.name) : formData.type,
+                                                    category_id: product ? categoryId : formData.category_id,
+                                                    recurrence_type: product?.recurrence_type ?? formData.recurrence_type,
                                                 });
                                             }}
                                         >
-                                            <option value="">Selecione um produto</option>
+                                            <option value="">Selecione um produto (obrigatório)</option>
                                             {products?.map((p) => (
                                                 <option key={p.id} value={p.id}>
                                                     {p.name}
@@ -546,9 +578,20 @@ export default function Contratos() {
                                             placeholder="Ex: Empréstimo Consignado"
                                             value={formData.type}
                                             onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                                            readOnly={!!selectedProduct}
+                                            title={selectedProduct ? 'Definido pelo produto vinculado' : ''}
                                         />
+                                        {selectedProduct && (
+                                            <p className="text-xs text-muted-foreground mt-1">Definido pelo produto</p>
+                                        )}
                                     </div>
                                 </div>
+                                {selectedProduct && (
+                                    <ProductRulesPanel
+                                        product={selectedProduct}
+                                        saleValue={typeof formData.value === 'string' ? parseFloat(formData.value) || 0 : Number(formData.value)}
+                                    />
+                                )}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-foreground mb-2">Recorrência</label>
@@ -556,11 +599,16 @@ export default function Contratos() {
                                             className="input-financial"
                                             value={formData.recurrence_type}
                                             onChange={(e) => setFormData({ ...formData, recurrence_type: e.target.value as ContractRecurrenceType })}
+                                            disabled={!!selectedProduct}
+                                            title={selectedProduct ? 'Definida pelo produto vinculado' : ''}
                                         >
                                             <option value="unico">Único</option>
                                             <option value="mensal">Mensal</option>
                                             <option value="anual">Anual</option>
                                         </select>
+                                        {selectedProduct && (
+                                            <p className="text-xs text-muted-foreground mt-1">Definida pelo produto</p>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
@@ -570,15 +618,24 @@ export default function Contratos() {
                                             className="input-financial"
                                             value={formData.category_id}
                                             onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
-                                            disabled={!!formData.seller_id}
-                                            title={formData.seller_id ? 'Categoria definida automaticamente como "Vendas" para contratos com vendedor' : ''}
+                                            disabled={!!selectedProduct || !!formData.seller_id}
+                                            title={
+                                                selectedProduct
+                                                    ? 'Definida pelo produto vinculado'
+                                                    : formData.seller_id
+                                                        ? 'Categoria definida automaticamente como "Vendas" para contratos com vendedor'
+                                                        : ''
+                                            }
                                         >
                                             <option value="">Selecione</option>
                                             {categories?.map((c) => (
                                                 <option key={c.id} value={c.id}>{c.name}</option>
                                             ))}
                                         </select>
-                                        {formData.seller_id && vendasCategory && (
+                                        {selectedProduct && (
+                                            <p className="text-xs text-muted-foreground mt-1">Definida pelo produto</p>
+                                        )}
+                                        {!selectedProduct && formData.seller_id && vendasCategory && (
                                             <p className="text-xs text-muted-foreground mt-1">
                                                 Categoria definida automaticamente: Vendas
                                             </p>
@@ -853,13 +910,16 @@ export default function Contratos() {
                 )}
             </div>
 
-            {/* Template Selection Modal for PDF */}
+            {/* Template Selection Modal for PDF (download e impressão usam o mesmo PDF) */}
             <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
                 <DialogContent className="max-w-md">
                     <DialogHeader>
-                        <DialogTitle>Exportar Contrato em PDF</DialogTitle>
+                        <DialogTitle>
+                            {pdfIntent === 'print' ? 'Imprimir contrato' : 'Exportar Contrato em PDF'}
+                        </DialogTitle>
                         <DialogDescription>
                             Selecione um template para gerar o PDF do contrato
+                            {pdfIntent === 'print' ? ' (o mesmo PDF será aberto para impressão).' : '.'}
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4 mt-4">
@@ -895,7 +955,7 @@ export default function Contratos() {
                                 disabled={!selectedTemplateId || isGeneratingPdf}
                             >
                                 {isGeneratingPdf && <Loader2 className="w-4 h-4 animate-spin" />}
-                                Gerar PDF
+                                {pdfIntent === 'print' ? 'Gerar e imprimir' : 'Gerar PDF'}
                             </button>
                         </div>
                     </div>

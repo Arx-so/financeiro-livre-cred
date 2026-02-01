@@ -47,6 +47,7 @@ const initialFormData: ProductFormData = {
     commission_payment_day: '',
     required_docs: [],
     required_docs_other: '',
+    recurrence_type: 'unico',
 };
 
 function parseSpecificRules(value: string): Record<string, unknown> | null {
@@ -161,6 +162,7 @@ export function useProdutosPage() {
                 product.commission_payment_day != null ? String(product.commission_payment_day) : '',
             required_docs: requiredDocs,
             required_docs_other: product.required_docs_other || '',
+            recurrence_type: product.recurrence_type || 'unico',
         });
         setEditingId(product.id);
         setIsModalOpen(true);
@@ -259,6 +261,12 @@ export function useProdutosPage() {
                 required_docs:
                     formData.required_docs.length > 0 ? formData.required_docs : null,
                 required_docs_other: formData.required_docs_other.trim() || null,
+                recurrence_type:
+                    formData.recurrence_type === 'unico' ||
+                    formData.recurrence_type === 'mensal' ||
+                    formData.recurrence_type === 'anual'
+                        ? formData.recurrence_type
+                        : 'unico',
             };
 
             try {

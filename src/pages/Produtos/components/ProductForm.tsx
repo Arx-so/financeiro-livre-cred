@@ -53,6 +53,8 @@ export interface ProductFormData {
     // Documentação
     required_docs: string[];
     required_docs_other: string;
+    // Recorrência (usada na venda vinculada ao produto)
+    recurrence_type: string;
 }
 
 interface ProductFormProps {
@@ -231,6 +233,25 @@ export function ProductForm({
                             </label>
                         ))}
                     </div>
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                        Recorrência (venda vinculada)
+                    </label>
+                    <select
+                        className="input-financial"
+                        value={formData.recurrence_type}
+                        onChange={(e) =>
+                            setFormData({ ...formData, recurrence_type: e.target.value })
+                        }
+                    >
+                        <option value="unico">Único</option>
+                        <option value="mensal">Mensal</option>
+                        <option value="anual">Anual</option>
+                    </select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                        Usada como recorrência da venda quando o produto for vinculado
+                    </p>
                 </div>
             </div>
 

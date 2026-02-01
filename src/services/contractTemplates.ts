@@ -241,12 +241,16 @@ export function replaceTemplateVariables(
     return result;
 }
 
+export type ExportContractPdfMode = 'download' | 'print';
+
 /**
- * Gera um PDF a partir do conteúdo do contrato
+ * Gera um PDF a partir do conteúdo do contrato.
+ * mode 'download': baixa o arquivo; mode 'print': abre o mesmo PDF em nova aba e dispara a impressão.
  */
 export function exportContractToPDF(
     content: string,
-    title: string = 'Contrato'
+    title: string = 'Contrato',
+    mode: ExportContractPdfMode = 'download'
 ): void {
     const doc = new jsPDF({
         orientation: 'portrait',
@@ -303,6 +307,22 @@ export function exportContractToPDF(
         if (trimmedLine === '') {
             y += 3;
         }
+    }
+
+    if (mode === 'print') {
+        const blob = doc.output('blob');
+        const url = URL.createObjectURL(blob);
+        const printWindow = window.open(url, '_blank');
+        if (printWindow) {
+            setTimeout(() => {
+                try {
+                    printWindow.print();
+                } finally {
+                    URL.revokeObjectURL(url);
+                }
+            }, 600);
+        }
+        return;
     }
 
     // Download do PDF
