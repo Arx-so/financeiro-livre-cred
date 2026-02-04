@@ -1,4 +1,6 @@
-import { Loader2, Users, Calendar, Repeat } from 'lucide-react';
+import {
+    Loader2, Users, Calendar, Repeat
+} from 'lucide-react';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { formatCurrency } from '@/lib/utils';
 import { calculateNetSalary } from '@/services/folhaPagamento';
@@ -52,10 +54,10 @@ export function BatchPayrollForm({
     // Use categories from storage (configured) first, fallback to database
     const storageCategories = useHiringCategoriesFromStorage();
     const { data: dbCategories = [], isLoading: categoriesLoading } = useHiringCategories();
-    
+
     // Merge and deduplicate categories
     const hiringCategories = Array.from(new Set([...storageCategories, ...dbCategories])).sort();
-    
+
     const { data: employees = [], isLoading: employeesLoading } = useEmployeesByFilters({
         categoria_contratacao: batchConfig.filterType === 'category' ? batchConfig.categoria_contratacao : undefined,
     });

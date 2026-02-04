@@ -92,7 +92,7 @@ export function useFinanceiroPage() {
     // Modal state
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
-    
+
     // Favorecido modal state
     const [isFavorecidoModalOpen, setIsFavorecidoModalOpen] = useState(false);
     const [favorecidoFormData, setFavorecidoFormData] = useState<any>({
@@ -147,7 +147,7 @@ export function useFinanceiroPage() {
         queryFn: () => getBankAccounts(unidadeAtual?.id),
         enabled: !!unidadeAtual?.id,
     });
-    
+
     // Favorecido mutations
     const createFavorecido = useCreateFavorecido();
     const uploadPhoto = useUploadFavorecidoPhoto();
@@ -430,7 +430,7 @@ export function useFinanceiroPage() {
         const [year, month] = filterMonth.split('-').map(Number);
         return new Date(year, month - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
     }, [filterMonth]);
-    
+
     // Favorecido handlers
     const resetFavorecidoForm = useCallback(() => {
         setFavorecidoFormData({
@@ -458,7 +458,7 @@ export function useFinanceiroPage() {
         setSelectedPhoto(null);
         setPhotoPreview(null);
     }, []);
-    
+
     const handlePhotoSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -470,10 +470,10 @@ export function useFinanceiroPage() {
             reader.readAsDataURL(file);
         }
     }, []);
-    
+
     const handleSubmitFavorecido = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         try {
             const favorecidoData = {
                 type: favorecidoFormData.type,
@@ -497,20 +497,20 @@ export function useFinanceiroPage() {
                 preferred_payment_type: favorecidoFormData.preferred_payment_type || null,
                 birth_date: favorecidoFormData.birth_date || null,
             };
-            
+
             const newFavorecido = await createFavorecido.mutateAsync(favorecidoData);
-            
+
             // Upload photo if selected
             if (selectedPhoto && newFavorecido.id) {
                 await uploadPhoto.mutateAsync({ favorecidoId: newFavorecido.id, file: selectedPhoto });
             }
-            
+
             // Refresh favorecidos list
             await refetchFavorecidos();
-            
+
             // Select the new favorecido in the entry form
             setFormData((prev) => ({ ...prev, favorecido_id: newFavorecido.id }));
-            
+
             toast.success('Favorecido criado com sucesso!');
             setIsFavorecidoModalOpen(false);
             resetFavorecidoForm();
@@ -578,7 +578,7 @@ export function useFinanceiroPage() {
         handleExport,
         handleImport,
         handleImportNFE,
-        
+
         // Favorecido modal
         isFavorecidoModalOpen,
         setIsFavorecidoModalOpen,

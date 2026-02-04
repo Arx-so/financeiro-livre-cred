@@ -17,7 +17,9 @@ import { LoadingState } from '@/components/shared';
 import { getActionText, formatLogDetails } from '@/services/activityLogs';
 import { formatFileSize, getFileIcon } from '@/services/cadastros';
 import { useHiringCategoriesFromStorage } from '@/pages/FolhaPagamento/components/HiringCategoriesManager';
-import type { FavorecidoTipo, BankAccountType, PixKeyType, PaymentType } from '@/types/database';
+import type {
+    FavorecidoTipo, BankAccountType, PixKeyType, PaymentType
+} from '@/types/database';
 
 interface FavorecidoFormProps {
     formData: any;

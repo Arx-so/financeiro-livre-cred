@@ -262,7 +262,7 @@ export async function getBudgetSummary(
     for (const item of items || []) {
         totalBudgeted += Number(item.budgeted_amount);
         const catId = item.category_id ?? 'uncategorized';
-        const month = item.month;
+        const {month} = item;
         totalActual += actualsMap.get(catId)?.get(month) ?? 0;
     }
 

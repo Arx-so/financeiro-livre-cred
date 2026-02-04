@@ -143,9 +143,7 @@ export function ProductForm({
                     <select
                         className="input-financial"
                         value={formData.product_category_id}
-                        onChange={(e) =>
-                            setFormData({ ...formData, product_category_id: e.target.value })
-                        }
+                        onChange={(e) => setFormData({ ...formData, product_category_id: e.target.value })}
                     >
                         <option value="">Selecione uma categoria</option>
                         {productCategories.map((cat) => (
@@ -163,9 +161,7 @@ export function ProductForm({
                         className="input-financial min-h-[80px]"
                         placeholder="Descrição do produto"
                         value={formData.description}
-                        onChange={(e) =>
-                            setFormData({ ...formData, description: e.target.value })
-                        }
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     />
                 </div>
                 <div>
@@ -176,9 +172,7 @@ export function ProductForm({
                         className="input-financial min-h-[60px]"
                         placeholder="Texto para vendedores e propostas"
                         value={formData.commercial_description}
-                        onChange={(e) =>
-                            setFormData({ ...formData, commercial_description: e.target.value })
-                        }
+                        onChange={(e) => setFormData({ ...formData, commercial_description: e.target.value })}
                     />
                 </div>
             </div>
@@ -195,9 +189,7 @@ export function ProductForm({
                     <select
                         className="input-financial"
                         value={formData.eligible_client_type}
-                        onChange={(e) =>
-                            setFormData({ ...formData, eligible_client_type: e.target.value })
-                        }
+                        onChange={(e) => setFormData({ ...formData, eligible_client_type: e.target.value })}
                     >
                         <option value="">Selecione</option>
                         {ELIGIBLE_CLIENT_TYPES.map((opt) => (
@@ -219,15 +211,13 @@ export function ProductForm({
                             >
                                 <Checkbox
                                     checked={formData.target_audience.includes(opt.value)}
-                                    onCheckedChange={() =>
-                                        setFormData({
-                                            ...formData,
-                                            target_audience: toggleArrayItem(
-                                                formData.target_audience,
-                                                opt.value
-                                            ),
-                                        })
-                                    }
+                                    onCheckedChange={() => setFormData({
+                                        ...formData,
+                                        target_audience: toggleArrayItem(
+                                            formData.target_audience,
+                                            opt.value
+                                        ),
+                                    })}
                                 />
                                 {opt.label}
                             </label>
@@ -241,9 +231,7 @@ export function ProductForm({
                     <select
                         className="input-financial"
                         value={formData.recurrence_type}
-                        onChange={(e) =>
-                            setFormData({ ...formData, recurrence_type: e.target.value })
-                        }
+                        onChange={(e) => setFormData({ ...formData, recurrence_type: e.target.value })}
                     >
                         <option value="unico">Único</option>
                         <option value="mensal">Mensal</option>
@@ -267,9 +255,7 @@ export function ProductForm({
                         </label>
                         <CurrencyInput
                             value={formData.value_min}
-                            onChange={(numValue) =>
-                                setFormData({ ...formData, value_min: String(numValue) })
-                            }
+                            onChange={(numValue) => setFormData({ ...formData, value_min: String(numValue) })}
                         />
                     </div>
                     <div>
@@ -278,9 +264,7 @@ export function ProductForm({
                         </label>
                         <CurrencyInput
                             value={formData.value_max}
-                            onChange={(numValue) =>
-                                setFormData({ ...formData, value_max: String(numValue) })
-                            }
+                            onChange={(numValue) => setFormData({ ...formData, value_max: String(numValue) })}
                         />
                     </div>
                 </div>
@@ -295,9 +279,7 @@ export function ProductForm({
                             className="input-financial"
                             placeholder="0"
                             value={formData.term_months_min}
-                            onChange={(e) =>
-                                setFormData({ ...formData, term_months_min: e.target.value })
-                            }
+                            onChange={(e) => setFormData({ ...formData, term_months_min: e.target.value })}
                         />
                     </div>
                     <div>
@@ -310,9 +292,7 @@ export function ProductForm({
                             className="input-financial"
                             placeholder="0"
                             value={formData.term_months_max}
-                            onChange={(e) =>
-                                setFormData({ ...formData, term_months_max: e.target.value })
-                            }
+                            onChange={(e) => setFormData({ ...formData, term_months_max: e.target.value })}
                         />
                     </div>
                 </div>
@@ -328,9 +308,7 @@ export function ProductForm({
                             className="input-financial"
                             placeholder="0"
                             value={formData.interest_rate_min}
-                            onChange={(e) =>
-                                setFormData({ ...formData, interest_rate_min: e.target.value })
-                            }
+                            onChange={(e) => setFormData({ ...formData, interest_rate_min: e.target.value })}
                         />
                     </div>
                     <div>
@@ -344,9 +322,7 @@ export function ProductForm({
                             className="input-financial"
                             placeholder="0"
                             value={formData.interest_rate_max}
-                            onChange={(e) =>
-                                setFormData({ ...formData, interest_rate_max: e.target.value })
-                            }
+                            onChange={(e) => setFormData({ ...formData, interest_rate_max: e.target.value })}
                         />
                     </div>
                 </div>
@@ -362,15 +338,13 @@ export function ProductForm({
                             >
                                 <Checkbox
                                     checked={formData.billing_type.includes(opt.value)}
-                                    onCheckedChange={() =>
-                                        setFormData({
-                                            ...formData,
-                                            billing_type: toggleArrayItem(
-                                                formData.billing_type,
-                                                opt.value
-                                            ),
-                                        })
-                                    }
+                                    onCheckedChange={() => setFormData({
+                                        ...formData,
+                                        billing_type: toggleArrayItem(
+                                            formData.billing_type,
+                                            opt.value
+                                        ),
+                                    })}
                                 />
                                 {opt.label}
                             </label>
@@ -381,12 +355,10 @@ export function ProductForm({
                     <Checkbox
                         id="iof_applicable"
                         checked={formData.iof_applicable}
-                        onCheckedChange={(checked) =>
-                            setFormData({
-                                ...formData,
-                                iof_applicable: checked === true,
-                            })
-                        }
+                        onCheckedChange={(checked) => setFormData({
+                            ...formData,
+                            iof_applicable: checked === true,
+                        })}
                     />
                     <label htmlFor="iof_applicable" className="text-sm font-medium cursor-pointer">
                         IOF aplicável?
@@ -401,36 +373,30 @@ export function ProductForm({
                             <span className="text-xs text-muted-foreground">Cadastro</span>
                             <CurrencyInput
                                 value={formData.other_fees_cadastro}
-                                onChange={(numValue) =>
-                                    setFormData({
-                                        ...formData,
-                                        other_fees_cadastro: String(numValue),
-                                    })
-                                }
+                                onChange={(numValue) => setFormData({
+                                    ...formData,
+                                    other_fees_cadastro: String(numValue),
+                                })}
                             />
                         </div>
                         <div>
                             <span className="text-xs text-muted-foreground">Operação</span>
                             <CurrencyInput
                                 value={formData.other_fees_operacao}
-                                onChange={(numValue) =>
-                                    setFormData({
-                                        ...formData,
-                                        other_fees_operacao: String(numValue),
-                                    })
-                                }
+                                onChange={(numValue) => setFormData({
+                                    ...formData,
+                                    other_fees_operacao: String(numValue),
+                                })}
                             />
                         </div>
                         <div>
                             <span className="text-xs text-muted-foreground">Seguro</span>
                             <CurrencyInput
                                 value={formData.other_fees_seguro}
-                                onChange={(numValue) =>
-                                    setFormData({
-                                        ...formData,
-                                        other_fees_seguro: String(numValue),
-                                    })
-                                }
+                                onChange={(numValue) => setFormData({
+                                    ...formData,
+                                    other_fees_seguro: String(numValue),
+                                })}
                             />
                         </div>
                     </div>
@@ -450,9 +416,7 @@ export function ProductForm({
                     className="input-financial min-h-[100px] font-mono text-sm"
                     placeholder='Ex: { "margem_minima_pct": 5, "orgaos_conveniados": "INSS, Estados" }'
                     value={formData.specific_rules}
-                    onChange={(e) =>
-                        setFormData({ ...formData, specific_rules: e.target.value })
-                    }
+                    onChange={(e) => setFormData({ ...formData, specific_rules: e.target.value })}
                 />
             </div>
 
@@ -472,9 +436,7 @@ export function ProductForm({
                         </label>
                         <CurrencyInput
                             value={formData.reference_value}
-                            onChange={(numValue) =>
-                                setFormData({ ...formData, reference_value: String(numValue) })
-                            }
+                            onChange={(numValue) => setFormData({ ...formData, reference_value: String(numValue) })}
                         />
                     </div>
                     <div>
@@ -542,9 +504,7 @@ export function ProductForm({
                         <select
                             className="input-financial"
                             value={formData.commission_type}
-                            onChange={(e) =>
-                                setFormData({ ...formData, commission_type: e.target.value })
-                            }
+                            onChange={(e) => setFormData({ ...formData, commission_type: e.target.value })}
                         >
                             <option value="">Selecione</option>
                             {COMMISSION_TYPES.map((opt) => (
@@ -565,9 +525,7 @@ export function ProductForm({
                             className="input-financial"
                             placeholder="0"
                             value={formData.commission_pct}
-                            onChange={(e) =>
-                                setFormData({ ...formData, commission_pct: e.target.value })
-                            }
+                            onChange={(e) => setFormData({ ...formData, commission_pct: e.target.value })}
                         />
                     </div>
                 </div>
@@ -578,9 +536,7 @@ export function ProductForm({
                         </label>
                         <CurrencyInput
                             value={formData.commission_min}
-                            onChange={(numValue) =>
-                                setFormData({ ...formData, commission_min: String(numValue) })
-                            }
+                            onChange={(numValue) => setFormData({ ...formData, commission_min: String(numValue) })}
                         />
                     </div>
                     <div>
@@ -589,9 +545,7 @@ export function ProductForm({
                         </label>
                         <CurrencyInput
                             value={formData.commission_max}
-                            onChange={(numValue) =>
-                                setFormData({ ...formData, commission_max: String(numValue) })
-                            }
+                            onChange={(numValue) => setFormData({ ...formData, commission_max: String(numValue) })}
                         />
                     </div>
                 </div>
@@ -602,44 +556,44 @@ export function ProductForm({
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <span className="text-xs text-muted-foreground">
-                                {COMMISSION_RECEIVED_BY_LABELS.by_product} (R$)
+                                {COMMISSION_RECEIVED_BY_LABELS.by_product}
+                                {' '}
+                                (R$)
                             </span>
                             <CurrencyInput
                                 value={formData.commission_received_by_product}
-                                onChange={(numValue) =>
-                                    setFormData({
-                                        ...formData,
-                                        commission_received_by_product: String(numValue),
-                                    })
-                                }
+                                onChange={(numValue) => setFormData({
+                                    ...formData,
+                                    commission_received_by_product: String(numValue),
+                                })}
                             />
                         </div>
                         <div>
                             <span className="text-xs text-muted-foreground">
-                                {COMMISSION_RECEIVED_BY_LABELS.by_term} (R$)
+                                {COMMISSION_RECEIVED_BY_LABELS.by_term}
+                                {' '}
+                                (R$)
                             </span>
                             <CurrencyInput
                                 value={formData.commission_received_by_term}
-                                onChange={(numValue) =>
-                                    setFormData({
-                                        ...formData,
-                                        commission_received_by_term: String(numValue),
-                                    })
-                                }
+                                onChange={(numValue) => setFormData({
+                                    ...formData,
+                                    commission_received_by_term: String(numValue),
+                                })}
                             />
                         </div>
                         <div>
                             <span className="text-xs text-muted-foreground">
-                                {COMMISSION_RECEIVED_BY_LABELS.by_value} (R$)
+                                {COMMISSION_RECEIVED_BY_LABELS.by_value}
+                                {' '}
+                                (R$)
                             </span>
                             <CurrencyInput
                                 value={formData.commission_received_by_value}
-                                onChange={(numValue) =>
-                                    setFormData({
-                                        ...formData,
-                                        commission_received_by_value: String(numValue),
-                                    })
-                                }
+                                onChange={(numValue) => setFormData({
+                                    ...formData,
+                                    commission_received_by_value: String(numValue),
+                                })}
                             />
                         </div>
                     </div>
@@ -655,12 +609,10 @@ export function ProductForm({
                         className="input-financial w-24"
                         placeholder="Ex: 10"
                         value={formData.commission_payment_day}
-                        onChange={(e) =>
-                            setFormData({
-                                ...formData,
-                                commission_payment_day: e.target.value,
-                            })
-                        }
+                        onChange={(e) => setFormData({
+                            ...formData,
+                            commission_payment_day: e.target.value,
+                        })}
                     />
                 </div>
             </div>
@@ -678,15 +630,13 @@ export function ProductForm({
                         >
                             <Checkbox
                                 checked={formData.required_docs.includes(opt.value)}
-                                onCheckedChange={() =>
-                                    setFormData({
-                                        ...formData,
-                                        required_docs: toggleArrayItem(
-                                            formData.required_docs,
-                                            opt.value
-                                        ),
-                                    })
-                                }
+                                onCheckedChange={() => setFormData({
+                                    ...formData,
+                                    required_docs: toggleArrayItem(
+                                        formData.required_docs,
+                                        opt.value
+                                    ),
+                                })}
                             />
                             {opt.label}
                         </label>
@@ -702,9 +652,7 @@ export function ProductForm({
                             className="input-financial"
                             placeholder="Ex: Certidão negativa, contrato social..."
                             value={formData.required_docs_other}
-                            onChange={(e) =>
-                                setFormData({ ...formData, required_docs_other: e.target.value })
-                            }
+                            onChange={(e) => setFormData({ ...formData, required_docs_other: e.target.value })}
                         />
                     </div>
                 )}
@@ -716,9 +664,7 @@ export function ProductForm({
                     <input
                         type="checkbox"
                         checked={formData.is_active}
-                        onChange={(e) =>
-                            setFormData({ ...formData, is_active: e.target.checked })
-                        }
+                        onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
                         className="w-4 h-4 rounded border-input"
                     />
                     <span className="text-sm font-medium text-foreground">Produto ativo</span>
@@ -731,7 +677,9 @@ export function ProductForm({
                 </button>
                 <button type="submit" className="btn-primary" disabled={isSaving}>
                     {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {editingId ? 'Atualizar' : 'Criar'} Produto
+                    {editingId ? 'Atualizar' : 'Criar'}
+                    {' '}
+                    Produto
                 </button>
             </div>
         </form>

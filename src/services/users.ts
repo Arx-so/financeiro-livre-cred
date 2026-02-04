@@ -395,8 +395,8 @@ export async function createUser(
 
         // Check if email confirmation is required
         // identities.length === 0 means email is not confirmed yet
-        const needsConfirmation = authData.user.identities?.length === 0 ||
-            authData.user.email_confirmed_at === null;
+        const needsConfirmation = authData.user.identities?.length === 0
+            || authData.user.email_confirmed_at === null;
 
         if (needsConfirmation) {
             return {

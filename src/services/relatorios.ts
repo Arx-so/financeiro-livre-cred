@@ -1068,9 +1068,9 @@ export async function getCustosFixosVariaveisData(
 
     for (const [categoria, valor] of categoriaData.entries()) {
         // Classificar como fixo ou variável baseado no nome da categoria
-        const isFixo = categoria.toLowerCase().includes('fixo') || 
-                      categoria.toLowerCase().includes('salario') ||
-                      categoria.toLowerCase().includes('aluguel');
+        const isFixo = categoria.toLowerCase().includes('fixo')
+                      || categoria.toLowerCase().includes('salario')
+                      || categoria.toLowerCase().includes('aluguel');
 
         result.push({
             tipo: isFixo ? 'fixo' : 'variavel',
@@ -1196,13 +1196,13 @@ export async function getComparativoPeriodoData(
     if (periodo === 'mensal') {
         const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
         for (let i = 0; i < 12; i++) {
-            const monthEntries = entries?.filter(e => new Date(e.due_date).getMonth() === i) || [];
-            const monthBudget = budget?.filter(b => b.month === i + 1) || [];
-            
+            const monthEntries = entries?.filter((e) => new Date(e.due_date).getMonth() === i) || [];
+            const monthBudget = budget?.filter((b) => b.month === i + 1) || [];
+
             const realizado = monthEntries
-                .filter(e => e.type === 'receita')
+                .filter((e) => e.type === 'receita')
                 .reduce((sum, e) => sum + Number(e.value), 0);
-            
+
             const previsto = monthBudget.reduce((sum, b) => sum + Number(b.budgeted_amount), 0);
             const variacao = realizado - previsto;
             const variacaoPercent = previsto > 0 ? (variacao / previsto) * 100 : 0;
@@ -1395,7 +1395,9 @@ export async function getContasPagarReceberData(
             });
         }
 
-        return { total, pago, pendente, atrasado, detalhes };
+        return {
+            total, pago, pendente, atrasado, detalhes
+        };
     };
 
     const receberData = processEntries(receber || [], 'receber');
@@ -1618,7 +1620,7 @@ export async function getCustoOperacionalVendaData(
     const totalVendas = (contracts || []).length;
     const custoPorVenda = totalVendas > 0 ? totalDespesas / totalVendas : 0;
 
-    return (contracts || []).map(contract => {
+    return (contracts || []).map((contract) => {
         const receita = Number(contract.value);
         return {
             venda: contract.title,
@@ -1649,7 +1651,7 @@ export async function getMargemLiquidaContratoData(
 
     if (error) throw error;
 
-    return (data || []).map(contract => {
+    return (data || []).map((contract) => {
         const receita = Number(contract.value);
         const custos = receita * 0.6; // Estimativa
         const margem = receita - custos;
@@ -1952,12 +1954,12 @@ export async function getBaseAtivaClientesData(
     const hoje = new Date();
     const mesPassado = new Date(hoje.getFullYear(), hoje.getMonth() - 1, hoje.getDate());
 
-    const ativos = (clientes || []).filter(c => {
+    const ativos = (clientes || []).filter((c) => {
         const created = new Date(c.created_at);
         return created <= mesPassado;
     }).length;
 
-    const novos = (clientes || []).filter(c => {
+    const novos = (clientes || []).filter((c) => {
         const created = new Date(c.created_at);
         return created > mesPassado;
     }).length;
@@ -2112,7 +2114,7 @@ export async function getPerfilClienteLucrativoData(
 ): Promise<PerfilClienteLucrativoData[]> {
     const ltvData = await getLifetimeValueData(branchId);
 
-    return ltvData.map(cliente => {
+    return ltvData.map((cliente) => {
         const score = (cliente.ltv / 1000) + (cliente.quantidadeContratos * 10);
         return {
             cliente: cliente.cliente,
@@ -2236,7 +2238,7 @@ export async function getProdutividadeFuncionarioData(
 ): Promise<ProdutividadeFuncionarioData[]> {
     const vendas = await getVendasVendedorData(branchId, startDate, endDate);
 
-    return vendas.map(venda => ({
+    return vendas.map((venda) => ({
         funcionario: venda.vendedor,
         vendas: venda.quantidade,
         contratos: venda.quantidade,
@@ -2378,7 +2380,7 @@ export async function getLogsAlteracoesData(
 
     if (error) throw error;
 
-    return (data || []).map(log => ({
+    return (data || []).map((log) => ({
         data: log.created_at,
         usuario: log.user_name || 'Sistema',
         acao: log.action,
@@ -2560,7 +2562,7 @@ export async function getMetaRiscoData(
 
     if (error) throw error;
 
-    return (targets || []).map(target => {
+    return (targets || []).map((target) => {
         const meta = Number(target.target_amount);
         const realizado = Number(target.actual_amount);
         const percentual = meta > 0 ? (realizado / meta) * 100 : 0;
@@ -2583,7 +2585,7 @@ export async function getMetaRiscoData(
             diasRestantes,
             risco,
         };
-    }).filter(m => m.risco !== 'baixo').sort((a, b) => {
+    }).filter((m) => m.risco !== 'baixo').sort((a, b) => {
         const riscoOrder = { alto: 3, medio: 2, baixo: 1 };
         return riscoOrder[b.risco] - riscoOrder[a.risco];
     });
@@ -2650,17 +2652,17 @@ export async function getVendedorForaPadraoData(
 
     if (vendas.length === 0) return [];
 
-    const valores = vendas.map(v => v.valor);
+    const valores = vendas.map((v) => v.valor);
     const media = valores.reduce((sum, v) => sum + v, 0) / valores.length;
-    const variancia = valores.reduce((sum, v) => sum + Math.pow(v - media, 2), 0) / valores.length;
+    const variancia = valores.reduce((sum, v) => sum + (v - media)**2, 0) / valores.length;
     const desvio = Math.sqrt(variancia);
 
     const limiteSuperior = media + (2 * desvio);
     const limiteInferior = media - (2 * desvio);
 
     return vendas
-        .filter(v => v.valor > limiteSuperior || v.valor < limiteInferior)
-        .map(v => ({
+        .filter((v) => v.valor > limiteSuperior || v.valor < limiteInferior)
+        .map((v) => ({
             vendedor: v.vendedor,
             metricas: {
                 vendas: v.valor,

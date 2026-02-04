@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase';
-import type { Payroll, PayrollInsert, PayrollUpdate, FinancialEntryInsert } from '@/types/database';
+import type {
+    Payroll, PayrollInsert, PayrollUpdate, FinancialEntryInsert
+} from '@/types/database';
 
 export interface PayrollWithEmployee extends Payroll {
     employee?: {

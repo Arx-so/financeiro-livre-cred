@@ -333,7 +333,9 @@ export default function ContractTemplates() {
                                     </button>
                                     <button type="submit" className="btn-primary" disabled={isSaving}>
                                         {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
-                                        {editingId ? 'Atualizar' : 'Criar'} Template
+                                        {editingId ? 'Atualizar' : 'Criar'}
+                                        {' '}
+                                        Template
                                     </button>
                                 </div>
                             </form>
@@ -383,7 +385,9 @@ export default function ContractTemplates() {
                                                 </p>
                                             )}
                                             <p className="text-xs text-muted-foreground mt-2">
-                                                {template.content.length} caracteres
+                                                {template.content.length}
+                                                {' '}
+                                                caracteres
                                             </p>
                                         </div>
                                     </div>

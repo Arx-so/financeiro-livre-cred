@@ -1,4 +1,6 @@
-import { Loader2, Store, Eye, EyeOff } from 'lucide-react';
+import {
+    Loader2, Store, Eye, EyeOff
+} from 'lucide-react';
 import { useState } from 'react';
 import type { UserRole } from '@/types/database';
 import { RolePermissionsPanel } from '@/components/shared/RolePermissionsPanel';
@@ -34,7 +36,9 @@ export function UserForm({
                 <>
                     <div>
                         <label className="block text-sm font-medium text-foreground mb-2">
-                            Nome <span className="text-expense">*</span>
+                            Nome
+                            {' '}
+                            <span className="text-expense">*</span>
                         </label>
                         <input
                             type="text"
@@ -48,7 +52,9 @@ export function UserForm({
 
                     <div>
                         <label className="block text-sm font-medium text-foreground mb-2">
-                            Email <span className="text-expense">*</span>
+                            Email
+                            {' '}
+                            <span className="text-expense">*</span>
                         </label>
                         <input
                             type="email"
@@ -62,7 +68,9 @@ export function UserForm({
 
                     <div>
                         <label className="block text-sm font-medium text-foreground mb-2">
-                            Senha <span className="text-expense">*</span>
+                            Senha
+                            {' '}
+                            <span className="text-expense">*</span>
                         </label>
                         <div className="relative">
                             <input

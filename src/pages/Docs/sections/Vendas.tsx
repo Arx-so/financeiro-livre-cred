@@ -53,14 +53,24 @@ export function Vendas() {
             <h3 className="text-lg font-semibold text-foreground mt-6">Regras para Contratos de Vendas</h3>
             <div className="bg-muted/30 p-4 rounded-lg border border-border">
                 <p className="text-sm text-muted-foreground mb-2">
-                    Quando um <strong>vendedor</strong> é selecionado no contrato:
+                    Quando um
+                    {' '}
+                    <strong>vendedor</strong>
+                    {' '}
+                    é selecionado no contrato:
                 </p>
                 <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
                     <li>
-                        ✅ A categoria é <strong>automaticamente definida como &quot;Vendas&quot;</strong>
+                        ✅ A categoria é
+                        {' '}
+                        <strong>automaticamente definida como &quot;Vendas&quot;</strong>
                     </li>
                     <li>
-                        ✅ O campo &quot;Tipo&quot; se torna um <strong>select de produtos</strong> (apenas produtos ativos)
+                        ✅ O campo &quot;Tipo&quot; se torna um
+                        {' '}
+                        <strong>select de produtos</strong>
+                        {' '}
+                        (apenas produtos ativos)
                     </li>
                     <li>
                         📌 Para contratos sem vendedor, a categoria e tipo podem ser escolhidos livremente
@@ -74,7 +84,9 @@ export function Vendas() {
                 <li>Gerentes e Admins podem aprovar ou rejeitar</li>
                 <li>Após aprovação, o contrato pode ser assinado</li>
                 <li>
-                    ⚠️ <strong>Contratos aprovados NÃO podem ser editados nem excluídos</strong>
+                    ⚠️
+                    {' '}
+                    <strong>Contratos aprovados NÃO podem ser editados nem excluídos</strong>
                 </li>
             </ul>
 

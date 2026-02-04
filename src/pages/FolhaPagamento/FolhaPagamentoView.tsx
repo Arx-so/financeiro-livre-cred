@@ -104,281 +104,281 @@ export function FolhaPagamentoView(props: FolhaPagamentoViewProps) {
                     <div className="flex items-center gap-2">
                         <HiringCategoriesManager />
                         <Dialog
-                        open={isModalOpen}
-                        onOpenChange={(open) => {
-                            setIsModalOpen(open);
-                            if (!open) resetForm();
-                        }}
-                    >
-                        <DialogTrigger asChild>
-                            <button className="btn-primary">
-                                <Plus className="w-4 h-4" />
-                                Nova Folha
-                            </button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                            <DialogHeader>
-                                <DialogTitle>
-                                    {editingId ? 'Editar Folha' : isBatchMode ? 'Nova Folha em Lote' : 'Nova Folha de Pagamento'}
-                                </DialogTitle>
-                                <DialogDescription>
-                                    {editingId
-                                        ? 'Edite os dados da folha de pagamento'
-                                        : isBatchMode
-                                            ? 'Crie folhas de pagamento para múltiplos funcionários'
-                                            : 'Preencha os dados da folha de pagamento'}
-                                </DialogDescription>
-                            </DialogHeader>
+                            open={isModalOpen}
+                            onOpenChange={(open) => {
+                                setIsModalOpen(open);
+                                if (!open) resetForm();
+                            }}
+                        >
+                            <DialogTrigger asChild>
+                                <button className="btn-primary">
+                                    <Plus className="w-4 h-4" />
+                                    Nova Folha
+                                </button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                                <DialogHeader>
+                                    <DialogTitle>
+                                        {editingId ? 'Editar Folha' : isBatchMode ? 'Nova Folha em Lote' : 'Nova Folha de Pagamento'}
+                                    </DialogTitle>
+                                    <DialogDescription>
+                                        {editingId
+                                            ? 'Edite os dados da folha de pagamento'
+                                            : isBatchMode
+                                                ? 'Crie folhas de pagamento para múltiplos funcionários'
+                                                : 'Preencha os dados da folha de pagamento'}
+                                    </DialogDescription>
+                                </DialogHeader>
 
-                            {/* Branch Info in Form */}
-                            {unidadeAtual && (
-                                <div className="p-3 bg-primary/10 rounded-lg border border-primary/20 mt-2">
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <Receipt className="w-4 h-4 text-primary" />
-                                        <span className="font-medium">
-                                            Filial:
-                                            {' '}
-                                            {unidadeAtual.name}
-                                        </span>
-                                        <span className="text-muted-foreground">
-                                            (
-                                            {unidadeAtual.code}
-                                            )
-                                        </span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Toggle Batch Mode - Only show when creating new (not editing) */}
-                            {!editingId && (
-                                <div className="mt-4 p-3 bg-muted/30 rounded-lg border border-border">
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={isBatchMode}
-                                            onChange={toggleBatchMode}
-                                            className="w-4 h-4 rounded"
-                                        />
-                                        <div className="flex items-center gap-2">
-                                            <Users className="w-4 h-4 text-muted-foreground" />
-                                            <span className="text-sm font-medium text-foreground">
-                                                Criar em lote (múltiplos funcionários)
+                                {/* Branch Info in Form */}
+                                {unidadeAtual && (
+                                    <div className="p-3 bg-primary/10 rounded-lg border border-primary/20 mt-2">
+                                        <div className="flex items-center gap-2 text-sm">
+                                            <Receipt className="w-4 h-4 text-primary" />
+                                            <span className="font-medium">
+                                                Filial:
+                                                {' '}
+                                                {unidadeAtual.name}
+                                            </span>
+                                            <span className="text-muted-foreground">
+                                                (
+                                                {unidadeAtual.code}
+                                                )
                                             </span>
                                         </div>
-                                    </label>
-                                    <p className="text-xs text-muted-foreground mt-1 ml-6">
-                                        {isBatchMode
-                                            ? 'Crie folhas para vários funcionários de uma vez, com opção de recorrência'
-                                            : 'Crie uma folha individual para um funcionário'}
-                                    </p>
-                                </div>
-                            )}
+                                    </div>
+                                )}
 
-                            {isBatchMode && !editingId ? (
-                                <BatchPayrollForm
-                                    branchId={unidadeAtual?.id || ''}
-                                    formData={formData}
-                                    setFormData={setFormData}
-                                    batchConfig={batchConfig}
-                                    setBatchConfig={setBatchConfig}
-                                    onSubmit={handleBatchSubmit}
-                                    isSaving={isSaving}
-                                />
-                            ) : (
-                                <form className="space-y-4 mt-4" onSubmit={handleSubmit}>
-                                {/* Funcionário e Período */}
-                                <div className="grid grid-cols-3 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-foreground mb-2">
-                                            Funcionário
-                                        </label>
-                                        <select
-                                            className="input-financial"
-                                            value={formData.employee_id}
-                                            onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
-                                            required
-                                        >
-                                            <option value="">Selecione</option>
-                                            {funcionarios.map((f) => (
-                                                <option key={f.id} value={f.id}>{f.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-foreground mb-2">
-                                            Mês
-                                        </label>
-                                        <select
-                                            className="input-financial"
-                                            value={formData.reference_month}
-                                            onChange={(e) => setFormData({ ...formData, reference_month: e.target.value })}
-                                        >
-                                            {monthNames.map((name, index) => (
-                                                <option key={index} value={index + 1}>{name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-foreground mb-2">
-                                            Ano
-                                        </label>
-                                        <select
-                                            className="input-financial"
-                                            value={formData.reference_year}
-                                            onChange={(e) => setFormData({ ...formData, reference_year: e.target.value })}
-                                        >
-                                            {years.map((year) => (
-                                                <option key={year} value={year}>{year}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-
-                                {/* Salário e Horas Extras */}
-                                <div className="border-t border-border pt-4">
-                                    <h4 className="font-medium text-foreground mb-3">Proventos</h4>
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-foreground mb-2">
-                                                Salário Base
-                                            </label>
-                                            <CurrencyInput
-                                                value={formData.base_salary}
-                                                onChange={(v) => setFormData({ ...formData, base_salary: String(v) })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-foreground mb-2">
-                                                Horas Extras (qtd)
-                                            </label>
+                                {/* Toggle Batch Mode - Only show when creating new (not editing) */}
+                                {!editingId && (
+                                    <div className="mt-4 p-3 bg-muted/30 rounded-lg border border-border">
+                                        <label className="flex items-center gap-2 cursor-pointer">
                                             <input
-                                                type="number"
-                                                className="input-financial"
-                                                value={formData.overtime_hours}
-                                                onChange={(e) => setFormData({ ...formData, overtime_hours: e.target.value })}
-                                                step="0.5"
-                                                min="0"
+                                                type="checkbox"
+                                                checked={isBatchMode}
+                                                onChange={toggleBatchMode}
+                                                className="w-4 h-4 rounded"
                                             />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-foreground mb-2">
-                                                Valor Horas Extras
-                                            </label>
-                                            <CurrencyInput
-                                                value={formData.overtime_value}
-                                                onChange={(v) => setFormData({ ...formData, overtime_value: String(v) })}
-                                            />
-                                        </div>
+                                            <div className="flex items-center gap-2">
+                                                <Users className="w-4 h-4 text-muted-foreground" />
+                                                <span className="text-sm font-medium text-foreground">
+                                                    Criar em lote (múltiplos funcionários)
+                                                </span>
+                                            </div>
+                                        </label>
+                                        <p className="text-xs text-muted-foreground mt-1 ml-6">
+                                            {isBatchMode
+                                                ? 'Crie folhas para vários funcionários de uma vez, com opção de recorrência'
+                                                : 'Crie uma folha individual para um funcionário'}
+                                        </p>
                                     </div>
-                                </div>
+                                )}
 
-                                {/* Benefícios */}
-                                <div className="border-t border-border pt-4">
-                                    <h4 className="font-medium text-foreground mb-3">Benefícios</h4>
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-foreground mb-2">
-                                                Vale Transporte
-                                            </label>
-                                            <CurrencyInput
-                                                value={formData.transport_allowance}
-                                                onChange={(v) => setFormData({ ...formData, transport_allowance: String(v) })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-foreground mb-2">
-                                                Vale Alimentação
-                                            </label>
-                                            <CurrencyInput
-                                                value={formData.meal_allowance}
-                                                onChange={(v) => setFormData({ ...formData, meal_allowance: String(v) })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-foreground mb-2">
-                                                Outros Benefícios
-                                            </label>
-                                            <CurrencyInput
-                                                value={formData.other_benefits}
-                                                onChange={(v) => setFormData({ ...formData, other_benefits: String(v) })}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Descontos */}
-                                <div className="border-t border-border pt-4">
-                                    <h4 className="font-medium text-foreground mb-3">Descontos</h4>
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium text-foreground mb-2">
-                                                INSS
-                                            </label>
-                                            <CurrencyInput
-                                                value={formData.inss_discount}
-                                                onChange={(v) => setFormData({ ...formData, inss_discount: String(v) })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-foreground mb-2">
-                                                IRRF
-                                            </label>
-                                            <CurrencyInput
-                                                value={formData.irrf_discount}
-                                                onChange={(v) => setFormData({ ...formData, irrf_discount: String(v) })}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-foreground mb-2">
-                                                Outros Descontos
-                                            </label>
-                                            <CurrencyInput
-                                                value={formData.other_discounts}
-                                                onChange={(v) => setFormData({ ...formData, other_discounts: String(v) })}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Total Líquido */}
-                                <div className="border-t border-border pt-4">
-                                    <div className="flex items-center justify-between p-4 bg-income/10 rounded-lg">
-                                        <span className="font-medium text-foreground">Salário Líquido:</span>
-                                        <span className="text-2xl font-bold text-income">
-                                            {formatCurrency(calculatedNetSalary)}
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {/* Observações */}
-                                <div>
-                                    <label className="block text-sm font-medium text-foreground mb-2">
-                                        Observações
-                                    </label>
-                                    <textarea
-                                        className="input-financial min-h-[80px]"
-                                        value={formData.notes}
-                                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                                        placeholder="Observações adicionais..."
+                                {isBatchMode && !editingId ? (
+                                    <BatchPayrollForm
+                                        branchId={unidadeAtual?.id || ''}
+                                        formData={formData}
+                                        setFormData={setFormData}
+                                        batchConfig={batchConfig}
+                                        setBatchConfig={setBatchConfig}
+                                        onSubmit={handleBatchSubmit}
+                                        isSaving={isSaving}
                                     />
-                                </div>
+                                ) : (
+                                    <form className="space-y-4 mt-4" onSubmit={handleSubmit}>
+                                        {/* Funcionário e Período */}
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-foreground mb-2">
+                                                    Funcionário
+                                                </label>
+                                                <select
+                                                    className="input-financial"
+                                                    value={formData.employee_id}
+                                                    onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
+                                                    required
+                                                >
+                                                    <option value="">Selecione</option>
+                                                    {funcionarios.map((f) => (
+                                                        <option key={f.id} value={f.id}>{f.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-foreground mb-2">
+                                                    Mês
+                                                </label>
+                                                <select
+                                                    className="input-financial"
+                                                    value={formData.reference_month}
+                                                    onChange={(e) => setFormData({ ...formData, reference_month: e.target.value })}
+                                                >
+                                                    {monthNames.map((name, index) => (
+                                                        <option key={index} value={index + 1}>{name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-foreground mb-2">
+                                                    Ano
+                                                </label>
+                                                <select
+                                                    className="input-financial"
+                                                    value={formData.reference_year}
+                                                    onChange={(e) => setFormData({ ...formData, reference_year: e.target.value })}
+                                                >
+                                                    {years.map((year) => (
+                                                        <option key={year} value={year}>{year}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
 
-                                {/* Ações */}
-                                <div className="flex justify-end gap-3 pt-4">
-                                    <button type="button" className="btn-secondary" onClick={closeModal}>
-                                        Cancelar
-                                    </button>
-                                    <button type="submit" className="btn-primary" disabled={isSaving}>
-                                        {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
-                                        {editingId ? 'Atualizar' : 'Criar'}
-                                        {' '}
-                                        Folha
-                                    </button>
-                                </div>
-                            </form>
-                            )}
-                        </DialogContent>
-                    </Dialog>
+                                        {/* Salário e Horas Extras */}
+                                        <div className="border-t border-border pt-4">
+                                            <h4 className="font-medium text-foreground mb-3">Proventos</h4>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-foreground mb-2">
+                                                        Salário Base
+                                                    </label>
+                                                    <CurrencyInput
+                                                        value={formData.base_salary}
+                                                        onChange={(v) => setFormData({ ...formData, base_salary: String(v) })}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-foreground mb-2">
+                                                        Horas Extras (qtd)
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        className="input-financial"
+                                                        value={formData.overtime_hours}
+                                                        onChange={(e) => setFormData({ ...formData, overtime_hours: e.target.value })}
+                                                        step="0.5"
+                                                        min="0"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-foreground mb-2">
+                                                        Valor Horas Extras
+                                                    </label>
+                                                    <CurrencyInput
+                                                        value={formData.overtime_value}
+                                                        onChange={(v) => setFormData({ ...formData, overtime_value: String(v) })}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Benefícios */}
+                                        <div className="border-t border-border pt-4">
+                                            <h4 className="font-medium text-foreground mb-3">Benefícios</h4>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-foreground mb-2">
+                                                        Vale Transporte
+                                                    </label>
+                                                    <CurrencyInput
+                                                        value={formData.transport_allowance}
+                                                        onChange={(v) => setFormData({ ...formData, transport_allowance: String(v) })}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-foreground mb-2">
+                                                        Vale Alimentação
+                                                    </label>
+                                                    <CurrencyInput
+                                                        value={formData.meal_allowance}
+                                                        onChange={(v) => setFormData({ ...formData, meal_allowance: String(v) })}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-foreground mb-2">
+                                                        Outros Benefícios
+                                                    </label>
+                                                    <CurrencyInput
+                                                        value={formData.other_benefits}
+                                                        onChange={(v) => setFormData({ ...formData, other_benefits: String(v) })}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Descontos */}
+                                        <div className="border-t border-border pt-4">
+                                            <h4 className="font-medium text-foreground mb-3">Descontos</h4>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-foreground mb-2">
+                                                        INSS
+                                                    </label>
+                                                    <CurrencyInput
+                                                        value={formData.inss_discount}
+                                                        onChange={(v) => setFormData({ ...formData, inss_discount: String(v) })}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-foreground mb-2">
+                                                        IRRF
+                                                    </label>
+                                                    <CurrencyInput
+                                                        value={formData.irrf_discount}
+                                                        onChange={(v) => setFormData({ ...formData, irrf_discount: String(v) })}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-foreground mb-2">
+                                                        Outros Descontos
+                                                    </label>
+                                                    <CurrencyInput
+                                                        value={formData.other_discounts}
+                                                        onChange={(v) => setFormData({ ...formData, other_discounts: String(v) })}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Total Líquido */}
+                                        <div className="border-t border-border pt-4">
+                                            <div className="flex items-center justify-between p-4 bg-income/10 rounded-lg">
+                                                <span className="font-medium text-foreground">Salário Líquido:</span>
+                                                <span className="text-2xl font-bold text-income">
+                                                    {formatCurrency(calculatedNetSalary)}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Observações */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-foreground mb-2">
+                                                Observações
+                                            </label>
+                                            <textarea
+                                                className="input-financial min-h-[80px]"
+                                                value={formData.notes}
+                                                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                                                placeholder="Observações adicionais..."
+                                            />
+                                        </div>
+
+                                        {/* Ações */}
+                                        <div className="flex justify-end gap-3 pt-4">
+                                            <button type="button" className="btn-secondary" onClick={closeModal}>
+                                                Cancelar
+                                            </button>
+                                            <button type="submit" className="btn-primary" disabled={isSaving}>
+                                                {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+                                                {editingId ? 'Atualizar' : 'Criar'}
+                                                {' '}
+                                                Folha
+                                            </button>
+                                        </div>
+                                    </form>
+                                )}
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 </PageHeader>
 

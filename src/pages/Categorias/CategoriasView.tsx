@@ -1,4 +1,6 @@
-import { Plus, Edit, Trash2, Repeat, Tag } from 'lucide-react';
+import {
+    Plus, Edit, Trash2, Repeat, Tag
+} from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import {
     Dialog,

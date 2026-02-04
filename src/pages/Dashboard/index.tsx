@@ -207,9 +207,7 @@ export default function Dashboard() {
                                         <Tooltip formatter={(value: number) => formatCurrency(value)} />
                                         <Legend
                                             verticalAlign="bottom"
-                                            formatter={(value, entry: { payload?: { value?: number } }) =>
-                                                `${value} (${formatCurrency(entry?.payload?.value ?? 0)})`
-                                            }
+                                            formatter={(value, entry: { payload?: { value?: number } }) => `${value} (${formatCurrency(entry?.payload?.value ?? 0)})`}
                                         />
                                     </PieChart>
                                 </ResponsiveContainer>

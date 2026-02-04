@@ -109,12 +109,12 @@ export function ProductRulesPanel({ product, saleValue }: ProductRulesPanelProps
                             Comissão instituição:
                             {' '}
                             {[
-                                commissionReceived.by_product != null &&
-                                    `${COMMISSION_RECEIVED_BY_LABELS.by_product}: ${commissionReceived.by_product}`,
-                                commissionReceived.by_term != null &&
-                                    `${COMMISSION_RECEIVED_BY_LABELS.by_term}: ${commissionReceived.by_term}`,
-                                commissionReceived.by_value != null &&
-                                    `${COMMISSION_RECEIVED_BY_LABELS.by_value}: ${commissionReceived.by_value}`,
+                                commissionReceived.by_product != null
+                                    && `${COMMISSION_RECEIVED_BY_LABELS.by_product}: ${commissionReceived.by_product}`,
+                                commissionReceived.by_term != null
+                                    && `${COMMISSION_RECEIVED_BY_LABELS.by_term}: ${commissionReceived.by_term}`,
+                                commissionReceived.by_value != null
+                                    && `${COMMISSION_RECEIVED_BY_LABELS.by_value}: ${commissionReceived.by_value}`,
                             ]
                                 .filter(Boolean)
                                 .join(' | ')}
@@ -215,7 +215,12 @@ export function ProductRulesPanel({ product, saleValue }: ProductRulesPanelProps
                     Cliente e Público-alvo
                 </p>
                 <div className="text-sm text-foreground space-y-1">
-                    {eligibleLabel && <p>Tipo elegível: {eligibleLabel}</p>}
+                    {eligibleLabel && (
+                        <p>
+                            Tipo elegível:
+                            {eligibleLabel}
+                        </p>
+                    )}
                     {targetAudience.length > 0 ? (
                         <p>
                             Público-alvo:
@@ -266,13 +271,13 @@ export function ProductRulesPanel({ product, saleValue }: ProductRulesPanelProps
                         </p>
                     )}
                     {product.iof_applicable && <p>IOF aplicável: Sim</p>}
-                    {product.value_min == null &&
-                        product.value_max == null &&
-                        product.term_months_min == null &&
-                        product.term_months_max == null &&
-                        !product.iof_applicable && (
-                            <p className="text-muted-foreground">Nenhum parâmetro financeiro configurado</p>
-                        )}
+                    {product.value_min == null
+                        && product.value_max == null
+                        && product.term_months_min == null
+                        && product.term_months_max == null
+                        && !product.iof_applicable && (
+                        <p className="text-muted-foreground">Nenhum parâmetro financeiro configurado</p>
+                    )}
                 </div>
             </div>
         </div>

@@ -550,8 +550,7 @@ export default function Contratos() {
                                                         (c) => c.name.toLowerCase() === product.product_category!.name.toLowerCase()
                                                     )
                                                     : null;
-                                                const categoryId =
-                                                    categoryByProductName?.id ?? (vendasCategory?.id || '');
+                                                const categoryId = categoryByProductName?.id ?? (vendasCategory?.id || '');
                                                 setFormData({
                                                     ...formData,
                                                     product_id: productId,

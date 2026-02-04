@@ -244,9 +244,7 @@ export function AppSidebar() {
     const navigate = useNavigate();
 
     // Abre o accordion da seção que contém a rota atual; apenas um aberto por vez
-    const activeGroupLabel = navigationGroups.find((g) =>
-        g.items.some((i) => i.href === location.pathname),
-    )?.label;
+    const activeGroupLabel = navigationGroups.find((g) => g.items.some((i) => i.href === location.pathname),)?.label;
     const [openSection, setOpenSection] = useState<string | undefined>(activeGroupLabel);
 
     useEffect(() => {

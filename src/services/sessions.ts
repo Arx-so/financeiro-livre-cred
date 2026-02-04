@@ -147,7 +147,7 @@ function getDeviceInfo(): string {
     }
 
     const ua = window.navigator.userAgent;
-    const platform = window.navigator.platform;
+    const {platform} = window.navigator;
 
     // Detectar tipo de dispositivo
     let device = 'Desktop';

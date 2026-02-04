@@ -249,7 +249,10 @@ export default function FinanceiroDetalhe() {
                                             Conta Bancária
                                         </p>
                                         <p className="font-medium text-foreground">
-                                            {entry.bank_account.name} - {entry.bank_account.bank_name}
+                                            {entry.bank_account.name}
+                                            {' '}
+                                            -
+                                            {entry.bank_account.bank_name}
                                         </p>
                                     </div>
                                 )}
@@ -303,14 +306,14 @@ export default function FinanceiroDetalhe() {
                                     status="pendente"
                                     label="Criado"
                                     date={entry.created_at}
-                                    isActive={true}
+                                    isActive
                                 />
                                 {entry.status === 'pago' && entry.payment_date && (
                                     <TimelineItem
                                         status="pago"
                                         label="Pago"
                                         date={entry.payment_date}
-                                        isActive={true}
+                                        isActive
                                     />
                                 )}
                                 {entry.status === 'atrasado' && (
@@ -318,7 +321,7 @@ export default function FinanceiroDetalhe() {
                                         status="atrasado"
                                         label="Atrasado"
                                         date={entry.due_date}
-                                        isActive={true}
+                                        isActive
                                     />
                                 )}
                                 {entry.status === 'cancelado' && (
@@ -326,7 +329,7 @@ export default function FinanceiroDetalhe() {
                                         status="cancelado"
                                         label="Cancelado"
                                         date={entry.updated_at}
-                                        isActive={true}
+                                        isActive
                                     />
                                 )}
                             </div>
@@ -369,7 +372,9 @@ export default function FinanceiroDetalhe() {
                                             </p>
                                             {log.user_name && (
                                                 <p className="text-muted-foreground text-xs">
-                                                    por {log.user_name}
+                                                    por
+                                                    {' '}
+                                                    {log.user_name}
                                                 </p>
                                             )}
                                             {log.details && (

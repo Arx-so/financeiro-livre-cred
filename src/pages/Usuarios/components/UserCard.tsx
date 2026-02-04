@@ -1,4 +1,6 @@
-import { Edit, User, Mail, Clock } from 'lucide-react';
+import {
+    Edit, User, Mail, Clock
+} from 'lucide-react';
 import { getRoleText, getRoleBadgeClass } from '@/services/users';
 
 interface UserCardProps {

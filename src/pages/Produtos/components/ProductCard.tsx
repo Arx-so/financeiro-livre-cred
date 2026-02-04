@@ -1,4 +1,6 @@
-import { Package, Edit, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import {
+    Package, Edit, Trash2, ToggleLeft, ToggleRight
+} from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import type { ProductWithCategory } from '@/services/products';
 import {
@@ -19,15 +21,16 @@ function labelFor(value: string, options: readonly { value: string; label: strin
     return options.find((o) => o.value === value)?.label ?? value;
 }
 
-export function ProductCard({ product, onEdit, onDelete, onToggleActive }: ProductCardProps) {
+export function ProductCard({
+    product, onEdit, onDelete, onToggleActive
+}: ProductCardProps) {
     const targetAudience = Array.isArray(product.target_audience) ? product.target_audience : [];
     const billingType = Array.isArray(product.billing_type) ? product.billing_type : [];
     const requiredDocs = Array.isArray(product.required_docs) ? product.required_docs : [];
-    const hasParams =
-        (product.value_min != null && product.value_min > 0) ||
-        (product.value_max != null && product.value_max > 0) ||
-        (product.term_months_min != null && product.term_months_min > 0) ||
-        (product.term_months_max != null && product.term_months_max > 0);
+    const hasParams = (product.value_min != null && product.value_min > 0)
+        || (product.value_max != null && product.value_max > 0)
+        || (product.term_months_min != null && product.term_months_min > 0)
+        || (product.term_months_max != null && product.term_months_max > 0);
 
     return (
         <div className="card-financial p-5 group">
@@ -78,30 +81,34 @@ export function ProductCard({ product, onEdit, onDelete, onToggleActive }: Produ
 
             {hasParams && (
                 <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-border text-sm">
-                    {(product.value_min != null && product.value_min > 0) ||
-                    (product.value_max != null && product.value_max > 0) ? (
-                        <div>
-                            <p className="text-xs text-muted-foreground">Valor</p>
-                            <p className="font-mono">
-                                {product.value_min != null && product.value_min > 0
-                                    ? formatCurrency(product.value_min)
-                                    : '—'}
-                                {' → '}
-                                {product.value_max != null && product.value_max > 0
-                                    ? formatCurrency(product.value_max)
-                                    : '—'}
-                            </p>
-                        </div>
-                    ) : null}
-                    {(product.term_months_min != null && product.term_months_min > 0) ||
-                    (product.term_months_max != null && product.term_months_max > 0) ? (
-                        <div>
-                            <p className="text-xs text-muted-foreground">Prazo (meses)</p>
-                            <p className="font-mono">
-                                {product.term_months_min ?? '—'} a {product.term_months_max ?? '—'}
-                            </p>
-                        </div>
-                    ) : null}
+                    {(product.value_min != null && product.value_min > 0)
+                        || (product.value_max != null && product.value_max > 0) ? (
+                            <div>
+                                <p className="text-xs text-muted-foreground">Valor</p>
+                                <p className="font-mono">
+                                    {product.value_min != null && product.value_min > 0
+                                        ? formatCurrency(product.value_min)
+                                        : '—'}
+                                    {' → '}
+                                    {product.value_max != null && product.value_max > 0
+                                        ? formatCurrency(product.value_max)
+                                        : '—'}
+                                </p>
+                            </div>
+                        ) : null}
+                    {(product.term_months_min != null && product.term_months_min > 0)
+                        || (product.term_months_max != null && product.term_months_max > 0) ? (
+                            <div>
+                                <p className="text-xs text-muted-foreground">Prazo (meses)</p>
+                                <p className="font-mono">
+                                    {product.term_months_min ?? '—'}
+                                    {' '}
+                                    a
+                                    {' '}
+                                    {product.term_months_max ?? '—'}
+                                </p>
+                            </div>
+                        ) : null}
                 </div>
             )}
 
@@ -128,7 +135,9 @@ export function ProductCard({ product, onEdit, onDelete, onToggleActive }: Produ
                             {formatCurrency(product.bank_value)}
                             {product.bank_percentage > 0 && (
                                 <span className="text-xs text-muted-foreground ml-1">
-                                    ({product.bank_percentage}%)
+                                    (
+                                    {product.bank_percentage}
+                                    %)
                                 </span>
                             )}
                         </p>
@@ -139,7 +148,9 @@ export function ProductCard({ product, onEdit, onDelete, onToggleActive }: Produ
                             {formatCurrency(product.company_value)}
                             {product.company_percentage > 0 && (
                                 <span className="text-xs text-muted-foreground ml-1">
-                                    ({product.company_percentage}%)
+                                    (
+                                    {product.company_percentage}
+                                    %)
                                 </span>
                             )}
                         </p>

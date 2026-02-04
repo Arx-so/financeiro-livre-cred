@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase';
-import type { Product, ProductInsert, ProductUpdate, ProductCategory } from '@/types/database';
+import type {
+    Product, ProductInsert, ProductUpdate, ProductCategory
+} from '@/types/database';
 
 export interface ProductWithCategory extends Product {
     product_category?: { id: string; name: string; code: string | null } | null;

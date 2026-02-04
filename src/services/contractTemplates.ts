@@ -1,5 +1,5 @@
-import { supabase } from '@/lib/supabase';
 import { jsPDF } from 'jspdf';
+import { supabase } from '@/lib/supabase';
 import type {
     ContractTemplate,
     ContractTemplateInsert,
@@ -143,11 +143,11 @@ function numberToWords(num: number): string {
         if (n < 100) {
             const t = Math.floor(n / 10);
             const u = n % 10;
-            return tens[t] + (u > 0 ? ' e ' + units[u] : '');
+            return tens[t] + (u > 0 ? ` e ${units[u]}` : '');
         }
         const h = Math.floor(n / 100);
         const rest = n % 100;
-        return hundreds[h] + (rest > 0 ? ' e ' + convertHundreds(rest) : '');
+        return hundreds[h] + (rest > 0 ? ` e ${convertHundreds(rest)}` : '');
     };
 
     const intPart = Math.floor(num);
@@ -157,7 +157,7 @@ function numberToWords(num: number): string {
 
     if (intPart >= 1000000) {
         const millions = Math.floor(intPart / 1000000);
-        result += (millions === 1 ? 'um milhão' : convertHundreds(millions) + ' milhões');
+        result += (millions === 1 ? 'um milhão' : `${convertHundreds(millions)} milhões`);
         const rest = intPart % 1000000;
         if (rest > 0) {
             result += (rest < 1000 ? ' e ' : ' ') + convertThousands(rest);
@@ -171,14 +171,14 @@ function numberToWords(num: number): string {
         if (n < 1000) return convertHundreds(n);
         const thousands = Math.floor(n / 1000);
         const rest = n % 1000;
-        const thousandsPart = thousands === 1 ? 'mil' : convertHundreds(thousands) + ' mil';
+        const thousandsPart = thousands === 1 ? 'mil' : `${convertHundreds(thousands)} mil`;
         return thousandsPart + (rest > 0 ? (rest < 100 ? ' e ' : ' ') + convertHundreds(rest) : '');
     }
 
     result += intPart === 1 ? ' real' : ' reais';
 
     if (cents > 0) {
-        result += ' e ' + convertHundreds(cents) + (cents === 1 ? ' centavo' : ' centavos');
+        result += ` e ${convertHundreds(cents)}${cents === 1 ? ' centavo' : ' centavos'}`;
     }
 
     return result;

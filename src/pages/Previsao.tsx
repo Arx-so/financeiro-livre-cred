@@ -185,7 +185,9 @@ export default function Previsao() {
                                 </p>
                                 {summary.minBalanceDate && (
                                     <p className="text-xs text-muted-foreground">
-                                        em {formatDate(summary.minBalanceDate)}
+                                        em
+                                        {' '}
+                                        {formatDate(summary.minBalanceDate)}
                                     </p>
                                 )}
                             </div>

@@ -1,5 +1,9 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { Camera, RotateCcw, Check, X } from 'lucide-react';
+import {
+    useState, useRef, useCallback, useEffect
+} from 'react';
+import {
+    Camera, RotateCcw, Check, X
+} from 'lucide-react';
 import {
     Dialog,
     DialogContent,

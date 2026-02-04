@@ -2,7 +2,9 @@ import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores';
 import { useBranches } from '@/hooks/useBranches';
-import { useUsers, useUpdateUserRole, useSetUserBranchAccess, useCreateUser } from '@/hooks/useUsers';
+import {
+    useUsers, useUpdateUserRole, useSetUserBranchAccess, useCreateUser
+} from '@/hooks/useUsers';
 import type { UserRole, Profile } from '@/types/database';
 
 export interface UserFormData {

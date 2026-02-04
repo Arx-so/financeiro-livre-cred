@@ -9,7 +9,9 @@ import {
     useUpdateProduct,
     useDeleteProduct,
 } from '@/hooks/useProducts';
-import type { ProductInsert, ProductUpdate, ProductOtherFees, ProductCommissionReceivedBy } from '@/types/database';
+import type {
+    ProductInsert, ProductUpdate, ProductOtherFees, ProductCommissionReceivedBy
+} from '@/types/database';
 import type { ProductFormData } from '@/pages/Produtos/components/ProductForm';
 import type { ProductWithCategory } from '@/services/products';
 
@@ -201,10 +203,9 @@ export function useProdutosPage() {
 
             const specific_rules = parseSpecificRules(formData.specific_rules);
             const commissionPaymentDay = formData.commission_payment_day.trim();
-            const commission_payment_day =
-                commissionPaymentDay !== '' && /^\d+$/.test(commissionPaymentDay)
-                    ? Math.min(31, Math.max(1, parseInt(commissionPaymentDay, 10)))
-                    : null;
+            const commission_payment_day = commissionPaymentDay !== '' && /^\d+$/.test(commissionPaymentDay)
+                ? Math.min(31, Math.max(1, parseInt(commissionPaymentDay, 10)))
+                : null;
 
             const productData: ProductInsert | ProductUpdate = {
                 name: formData.name.trim(),
@@ -262,9 +263,9 @@ export function useProdutosPage() {
                     formData.required_docs.length > 0 ? formData.required_docs : null,
                 required_docs_other: formData.required_docs_other.trim() || null,
                 recurrence_type:
-                    formData.recurrence_type === 'unico' ||
-                    formData.recurrence_type === 'mensal' ||
-                    formData.recurrence_type === 'anual'
+                    formData.recurrence_type === 'unico'
+                    || formData.recurrence_type === 'mensal'
+                    || formData.recurrence_type === 'anual'
                         ? formData.recurrence_type
                         : 'unico',
             };

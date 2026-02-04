@@ -172,9 +172,7 @@ export function AdvancedFilters({
                                     <select
                                         className="input-financial"
                                         value={filters.type || ''}
-                                        onChange={(e) => handleChange(
-                                            'type', e.target.value as 'receita' | 'despesa' | ''
-                                        )}
+                                        onChange={(e) => handleChange('type', e.target.value as 'receita' | 'despesa' | '')}
                                     >
                                         <option value="">Todos</option>
                                         <option value="receita">Receita</option>

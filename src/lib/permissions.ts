@@ -24,88 +24,232 @@ type PermissionValue = boolean | 'own';
 
 export const permissionMatrix: Record<UserRole, Record<Resource, Record<Action, PermissionValue>>> = {
     admin: {
-        dashboard: { view: true, create: true, edit: true, delete: true, approve: true },
-        financeiro: { view: true, create: true, edit: true, delete: true, approve: true },
-        planejamento: { view: true, create: true, edit: true, delete: true, approve: true },
-        contratos: { view: true, create: true, edit: true, delete: true, approve: true },
-        favorecidos: { view: true, create: true, edit: true, delete: true, approve: true },
-        categorias: { view: true, create: true, edit: true, delete: true, approve: true },
-        contas_bancarias: { view: true, create: true, edit: true, delete: true, approve: true },
-        filiais: { view: true, create: true, edit: true, delete: true, approve: true },
-        usuarios: { view: true, create: true, edit: true, delete: true, approve: true },
-        relatorios: { view: true, create: true, edit: true, delete: true, approve: true },
-        produtos: { view: true, create: true, edit: true, delete: true, approve: true },
-        agenda: { view: true, create: true, edit: true, delete: true, approve: true },
+        dashboard: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
+        financeiro: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
+        planejamento: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
+        contratos: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
+        favorecidos: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
+        categorias: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
+        contas_bancarias: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
+        filiais: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
+        usuarios: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
+        relatorios: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
+        produtos: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
+        agenda: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
     },
     gerente: {
-        dashboard: { view: true, create: true, edit: true, delete: true, approve: true },
-        financeiro: { view: true, create: true, edit: true, delete: true, approve: true },
-        planejamento: { view: true, create: true, edit: true, delete: true, approve: true },
-        contratos: { view: true, create: true, edit: true, delete: true, approve: true },
-        favorecidos: { view: true, create: true, edit: true, delete: true, approve: true },
-        categorias: { view: true, create: true, edit: true, delete: true, approve: true },
-        contas_bancarias: { view: true, create: true, edit: true, delete: true, approve: false },
-        filiais: { view: true, create: false, edit: false, delete: false, approve: false },
-        usuarios: { view: true, create: false, edit: false, delete: false, approve: false },
-        relatorios: { view: true, create: true, edit: true, delete: true, approve: true },
-        produtos: { view: true, create: true, edit: true, delete: true, approve: true },
-        agenda: { view: true, create: true, edit: true, delete: true, approve: true },
+        dashboard: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
+        financeiro: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
+        planejamento: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
+        contratos: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
+        favorecidos: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
+        categorias: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
+        contas_bancarias: {
+            view: true, create: true, edit: true, delete: true, approve: false
+        },
+        filiais: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        usuarios: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        relatorios: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
+        produtos: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
+        agenda: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
     },
     usuario: {
-        dashboard: { view: true, create: false, edit: false, delete: false, approve: false },
-        financeiro: { view: true, create: true, edit: 'own', delete: false, approve: false },
-        planejamento: { view: true, create: false, edit: false, delete: false, approve: false },
-        contratos: { view: true, create: true, edit: 'own', delete: false, approve: false },
-        favorecidos: { view: true, create: true, edit: true, delete: false, approve: false },
-        categorias: { view: true, create: false, edit: false, delete: false, approve: false },
-        contas_bancarias: { view: false, create: false, edit: false, delete: false, approve: false },
-        filiais: { view: false, create: false, edit: false, delete: false, approve: false },
-        usuarios: { view: false, create: false, edit: false, delete: false, approve: false },
-        relatorios: { view: true, create: false, edit: false, delete: false, approve: false },
-        produtos: { view: true, create: false, edit: false, delete: false, approve: false },
-        agenda: { view: true, create: true, edit: 'own', delete: 'own', approve: false },
+        dashboard: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        financeiro: {
+            view: true, create: true, edit: 'own', delete: false, approve: false
+        },
+        planejamento: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        contratos: {
+            view: true, create: true, edit: 'own', delete: false, approve: false
+        },
+        favorecidos: {
+            view: true, create: true, edit: true, delete: false, approve: false
+        },
+        categorias: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        contas_bancarias: {
+            view: false, create: false, edit: false, delete: false, approve: false
+        },
+        filiais: {
+            view: false, create: false, edit: false, delete: false, approve: false
+        },
+        usuarios: {
+            view: false, create: false, edit: false, delete: false, approve: false
+        },
+        relatorios: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        produtos: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        agenda: {
+            view: true, create: true, edit: 'own', delete: 'own', approve: false
+        },
     },
     financeiro: {
-        dashboard: { view: true, create: false, edit: false, delete: false, approve: false },
-        financeiro: { view: true, create: true, edit: true, delete: true, approve: true },
-        planejamento: { view: true, create: true, edit: true, delete: true, approve: false },
-        contratos: { view: true, create: false, edit: false, delete: false, approve: false },
-        favorecidos: { view: true, create: true, edit: true, delete: false, approve: false },
-        categorias: { view: true, create: true, edit: true, delete: true, approve: false },
-        contas_bancarias: { view: true, create: true, edit: true, delete: true, approve: false },
-        filiais: { view: false, create: false, edit: false, delete: false, approve: false },
-        usuarios: { view: false, create: false, edit: false, delete: false, approve: false },
-        relatorios: { view: true, create: true, edit: true, delete: true, approve: false },
-        produtos: { view: true, create: false, edit: false, delete: false, approve: false },
-        agenda: { view: true, create: true, edit: true, delete: true, approve: false },
+        dashboard: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        financeiro: {
+            view: true, create: true, edit: true, delete: true, approve: true
+        },
+        planejamento: {
+            view: true, create: true, edit: true, delete: true, approve: false
+        },
+        contratos: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        favorecidos: {
+            view: true, create: true, edit: true, delete: false, approve: false
+        },
+        categorias: {
+            view: true, create: true, edit: true, delete: true, approve: false
+        },
+        contas_bancarias: {
+            view: true, create: true, edit: true, delete: true, approve: false
+        },
+        filiais: {
+            view: false, create: false, edit: false, delete: false, approve: false
+        },
+        usuarios: {
+            view: false, create: false, edit: false, delete: false, approve: false
+        },
+        relatorios: {
+            view: true, create: true, edit: true, delete: true, approve: false
+        },
+        produtos: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        agenda: {
+            view: true, create: true, edit: true, delete: true, approve: false
+        },
     },
     vendas: {
-        dashboard: { view: true, create: false, edit: false, delete: false, approve: false },
-        financeiro: { view: true, create: false, edit: false, delete: false, approve: false },
-        planejamento: { view: true, create: false, edit: false, delete: false, approve: false },
-        contratos: { view: true, create: true, edit: true, delete: true, approve: false },
-        favorecidos: { view: true, create: true, edit: true, delete: false, approve: false },
-        categorias: { view: true, create: false, edit: false, delete: false, approve: false },
-        contas_bancarias: { view: false, create: false, edit: false, delete: false, approve: false },
-        filiais: { view: false, create: false, edit: false, delete: false, approve: false },
-        usuarios: { view: false, create: false, edit: false, delete: false, approve: false },
-        relatorios: { view: true, create: false, edit: false, delete: false, approve: false },
-        produtos: { view: true, create: true, edit: true, delete: true, approve: false },
-        agenda: { view: true, create: true, edit: true, delete: true, approve: false },
+        dashboard: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        financeiro: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        planejamento: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        contratos: {
+            view: true, create: true, edit: true, delete: true, approve: false
+        },
+        favorecidos: {
+            view: true, create: true, edit: true, delete: false, approve: false
+        },
+        categorias: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        contas_bancarias: {
+            view: false, create: false, edit: false, delete: false, approve: false
+        },
+        filiais: {
+            view: false, create: false, edit: false, delete: false, approve: false
+        },
+        usuarios: {
+            view: false, create: false, edit: false, delete: false, approve: false
+        },
+        relatorios: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        produtos: {
+            view: true, create: true, edit: true, delete: true, approve: false
+        },
+        agenda: {
+            view: true, create: true, edit: true, delete: true, approve: false
+        },
     },
     leitura: {
-        dashboard: { view: true, create: false, edit: false, delete: false, approve: false },
-        financeiro: { view: true, create: false, edit: false, delete: false, approve: false },
-        planejamento: { view: true, create: false, edit: false, delete: false, approve: false },
-        contratos: { view: true, create: false, edit: false, delete: false, approve: false },
-        favorecidos: { view: true, create: false, edit: false, delete: false, approve: false },
-        categorias: { view: true, create: false, edit: false, delete: false, approve: false },
-        contas_bancarias: { view: true, create: false, edit: false, delete: false, approve: false },
-        filiais: { view: true, create: false, edit: false, delete: false, approve: false },
-        usuarios: { view: false, create: false, edit: false, delete: false, approve: false },
-        relatorios: { view: true, create: false, edit: false, delete: false, approve: false },
-        produtos: { view: true, create: false, edit: false, delete: false, approve: false },
-        agenda: { view: true, create: false, edit: false, delete: false, approve: false },
+        dashboard: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        financeiro: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        planejamento: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        contratos: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        favorecidos: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        categorias: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        contas_bancarias: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        filiais: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        usuarios: {
+            view: false, create: false, edit: false, delete: false, approve: false
+        },
+        relatorios: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        produtos: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
+        agenda: {
+            view: true, create: false, edit: false, delete: false, approve: false
+        },
     },
 };
 
