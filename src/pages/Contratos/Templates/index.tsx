@@ -204,11 +204,13 @@ export default function ContractTemplates() {
         setIsPreviewOpen(true);
     }, []);
 
-    const insertVariable = useCallback((variable: string) => {
-        setFormData((prev) => ({
-            ...prev,
-            content: prev.content + variable,
-        }));
+    const copyVariable = useCallback(async (variable: string) => {
+        try {
+            await navigator.clipboard.writeText(variable);
+            toast.success(`Copiado: ${variable}`);
+        } catch {
+            toast.error('Erro ao copiar para a área de transferência');
+        }
     }, []);
 
     const isSaving = createMutation.isPending || updateMutation.isPending;
@@ -291,8 +293,8 @@ export default function ContractTemplates() {
                                                 key={variable.key}
                                                 type="button"
                                                 className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-background border border-border rounded-md hover:bg-primary/10 hover:border-primary transition-colors"
-                                                onClick={() => insertVariable(variable.key)}
-                                                title={variable.description}
+                                                onClick={() => copyVariable(variable.key)}
+                                                title={`Copiar ${variable.key}`}
                                             >
                                                 <Copy className="w-3 h-3" />
                                                 {variable.label}

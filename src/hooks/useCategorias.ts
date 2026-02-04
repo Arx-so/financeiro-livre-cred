@@ -12,6 +12,7 @@ import {
     createSubcategories,
     updateSubcategory,
     deleteSubcategory,
+    syncSubcategories,
 } from '@/services/categorias';
 import type {
     CategoryInsert, CategoryUpdate, SubcategoryInsert, SubcategoryUpdate, EntryType
@@ -114,7 +115,8 @@ export function useCreateSubcategories() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ categoryId, names }: { categoryId: string; names: string[] }) => createSubcategories(categoryId, names),
+        mutationFn:
+        ({ categoryId, names }: { categoryId: string; names: string[] }) => createSubcategories(categoryId, names),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: categoriasKeys.all });
         },
@@ -125,7 +127,8 @@ export function useUpdateSubcategory() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ id, subcategory }: { id: string; subcategory: SubcategoryUpdate }) => updateSubcategory(id, subcategory),
+        mutationFn:
+        ({ id, subcategory }: { id: string; subcategory: SubcategoryUpdate }) => updateSubcategory(id, subcategory),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: categoriasKeys.all });
         },
@@ -137,6 +140,25 @@ export function useDeleteSubcategory() {
 
     return useMutation({
         mutationFn: (id: string) => deleteSubcategory(id),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: categoriasKeys.all });
+        },
+    });
+}
+
+export function useSyncSubcategories() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({
+            categoryId,
+            currentSubcategories,
+            newNames,
+        }: {
+            categoryId: string;
+            currentSubcategories: { id: string; name: string }[];
+            newNames: string[];
+        }) => syncSubcategories(categoryId, currentSubcategories, newNames),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: categoriasKeys.all });
         },

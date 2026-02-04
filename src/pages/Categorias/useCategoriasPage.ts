@@ -6,6 +6,7 @@ import {
     useUpdateCategory,
     useDeleteCategory,
     useCreateSubcategories,
+    useSyncSubcategories,
 } from '@/hooks/useCategorias';
 import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import type { RecurrenceType } from '@/types/database';
@@ -38,6 +39,7 @@ export function useCategoriasPage() {
     // Modal states
     const [isCategoriaModalOpen, setIsCategoriaModalOpen] = useState(false);
     const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+    const [originalSubcategories, setOriginalSubcategories] = useState<{ id: string; name: string }[]>([]);
 
     // Form states
     const [categoryForm, setCategoryForm] = useState<CategoryFormData>(initialCategoryForm);
@@ -50,6 +52,7 @@ export function useCategoriasPage() {
     const updateCategory = useUpdateCategory();
     const deleteCategory = useDeleteCategory();
     const createSubcategories = useCreateSubcategories();
+    const syncSubcategories = useSyncSubcategories();
 
     // Category handlers
     const handleSubmitCategory = useCallback(async (e: React.FormEvent) => {
@@ -70,6 +73,18 @@ export function useCategoriasPage() {
                         default_recurrence_day: categoryForm.is_recurring && categoryForm.default_recurrence_day
                             ? parseInt(categoryForm.default_recurrence_day, 10) : null,
                     },
+                });
+
+                // Sync subcategories
+                const newSubcategoryNames = categoryForm.subcategories
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean);
+
+                await syncSubcategories.mutateAsync({
+                    categoryId: editingCategoryId,
+                    currentSubcategories: originalSubcategories,
+                    newNames: newSubcategoryNames,
                 });
 
                 toast.success('Categoria atualizada!');
@@ -105,7 +120,7 @@ export function useCategoriasPage() {
         } catch {
             toast.error(editingCategoryId ? 'Erro ao atualizar categoria' : 'Erro ao criar categoria');
         }
-    }, [categoryForm, editingCategoryId, createCategory, updateCategory, createSubcategories]);
+    }, [categoryForm, editingCategoryId, createCategory, updateCategory, createSubcategories, originalSubcategories, syncSubcategories]);
 
     const handleDeleteCategory = useCallback((id: string, name: string) => {
         confirm(async () => {
@@ -141,6 +156,7 @@ export function useCategoriasPage() {
         subcategories: { id: string; name: string }[];
     }) => {
         setEditingCategoryId(categoria.id);
+        setOriginalSubcategories(categoria.subcategories);
         setCategoryForm({
             name: categoria.name,
             type: categoria.type,

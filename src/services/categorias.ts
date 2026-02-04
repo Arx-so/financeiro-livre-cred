@@ -218,3 +218,33 @@ export async function deleteSubcategory(id: string): Promise<void> {
         throw error;
     }
 }
+
+// Sync subcategories for a category (add new, remove deleted, update existing)
+export async function syncSubcategories(
+    categoryId: string,
+    currentSubcategories: { id: string; name: string }[],
+    newNames: string[]
+): Promise<void> {
+    const trimmedNewNames = newNames.map((n) => n.trim()).filter(Boolean);
+    const currentNames = currentSubcategories.map((s) => s.name.toLowerCase());
+
+    // Find subcategories to delete (exist in current but not in new)
+    const toDelete = currentSubcategories.filter(
+        (sub) => !trimmedNewNames.some((name) => name.toLowerCase() === sub.name.toLowerCase())
+    );
+
+    // Find names to add (exist in new but not in current)
+    const toAdd = trimmedNewNames.filter(
+        (name) => !currentNames.includes(name.toLowerCase())
+    );
+
+    // Delete removed subcategories
+    for (const sub of toDelete) {
+        await deleteSubcategory(sub.id);
+    }
+
+    // Add new subcategories
+    if (toAdd.length > 0) {
+        await createSubcategories(categoryId, toAdd);
+    }
+}
