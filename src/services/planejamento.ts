@@ -5,7 +5,11 @@ import type {
     BudgetItemUpdate,
     SalesTarget,
     SalesTargetInsert,
-    SalesTargetUpdate
+    SalesTargetUpdate,
+    BudgetCategoryWithSubcategories,
+    BudgetSubcategoryData,
+    BudgetFrequency,
+    BudgetMonthData,
 } from '@/types/database';
 
 export interface BudgetItemWithCategory extends BudgetItem {
@@ -272,6 +276,382 @@ export async function getBudgetSummary(
         totalBudgeted,
         totalActual,
         executionRate,
+    };
+}
+
+// ============================================
+// HIERARCHICAL BUDGET
+// ============================================
+
+/**
+ * Get budget data organized hierarchically by category with subcategories
+ */
+export async function getBudgetHierarchical(
+    branchId: string,
+    year: number,
+    versionId?: string | null
+): Promise<BudgetCategoryWithSubcategories[]> {
+    // Get categories with subcategories
+    const { data: categories, error: catError } = await supabase
+        .from('categories')
+        .select(`
+            id,
+            name,
+            type,
+            color,
+            subcategories(id, name)
+        `)
+        .eq('is_active', true)
+        .order('name');
+
+    if (catError) throw catError;
+
+    // Get budget items
+    let budgetQuery = supabase
+        .from('budget_items')
+        .select('*')
+        .eq('branch_id', branchId)
+        .eq('year', year);
+
+    if (versionId) {
+        budgetQuery = budgetQuery.eq('budget_version_id', versionId);
+    }
+
+    const { data: budgetItems, error: budgetError } = await budgetQuery;
+    if (budgetError) throw budgetError;
+
+    // Get actuals from financial entries
+    const actualsMap = await getBudgetActualsFromEntries(branchId, year);
+
+    // Also get actuals by subcategory
+    const actualsBySubcategory = await getBudgetActualsBySubcategory(branchId, year);
+
+    // Build hierarchical structure
+    const result: BudgetCategoryWithSubcategories[] = [];
+
+    for (const cat of categories || []) {
+        const catBudgets = (budgetItems || []).filter((b) => b.category_id === cat.id);
+        const catActuals = actualsMap.get(cat.id) || new Map<number, number>();
+
+        // Build months data for category
+        const categoryMonths: BudgetMonthData[] = [];
+        let categoryBudgetedAnnual = 0;
+        let categoryActualAnnual = 0;
+
+        for (let month = 1; month <= 12; month++) {
+            const budgetItem = catBudgets.find((b) => b.month === month && !b.subcategory_id);
+            const budgeted = budgetItem?.budgeted_amount || 0;
+            const actual = catActuals.get(month) || 0;
+
+            categoryMonths.push({ month, budgeted: Number(budgeted), actual });
+            categoryBudgetedAnnual += Number(budgeted);
+            categoryActualAnnual += actual;
+        }
+
+        // Build subcategories
+        const subcategories: BudgetSubcategoryData[] = [];
+        for (const sub of cat.subcategories || []) {
+            const subBudgets = catBudgets.filter((b) => b.subcategory_id === sub.id);
+            const subActuals = actualsBySubcategory.get(sub.id) || new Map<number, number>();
+
+            const subMonths: BudgetMonthData[] = [];
+            let subBudgetedAnnual = 0;
+            let subActualAnnual = 0;
+
+            for (let month = 1; month <= 12; month++) {
+                const budgetItem = subBudgets.find((b) => b.month === month);
+                const budgeted = budgetItem?.budgeted_amount || 0;
+                const actual = subActuals.get(month) || 0;
+
+                subMonths.push({ month, budgeted: Number(budgeted), actual });
+                subBudgetedAnnual += Number(budgeted);
+                subActualAnnual += actual;
+            }
+
+            subcategories.push({
+                subcategoryId: sub.id,
+                subcategoryName: sub.name,
+                frequency: 'mensal' as BudgetFrequency,
+                budgetedAnnual: subBudgetedAnnual,
+                actualAnnual: subActualAnnual,
+                months: subMonths,
+            });
+        }
+
+        result.push({
+            categoryId: cat.id,
+            categoryName: cat.name,
+            categoryType: cat.type as 'receita' | 'despesa' | 'ambos',
+            color: cat.color,
+            frequency: 'mensal' as BudgetFrequency,
+            budgetedAnnual: categoryBudgetedAnnual,
+            actualAnnual: categoryActualAnnual,
+            months: categoryMonths,
+            subcategories,
+        });
+    }
+
+    return result;
+}
+
+/**
+ * Get actuals grouped by subcategory and month
+ */
+async function getBudgetActualsBySubcategory(
+    branchId: string,
+    year: number
+): Promise<Map<string, Map<number, number>>> {
+    const startDate = `${year}-01-01`;
+    const endDate = `${year}-12-31`;
+
+    const { data: entries, error } = await supabase
+        .from('financial_entries')
+        .select('subcategory_id, due_date, value')
+        .eq('branch_id', branchId)
+        .gte('due_date', startDate)
+        .lte('due_date', endDate)
+        .neq('status', 'cancelado')
+        .not('subcategory_id', 'is', null);
+
+    if (error) throw error;
+
+    const bySubMonth = new Map<string, Map<number, number>>();
+    for (const entry of entries || []) {
+        if (!entry.subcategory_id) continue;
+        const d = new Date(entry.due_date);
+        if (d.getFullYear() !== year) continue;
+        const month = d.getMonth() + 1;
+
+        if (!bySubMonth.has(entry.subcategory_id)) {
+            bySubMonth.set(entry.subcategory_id, new Map());
+        }
+        const monthMap = bySubMonth.get(entry.subcategory_id)!;
+        const prev = monthMap.get(month) ?? 0;
+        monthMap.set(month, prev + Number(entry.value));
+    }
+
+    return bySubMonth;
+}
+
+/**
+ * Update budget items for a category/subcategory with monthly amounts
+ */
+export async function updateBudgetItemMonthly(
+    branchId: string,
+    categoryId: string,
+    subcategoryId: string | null,
+    year: number,
+    amounts: number[],
+    frequency: BudgetFrequency,
+    versionId?: string | null
+): Promise<void> {
+    const items: BudgetItemInsert[] = [];
+
+    for (let month = 1; month <= 12; month++) {
+        const item: BudgetItemInsert = {
+            branch_id: branchId,
+            category_id: categoryId,
+            subcategory_id: subcategoryId,
+            year,
+            month,
+            budgeted_amount: amounts[month - 1] || 0,
+            budget_version_id: versionId || null,
+        };
+
+        items.push(item);
+    }
+
+    // Upsert all 12 months
+    const { error } = await supabase
+        .from('budget_items')
+        .upsert(items, {
+            onConflict: subcategoryId
+                ? 'branch_id,category_id,subcategory_id,year,month'
+                : 'branch_id,category_id,year,month',
+        });
+
+    if (error) throw error;
+}
+
+/**
+ * Get budget suggestion based on last 12 months of actual data
+ */
+export async function getBudgetSuggestion(
+    branchId: string,
+    categoryId: string,
+    subcategoryId?: string | null
+): Promise<{ monthlyAverage: number; lastYearTotal: number; suggestedMonthly: number[] }> {
+    const now = new Date();
+    const endDate = now.toISOString().split('T')[0];
+    const startDate = new Date(now.getFullYear() - 1, now.getMonth(), 1).toISOString().split('T')[0];
+
+    let query = supabase
+        .from('financial_entries')
+        .select('due_date, value')
+        .eq('branch_id', branchId)
+        .eq('category_id', categoryId)
+        .gte('due_date', startDate)
+        .lte('due_date', endDate)
+        .neq('status', 'cancelado');
+
+    if (subcategoryId) {
+        query = query.eq('subcategory_id', subcategoryId);
+    }
+
+    const { data: entries, error } = await query;
+    if (error) throw error;
+
+    // Group by month
+    const monthlyTotals = new Map<string, number>();
+    for (const entry of entries || []) {
+        const d = new Date(entry.due_date);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const prev = monthlyTotals.get(key) ?? 0;
+        monthlyTotals.set(key, prev + Number(entry.value));
+    }
+
+    const totals = Array.from(monthlyTotals.values());
+    const lastYearTotal = totals.reduce((sum, v) => sum + v, 0);
+    const monthlyAverage = totals.length > 0 ? lastYearTotal / totals.length : 0;
+
+    // Generate suggested monthly values (simple: use average for all months)
+    const suggestedMonthly = Array(12).fill(monthlyAverage);
+
+    return {
+        monthlyAverage,
+        lastYearTotal,
+        suggestedMonthly,
+    };
+}
+
+/**
+ * Get annual summary with totals by month
+ */
+interface BudgetedActual {
+    budgeted: number;
+    actual: number;
+}
+
+export interface AnnualSummaryMonth {
+    month: number;
+    receitas: BudgetedActual;
+    despesas: BudgetedActual;
+    saldo: BudgetedActual;
+}
+
+export interface AnnualSummaryResult {
+    months: AnnualSummaryMonth[];
+    totals: {
+        receitas: BudgetedActual;
+        despesas: BudgetedActual;
+        saldo: BudgetedActual;
+    };
+}
+
+export async function getAnnualSummary(
+    branchId: string,
+    year: number,
+    versionId?: string | null
+): Promise<AnnualSummaryResult> {
+    // Get categories to know their types
+    const { data: categories, error: catError } = await supabase
+        .from('categories')
+        .select('id, type')
+        .eq('is_active', true);
+
+    if (catError) throw catError;
+
+    const receitaCategoryIds = new Set(
+        (categories || []).filter((c) => c.type === 'receita').map((c) => c.id)
+    );
+    const despesaCategoryIds = new Set(
+        (categories || []).filter((c) => c.type === 'despesa').map((c) => c.id)
+    );
+
+    // Get budget items
+    let budgetQuery = supabase
+        .from('budget_items')
+        .select('category_id, month, budgeted_amount')
+        .eq('branch_id', branchId)
+        .eq('year', year);
+
+    if (versionId) {
+        budgetQuery = budgetQuery.eq('budget_version_id', versionId);
+    }
+
+    const { data: budgetItems, error: budgetError } = await budgetQuery;
+    if (budgetError) throw budgetError;
+
+    // Get actuals
+    const actualsMap = await getBudgetActualsFromEntries(branchId, year);
+
+    // Build monthly summary
+    const months: {
+        month: number;
+        receitas: { budgeted: number; actual: number };
+        despesas: { budgeted: number; actual: number };
+        saldo: { budgeted: number; actual: number };
+    }[] = [];
+
+    let totalReceitasBudgeted = 0;
+    let totalReceitasActual = 0;
+    let totalDespesasBudgeted = 0;
+    let totalDespesasActual = 0;
+
+    for (let month = 1; month <= 12; month++) {
+        let receitasBudgeted = 0;
+        let receitasActual = 0;
+        let despesasBudgeted = 0;
+        let despesasActual = 0;
+
+        // Sum budgeted by type
+        for (const item of budgetItems || []) {
+            if (item.month !== month) continue;
+            const catId = item.category_id;
+
+            if (catId && receitaCategoryIds.has(catId)) {
+                receitasBudgeted += Number(item.budgeted_amount);
+            } else if (catId && despesaCategoryIds.has(catId)) {
+                despesasBudgeted += Number(item.budgeted_amount);
+            }
+        }
+
+        // Sum actuals by type
+        for (const [catId, monthMap] of actualsMap) {
+            const actual = monthMap.get(month) || 0;
+            if (receitaCategoryIds.has(catId)) {
+                receitasActual += actual;
+            } else if (despesaCategoryIds.has(catId)) {
+                despesasActual += actual;
+            }
+        }
+
+        months.push({
+            month,
+            receitas: { budgeted: receitasBudgeted, actual: receitasActual },
+            despesas: { budgeted: despesasBudgeted, actual: despesasActual },
+            saldo: {
+                budgeted: receitasBudgeted - despesasBudgeted,
+                actual: receitasActual - despesasActual,
+            },
+        });
+
+        totalReceitasBudgeted += receitasBudgeted;
+        totalReceitasActual += receitasActual;
+        totalDespesasBudgeted += despesasBudgeted;
+        totalDespesasActual += despesasActual;
+    }
+
+    return {
+        months,
+        totals: {
+            receitas: { budgeted: totalReceitasBudgeted, actual: totalReceitasActual },
+            despesas: { budgeted: totalDespesasBudgeted, actual: totalDespesasActual },
+            saldo: {
+                budgeted: totalReceitasBudgeted - totalDespesasBudgeted,
+                actual: totalReceitasActual - totalDespesasActual,
+            },
+        },
     };
 }
 

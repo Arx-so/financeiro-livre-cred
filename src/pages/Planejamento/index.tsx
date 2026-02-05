@@ -10,17 +10,9 @@ import {
     CheckCircle,
     Archive,
     FileText,
+    LayoutList,
+    BarChart3,
 } from 'lucide-react';
-import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    Legend,
-} from 'recharts';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -38,9 +30,7 @@ import {
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { useBranchStore, useAuthStore } from '@/stores';
 import {
-    getBudgetByCategory,
     createAnnualBudget,
-    getBudgetSummary,
     getSalesTargets,
     createSalesTarget,
     getSalesTargetSummary,
@@ -53,6 +43,11 @@ import {
     approveBudgetVersion,
     archiveBudgetVersion,
 } from '@/services/budgetVersions';
+import {
+    useBudgetHierarchical,
+    useBudgetSummary,
+    useAnnualSummary,
+} from '@/hooks/useBudget';
 import { useCategories } from '@/hooks/useCategorias';
 import { useVendedores } from '@/hooks/useCadastros';
 import {
@@ -60,6 +55,15 @@ import {
 } from '@/components/shared';
 import { formatCurrency, MONTHS_SHORT } from '@/lib/utils';
 import type { SalesTargetInsert } from '@/types/database';
+
+import {
+    BudgetTreeTable,
+    BudgetCharts,
+    AnnualSummaryTable,
+    BudgetComparisonView,
+} from './components';
+
+type BudgetViewMode = 'planejamento' | 'comparativo';
 
 export default function Planejamento() {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
@@ -75,6 +79,7 @@ export default function Planejamento() {
     const [isTargetModalOpen, setIsTargetModalOpen] = useState(false);
     const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
     const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
+    const [budgetViewMode, setBudgetViewMode] = useState<BudgetViewMode>('planejamento');
 
     // Budget form
     const [budgetForm, setBudgetForm] = useState({
@@ -98,18 +103,24 @@ export default function Planejamento() {
     // Check if user can approve
     const canApprove = user?.role === 'admin' || user?.role === 'gerente';
 
-    // Fetch data
-    const { data: budgetByCategory, isLoading: budgetLoading } = useQuery({
-        queryKey: ['budget-by-category', unidadeAtual?.id, selectedYear],
-        queryFn: () => getBudgetByCategory(unidadeAtual!.id, selectedYear),
-        enabled: !!unidadeAtual?.id,
-    });
+    // Fetch hierarchical budget data
+    const { data: budgetHierarchical, isLoading: budgetLoading } = useBudgetHierarchical(
+        unidadeAtual?.id,
+        selectedYear,
+        selectedVersionId
+    );
 
-    const { data: budgetSummary } = useQuery({
-        queryKey: ['budget-summary', unidadeAtual?.id, selectedYear, selectedVersionId],
-        queryFn: () => getBudgetSummary(unidadeAtual!.id, selectedYear, selectedVersionId),
-        enabled: !!unidadeAtual?.id,
-    });
+    const { data: budgetSummary } = useBudgetSummary(
+        unidadeAtual?.id,
+        selectedYear,
+        selectedVersionId
+    );
+
+    const { data: annualSummary, isLoading: annualSummaryLoading } = useAnnualSummary(
+        unidadeAtual?.id,
+        selectedYear,
+        selectedVersionId
+    );
 
     const { data: salesTargets, isLoading: targetsLoading } = useQuery({
         queryKey: ['sales-targets', unidadeAtual?.id, selectedYear, selectedMonth],
@@ -156,8 +167,7 @@ export default function Planejamento() {
             params.annualAmount
         ),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['budget-by-category'] });
-            queryClient.invalidateQueries({ queryKey: ['budget-summary'] });
+            queryClient.invalidateQueries({ queryKey: ['budget'] });
             setIsBudgetModalOpen(false);
             setBudgetForm({ category_id: '', annual_amount: '' });
             toast.success('Orçamento criado!');
@@ -259,20 +269,12 @@ export default function Planejamento() {
         createTargetMutation.mutate(targetData);
     }, [unidadeAtual?.id, targetForm, selectedYear, selectedMonth, createTargetMutation]);
 
-    // Chart data
-    const chartData = useMemo(() => budgetByCategory?.map((b) => ({
-        name: b.categoryName || 'Outros',
-        orcado: b.budgetedAnnual,
-        realizado: b.actualAnnual,
-    })) || [], [budgetByCategory]);
-
     const yearOptions = useMemo(() => {
         const years = [];
-        // Inclui 2 anos anteriores e 2 anos futuros
         for (let i = -2; i <= 2; i += 1) {
             years.push(currentYear + i);
         }
-        return years.sort((a, b) => b - a); // Ordem decrescente (mais recente primeiro)
+        return years.sort((a, b) => b - a);
     }, [currentYear]);
 
     return (
@@ -314,7 +316,7 @@ export default function Planejamento() {
 
                     {/* Orçamento Tab */}
                     <TabsContent value="orcamento" className="space-y-6 mt-6">
-                        {/* Budget Versions */}
+                        {/* Budget Versions & View Mode */}
                         <div className="card-financial p-4">
                             <div className="flex flex-wrap items-center justify-between gap-4">
                                 <div className="flex items-center gap-4">
@@ -361,6 +363,32 @@ export default function Planejamento() {
                                             </span>
                                         </div>
                                     )}
+
+                                    {/* View Mode Toggle */}
+                                    <div className="flex items-center border border-border rounded-lg overflow-hidden">
+                                        <button
+                                            className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors ${
+                                                budgetViewMode === 'planejamento'
+                                                    ? 'bg-primary text-primary-foreground'
+                                                    : 'hover:bg-muted'
+                                            }`}
+                                            onClick={() => setBudgetViewMode('planejamento')}
+                                        >
+                                            <LayoutList className="w-4 h-4" />
+                                            Planejamento
+                                        </button>
+                                        <button
+                                            className={`px-3 py-1.5 text-sm flex items-center gap-1.5 transition-colors ${
+                                                budgetViewMode === 'comparativo'
+                                                    ? 'bg-primary text-primary-foreground'
+                                                    : 'hover:bg-muted'
+                                            }`}
+                                            onClick={() => setBudgetViewMode('comparativo')}
+                                        >
+                                            <BarChart3 className="w-4 h-4" />
+                                            Comparativo
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {selectedVersion && selectedVersion.status === 'rascunho' && (
@@ -462,7 +490,7 @@ export default function Planejamento() {
                             </div>
                         </div>
 
-                        {/* Summary */}
+                        {/* Summary Stats */}
                         {budgetSummary && (
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <StatCard
@@ -499,92 +527,111 @@ export default function Planejamento() {
                             </div>
                         )}
 
+                        {/* Add Budget Button */}
                         <div className="flex justify-between items-center">
-                            <h3 className="font-semibold text-foreground">Orçamento por Categoria</h3>
-                            <Dialog open={isBudgetModalOpen} onOpenChange={setIsBudgetModalOpen}>
-                                <DialogTrigger asChild>
-                                    <button className="btn-primary" disabled={!isVersionEditable}>
-                                        <Plus className="w-4 h-4" />
-                                        Novo Orçamento
-                                    </button>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-md">
-                                    <DialogHeader>
-                                        <DialogTitle>Novo Orçamento Anual</DialogTitle>
-                                        <DialogDescription>
-                                            Defina o orçamento para uma categoria
-                                        </DialogDescription>
-                                    </DialogHeader>
-                                    <form className="space-y-4 mt-4" onSubmit={handleCreateBudget}>
-                                        <div>
-                                            <label htmlFor="budget-category" className="block text-sm font-medium text-foreground mb-2">Categoria</label>
-                                            <select
-                                                id="budget-category"
-                                                className="input-financial"
-                                                value={budgetForm.category_id}
-                                                onChange={(e) => setBudgetForm({
-                                                    ...budgetForm,
-                                                    category_id: e.target.value
-                                                })}
-                                                required
-                                            >
-                                                <option value="">Selecione</option>
-                                                {categories?.map((c) => (
-                                                    <option key={c.id} value={c.id}>{c.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label
-                                                htmlFor="budget-annual-amount"
-                                                className="block text-sm font-medium text-foreground mb-2"
-                                            >
-                                                Valor Anual
-                                            </label>
-                                            <CurrencyInput
-                                                id="budget-annual-amount"
-                                                value={budgetForm.annual_amount}
-                                                onChange={(numValue) => setBudgetForm({
-                                                    ...budgetForm,
-                                                    annual_amount: String(numValue)
-                                                })}
-                                                required
-                                            />
-                                        </div>
-                                        <div className="flex justify-end gap-3 pt-4">
-                                            <button type="button" className="btn-secondary" onClick={() => setIsBudgetModalOpen(false)}>
-                                                Cancelar
-                                            </button>
-                                            <button type="submit" className="btn-primary" disabled={createBudgetMutation.isPending}>
-                                                {createBudgetMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                                                Criar Orçamento
-                                            </button>
-                                        </div>
-                                    </form>
-                                </DialogContent>
-                            </Dialog>
+                            <h3 className="font-semibold text-foreground">
+                                {budgetViewMode === 'planejamento'
+                                    ? 'Orçamento por Categoria'
+                                    : 'Comparativo Orçado x Realizado'}
+                            </h3>
+                            {budgetViewMode === 'planejamento' && (
+                                <Dialog open={isBudgetModalOpen} onOpenChange={setIsBudgetModalOpen}>
+                                    <DialogTrigger asChild>
+                                        <button className="btn-primary" disabled={!isVersionEditable}>
+                                            <Plus className="w-4 h-4" />
+                                            Novo Orçamento
+                                        </button>
+                                    </DialogTrigger>
+                                    <DialogContent className="max-w-md">
+                                        <DialogHeader>
+                                            <DialogTitle>Novo Orçamento Anual</DialogTitle>
+                                            <DialogDescription>
+                                                Defina o orçamento para uma categoria
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <form className="space-y-4 mt-4" onSubmit={handleCreateBudget}>
+                                            <div>
+                                                <label htmlFor="budget-category" className="block text-sm font-medium text-foreground mb-2">Categoria</label>
+                                                <select
+                                                    id="budget-category"
+                                                    className="input-financial"
+                                                    value={budgetForm.category_id}
+                                                    onChange={(e) => setBudgetForm({
+                                                        ...budgetForm,
+                                                        category_id: e.target.value
+                                                    })}
+                                                    required
+                                                >
+                                                    <option value="">Selecione</option>
+                                                    {categories?.map((c) => (
+                                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label
+                                                    htmlFor="budget-annual-amount"
+                                                    className="block text-sm font-medium text-foreground mb-2"
+                                                >
+                                                    Valor Anual
+                                                </label>
+                                                <CurrencyInput
+                                                    id="budget-annual-amount"
+                                                    value={budgetForm.annual_amount}
+                                                    onChange={(numValue) => setBudgetForm({
+                                                        ...budgetForm,
+                                                        annual_amount: String(numValue)
+                                                    })}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="flex justify-end gap-3 pt-4">
+                                                <button type="button" className="btn-secondary" onClick={() => setIsBudgetModalOpen(false)}>
+                                                    Cancelar
+                                                </button>
+                                                <button type="submit" className="btn-primary" disabled={createBudgetMutation.isPending}>
+                                                    {createBudgetMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                                                    Criar Orçamento
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </DialogContent>
+                                </Dialog>
+                            )}
                         </div>
 
-                        {budgetLoading ? (
-                            <LoadingState />
-                        ) : !chartData.length ? (
-                            <EmptyState icon={Target} message="Nenhum orçamento definido" />
-                        ) : (
-                            <div className="card-financial p-6">
-                                <div className="h-[400px]">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={chartData}>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                                            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" />
-                                            <YAxis stroke="hsl(var(--muted-foreground))" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                                            <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }} />
-                                            <Legend />
-                                            <Bar dataKey="orcado" name="Orçado" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
-                                            <Bar dataKey="realizado" name="Realizado" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
+                        {/* Budget Content Based on View Mode */}
+                        {budgetViewMode === 'planejamento' ? (
+                            <>
+                                <BudgetTreeTable
+                                    data={budgetHierarchical}
+                                    isLoading={budgetLoading}
+                                    branchId={unidadeAtual?.id || ''}
+                                    year={selectedYear}
+                                    versionId={selectedVersionId}
+                                    isEditable={isVersionEditable}
+                                />
+
+                                <BudgetCharts
+                                    categoryData={budgetHierarchical}
+                                    annualSummary={annualSummary}
+                                    isLoading={budgetLoading || annualSummaryLoading}
+                                />
+
+                                <div className="space-y-4">
+                                    <h3 className="font-semibold text-foreground">Resumo Anual</h3>
+                                    <AnnualSummaryTable
+                                        data={annualSummary}
+                                        isLoading={annualSummaryLoading}
+                                        showActual
+                                    />
                                 </div>
-                            </div>
+                            </>
+                        ) : (
+                            <BudgetComparisonView
+                                data={budgetHierarchical}
+                                isLoading={budgetLoading}
+                            />
                         )}
                     </TabsContent>
 

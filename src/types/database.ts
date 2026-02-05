@@ -11,6 +11,34 @@ export type PixKeyType = 'cpf' | 'cnpj' | 'email' | 'telefone' | 'aleatoria';
 export type PaymentType = 'pix' | 'ted' | 'boleto' | 'cartao' | 'dinheiro';
 export type AgendaEventType = 'lembrete' | 'aniversario' | 'festividade' | 'feriado';
 export type AgendaRecurrenceType = 'yearly' | 'monthly' | 'weekly' | 'none';
+export type BudgetFrequency = 'mes_a_mes' | 'mensal' | 'anual' | 'semanal' | 'diario';
+
+export interface BudgetMonthData {
+    month: number;
+    budgeted: number;
+    actual: number;
+}
+
+export interface BudgetSubcategoryData {
+    subcategoryId: string;
+    subcategoryName: string;
+    frequency: BudgetFrequency;
+    budgetedAnnual: number;
+    actualAnnual: number;
+    months: BudgetMonthData[];
+}
+
+export interface BudgetCategoryWithSubcategories {
+    categoryId: string;
+    categoryName: string;
+    categoryType: 'receita' | 'despesa' | 'ambos';
+    color: string;
+    frequency: BudgetFrequency;
+    budgetedAnnual: number;
+    actualAnnual: number;
+    months: BudgetMonthData[];
+    subcategories: BudgetSubcategoryData[];
+}
 
 /** Outras taxas do produto: cadastro, operação, seguro */
 export interface ProductOtherFees {
@@ -531,10 +559,12 @@ export interface Database {
           id: string;
           branch_id: string;
           category_id: string | null;
+          subcategory_id: string | null;
           year: number;
           month: number;
           budgeted_amount: number;
           actual_amount: number;
+          budget_version_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -542,20 +572,24 @@ export interface Database {
           id?: string;
           branch_id: string;
           category_id?: string | null;
+          subcategory_id?: string | null;
           year: number;
           month: number;
           budgeted_amount: number;
           actual_amount?: number;
+          budget_version_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           branch_id?: string;
           category_id?: string | null;
+          subcategory_id?: string | null;
           year?: number;
           month?: number;
           budgeted_amount?: number;
           actual_amount?: number;
+          budget_version_id?: string | null;
           updated_at?: string;
         };
       };
