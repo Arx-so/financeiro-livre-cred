@@ -48,7 +48,7 @@ import {
     useBudgetSummary,
     useAnnualSummary,
 } from '@/hooks/useBudget';
-import { useCategories } from '@/hooks/useCategorias';
+import { useCategories, useSubcategories } from '@/hooks/useCategorias';
 import { useVendedores } from '@/hooks/useCadastros';
 import {
     PageHeader, LoadingState, EmptyState, StatCard
@@ -85,7 +85,10 @@ export default function Planejamento() {
     const [budgetForm, setBudgetForm] = useState({
         category_id: '',
         annual_amount: '',
+        subcategory_id: '',
     });
+
+    const { data: subcategories } = useSubcategories(budgetForm.category_id);
 
     // Target form
     const [targetForm, setTargetForm] = useState({
@@ -169,7 +172,7 @@ export default function Planejamento() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['budget'] });
             setIsBudgetModalOpen(false);
-            setBudgetForm({ category_id: '', annual_amount: '' });
+            setBudgetForm({ category_id: '', annual_amount: '', subcategory_id: '' });
             toast.success('Orçamento criado!');
         },
         onError: () => toast.error('Erro ao criar orçamento'),
@@ -568,6 +571,22 @@ export default function Planejamento() {
                                                     ))}
                                                 </select>
                                             </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-foreground mb-2">Subcategoria</label>
+                                                <select
+                                                    className="input-financial"
+                                                    value={budgetForm.subcategory_id}
+                                                    onChange={(e) => setBudgetForm({ ...budgetForm, subcategory_id: e.target.value })}
+                                                    disabled={!budgetForm.category_id}
+                                                >
+                                                    <option value="">Selecione</option>
+                                                    {subcategories?.map((s) => (
+                                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
                                             <div>
                                                 <label
                                                     htmlFor="budget-annual-amount"
