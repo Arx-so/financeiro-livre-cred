@@ -163,11 +163,17 @@ export default function Planejamento() {
             categoryId: string;
             year: number;
             annualAmount: number;
+            subcategoryId?: string | null;
+            versionId?: string | null;
         }) => createAnnualBudget(
             params.branchId,
             params.categoryId,
             params.year,
-            params.annualAmount
+            params.annualAmount,
+            'equal',
+            undefined,
+            params.subcategoryId,
+            params.versionId
         ),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['budget'] });
@@ -252,6 +258,8 @@ export default function Planejamento() {
             categoryId: budgetForm.category_id,
             year: selectedYear,
             annualAmount: parseFloat(budgetForm.annual_amount) || 0,
+            subcategoryId: budgetForm.subcategory_id || null,
+            versionId: selectedVersionId,
         });
     }, [unidadeAtual?.id, budgetForm, selectedYear, createBudgetMutation]);
 
@@ -549,7 +557,9 @@ export default function Planejamento() {
                                         <DialogHeader>
                                             <DialogTitle>Novo Orçamento Anual</DialogTitle>
                                             <DialogDescription>
-                                                Defina o orçamento para uma categoria
+                                                {budgetForm.subcategory_id
+                                                    ? 'Defina o orçamento para uma subcategoria'
+                                                    : 'Defina o orçamento para uma categoria'}
                                             </DialogDescription>
                                         </DialogHeader>
                                         <form className="space-y-4 mt-4" onSubmit={handleCreateBudget}>

@@ -178,7 +178,9 @@ export async function createAnnualBudget(
     year: number,
     annualAmount: number,
     distribution: 'equal' | 'custom' = 'equal',
-    monthlyAmounts?: number[]
+    monthlyAmounts?: number[],
+    subcategoryId?: string | null,
+    versionId?: string | null
 ): Promise<BudgetItem[]> {
     const items: BudgetItemInsert[] = [];
     const monthlyAmount = annualAmount / 12;
@@ -187,18 +189,22 @@ export async function createAnnualBudget(
         items.push({
             branch_id: branchId,
             category_id: categoryId,
+            subcategory_id: subcategoryId || null,
             year,
             month,
             budgeted_amount: distribution === 'equal'
                 ? monthlyAmount
                 : (monthlyAmounts?.[month - 1] || monthlyAmount),
+            budget_version_id: versionId || null,
         });
     }
 
     const { data, error } = await supabase
         .from('budget_items')
         .upsert(items, {
-            onConflict: 'branch_id,category_id,year,month',
+            onConflict: subcategoryId
+                ? 'branch_id,category_id,subcategory_id,year,month'
+                : 'branch_id,category_id,year,month',
         })
         .select();
 
@@ -261,13 +267,35 @@ export async function getBudgetSummary(
 
     const actualsMap = await getBudgetActualsFromEntries(branchId, year);
 
-    let totalBudgeted = 0;
-    let totalActual = 0;
+    // Determine which categories have subcategory-level budget items
+    const catsWithSubBudgets = new Set<string>();
     for (const item of items || []) {
-        totalBudgeted += Number(item.budgeted_amount);
+        if (item.subcategory_id) {
+            catsWithSubBudgets.add(item.category_id ?? '');
+        }
+    }
+
+    let totalBudgeted = 0;
+    const countedActuals = new Set<string>(); // track category+month to avoid duplicates
+    let totalActual = 0;
+
+    for (const item of items || []) {
         const catId = item.category_id ?? 'uncategorized';
-        const {month} = item;
-        totalActual += actualsMap.get(catId)?.get(month) ?? 0;
+        const { month } = item;
+
+        // Skip category-level items when subcategory budgets exist for that category
+        if (!item.subcategory_id && catsWithSubBudgets.has(catId)) {
+            continue;
+        }
+
+        totalBudgeted += Number(item.budgeted_amount);
+
+        // Only count actuals once per category+month
+        const actualKey = `${catId}-${month}`;
+        if (!countedActuals.has(actualKey)) {
+            countedActuals.add(actualKey);
+            totalActual += actualsMap.get(catId)?.get(month) ?? 0;
+        }
     }
 
     const executionRate = totalBudgeted > 0 ? (totalActual / totalBudgeted) * 100 : 0;
@@ -378,15 +406,34 @@ export async function getBudgetHierarchical(
             });
         }
 
+        // If subcategories have budgets but no category-level budget exists,
+        // aggregate subcategory budgets as the category total
+        const hasSubcategoryBudgets = subcategories.some((s) => s.budgetedAnnual > 0);
+        const hasCategoryLevelBudget = categoryBudgetedAnnual > 0;
+
+        let finalBudgetedAnnual = categoryBudgetedAnnual;
+        let finalActualAnnual = categoryActualAnnual;
+        let finalMonths = categoryMonths;
+
+        if (hasSubcategoryBudgets && !hasCategoryLevelBudget) {
+            finalBudgetedAnnual = subcategories.reduce((sum, s) => sum + s.budgetedAnnual, 0);
+            finalActualAnnual = subcategories.reduce((sum, s) => sum + s.actualAnnual, 0);
+            finalMonths = categoryMonths.map((m, i) => ({
+                ...m,
+                budgeted: subcategories.reduce((sum, s) => sum + s.months[i].budgeted, 0),
+                actual: m.actual, // keep category-level actuals from financial_entries
+            }));
+        }
+
         result.push({
             categoryId: cat.id,
             categoryName: cat.name,
             categoryType: cat.type as 'receita' | 'despesa' | 'ambos',
             color: cat.color,
             frequency: 'mensal' as BudgetFrequency,
-            budgetedAnnual: categoryBudgetedAnnual,
-            actualAnnual: categoryActualAnnual,
-            months: categoryMonths,
+            budgetedAnnual: finalBudgetedAnnual,
+            actualAnnual: finalActualAnnual,
+            months: finalMonths,
             subcategories,
         });
     }
@@ -571,7 +618,7 @@ export async function getAnnualSummary(
     // Get budget items
     let budgetQuery = supabase
         .from('budget_items')
-        .select('category_id, month, budgeted_amount')
+        .select('category_id, subcategory_id, month, budgeted_amount')
         .eq('branch_id', branchId)
         .eq('year', year);
 
@@ -581,6 +628,14 @@ export async function getAnnualSummary(
 
     const { data: budgetItems, error: budgetError } = await budgetQuery;
     if (budgetError) throw budgetError;
+
+    // Determine which categories have subcategory-level budget items
+    const catsWithSubBudgets = new Set<string>();
+    for (const item of budgetItems || []) {
+        if (item.subcategory_id) {
+            catsWithSubBudgets.add(item.category_id ?? '');
+        }
+    }
 
     // Get actuals
     const actualsMap = await getBudgetActualsFromEntries(branchId, year);
@@ -604,10 +659,15 @@ export async function getAnnualSummary(
         let despesasBudgeted = 0;
         let despesasActual = 0;
 
-        // Sum budgeted by type
+        // Sum budgeted by type (skip category-level when subcategory budgets exist)
         for (const item of budgetItems || []) {
             if (item.month !== month) continue;
             const catId = item.category_id;
+
+            // Skip category-level items when subcategory budgets exist
+            if (!item.subcategory_id && catId && catsWithSubBudgets.has(catId)) {
+                continue;
+            }
 
             if (catId && receitaCategoryIds.has(catId)) {
                 receitasBudgeted += Number(item.budgeted_amount);
