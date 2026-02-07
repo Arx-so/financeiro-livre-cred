@@ -343,6 +343,7 @@ export interface Database {
           recurrence_end_date: string | null;
           recurring_parent_id: string | null;
           is_recurring_template: boolean;
+          contract_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -368,6 +369,7 @@ export interface Database {
           recurrence_end_date?: string | null;
           recurring_parent_id?: string | null;
           is_recurring_template?: boolean;
+          contract_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -391,6 +393,7 @@ export interface Database {
           recurrence_end_date?: string | null;
           recurring_parent_id?: string | null;
           is_recurring_template?: boolean;
+          contract_id?: string | null;
           updated_at?: string;
         };
       };
@@ -478,6 +481,8 @@ export interface Database {
           approved_at: string | null;
           signed_by: string | null;
           signed_at: string | null;
+          payment_due_day: number | null;
+          interest_rate: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -501,6 +506,8 @@ export interface Database {
           approved_at?: string | null;
           signed_by?: string | null;
           signed_at?: string | null;
+          payment_due_day?: number | null;
+          interest_rate?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -522,6 +529,8 @@ export interface Database {
           approved_at?: string | null;
           signed_by?: string | null;
           signed_at?: string | null;
+          payment_due_day?: number | null;
+          interest_rate?: number | null;
           updated_at?: string;
         };
       };

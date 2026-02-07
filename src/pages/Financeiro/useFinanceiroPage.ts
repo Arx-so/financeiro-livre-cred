@@ -41,6 +41,7 @@ export interface FinanceiroFormData {
     is_recurring: boolean;
     recurrence_type: RecurrenceType | '';
     recurrence_day: string;
+    recurrence_count: string;
     recurrence_end_date: string;
 }
 
@@ -59,6 +60,7 @@ const initialFormData: FinanceiroFormData = {
     is_recurring: false,
     recurrence_type: '',
     recurrence_day: '',
+    recurrence_count: '12',
     recurrence_end_date: '',
 };
 
@@ -225,19 +227,22 @@ export function useFinanceiroPage() {
             if (editingId) {
                 await updateEntry.mutateAsync({ id: editingId, entry: entryData });
                 toast.success('Lançamento atualizado!');
-            } else if (formData.is_recurring && formData.recurrence_type && formData.recurrence_end_date) {
+            } else if (formData.is_recurring && formData.recurrence_type) {
+                // Use end date if provided, otherwise use count
+                const endDateOrCount = formData.recurrence_end_date
+                    || parseInt(formData.recurrence_count, 10)
+                    || 12;
+
                 const dates = calculateRecurringDates(
                     formData.due_date,
                     formData.recurrence_type as RecurrenceType,
                     formData.recurrence_day ? parseInt(formData.recurrence_day, 10) : undefined,
-                    formData.recurrence_end_date,
+                    endDateOrCount,
                 );
 
                 const entriesToCreate = dates.map((date, index) => ({
                     ...entryData,
                     due_date: date,
-                    recurrence_index: index + 1,
-                    recurrence_total: dates.length,
                     description: `${formData.description} (${index + 1}/${dates.length})`,
                 }));
 
@@ -318,6 +323,7 @@ export function useFinanceiroPage() {
             is_recurring: entry.is_recurring || false,
             recurrence_type: entry.recurrence_type || '',
             recurrence_day: entry.recurrence_day?.toString() || '',
+            recurrence_count: '12',
             recurrence_end_date: entry.recurrence_end_date || '',
         });
         setEditingId(entry.id);

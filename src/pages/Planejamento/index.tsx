@@ -53,6 +53,7 @@ import { useVendedores } from '@/hooks/useCadastros';
 import {
     PageHeader, LoadingState, EmptyState, StatCard
 } from '@/components/shared';
+import { createFinancialEntry } from '@/services/financeiro';
 import { formatCurrency, MONTHS_SHORT } from '@/lib/utils';
 import type { SalesTargetInsert } from '@/types/database';
 
@@ -196,6 +197,36 @@ export default function Planejamento() {
             toast.success('Meta criada!');
         },
         onError: () => toast.error('Erro ao criar meta'),
+    });
+
+    const generateCommissionEntryMutation = useMutation({
+        mutationFn: async (params: {
+            sellerName: string;
+            commission: number;
+            bonus: number;
+            total: number;
+            month: number;
+            year: number;
+        }) => {
+            const lastDay = new Date(params.year, params.month, 0).getDate();
+            const dueDate = `${params.year}-${String(params.month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+            return createFinancialEntry({
+                branch_id: unidadeAtual!.id,
+                type: 'despesa',
+                description: `Comissão - ${params.sellerName} - ${String(params.month).padStart(2, '0')}/${params.year}`,
+                value: params.total,
+                due_date: dueDate,
+                status: 'pendente',
+                notes: params.bonus > 0
+                    ? `Comissão: ${formatCurrency(params.commission)} + Bônus: ${formatCurrency(params.bonus)}`
+                    : null,
+            });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['financial-entries'] });
+            toast.success('Lançamento financeiro gerado!');
+        },
+        onError: () => toast.error('Erro ao gerar lançamento financeiro'),
     });
 
     // Version mutations
@@ -920,6 +951,9 @@ export default function Planejamento() {
                                         <th className="text-right p-4 font-medium text-foreground">
                                             Total
                                         </th>
+                                        <th className="text-center p-4 font-medium text-foreground">
+                                            Ações
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -965,12 +999,38 @@ export default function Planejamento() {
                                                 <td className="p-4 text-right font-mono font-semibold text-income">
                                                     {formatCurrency(earnings.total)}
                                                 </td>
+                                                <td className="p-4 text-center">
+                                                    <button
+                                                        type="button"
+                                                        className="btn-primary text-xs px-3 py-1.5 inline-flex items-center gap-1.5 disabled:opacity-50"
+                                                        disabled={
+                                                            generateCommissionEntryMutation.isPending
+                                                            || earnings.total <= 0
+                                                        }
+                                                        onClick={() => generateCommissionEntryMutation.mutate({
+                                                            sellerName: target.seller?.name || 'Vendedor',
+                                                            commission: earnings.commission,
+                                                            bonus: earnings.bonus,
+                                                            total: earnings.total,
+                                                            month: selectedMonth,
+                                                            year: selectedYear,
+                                                        })}
+                                                        title="Gerar lançamento financeiro de despesa para esta comissão"
+                                                    >
+                                                        {generateCommissionEntryMutation.isPending ? (
+                                                            <Loader2 className="w-3 h-3 animate-spin" />
+                                                        ) : (
+                                                            <DollarSign className="w-3 h-3" />
+                                                        )}
+                                                        Gerar Financeiro
+                                                    </button>
+                                                </td>
                                             </tr>
                                         );
                                     })}
                                     {(!salesTargets || salesTargets.length === 0) && (
                                         <tr>
-                                            <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                                            <td colSpan={8} className="p-8 text-center text-muted-foreground">
                                                 Nenhuma meta definida para este período
                                             </td>
                                         </tr>

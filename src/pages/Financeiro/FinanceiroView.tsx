@@ -529,7 +529,20 @@ function EntryForm(props: EntryFormProps) {
                         type="date"
                         className="input-financial"
                         value={formData.due_date}
-                        onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                        onChange={(e) => {
+                            const newDueDate = e.target.value;
+                            // Update recurrence_day when due_date changes and recurring is enabled
+                            let recurrenceDay = formData.recurrence_day;
+                            if (formData.is_recurring && newDueDate) {
+                                const dueDate = new Date(`${newDueDate}T12:00:00`);
+                                recurrenceDay = String(dueDate.getDate());
+                            }
+                            setFormData({
+                                ...formData,
+                                due_date: newDueDate,
+                                recurrence_day: recurrenceDay,
+                            });
+                        }}
                         required
                     />
                 </div>
@@ -624,7 +637,20 @@ function EntryForm(props: EntryFormProps) {
                     <input
                         type="checkbox"
                         checked={formData.is_recurring}
-                        onChange={(e) => setFormData({ ...formData, is_recurring: e.target.checked })}
+                        onChange={(e) => {
+                            const isRecurring = e.target.checked;
+                            // Auto-fill recurrence_day with due_date day when enabling recurring
+                            let recurrenceDay = formData.recurrence_day;
+                            if (isRecurring && formData.due_date && !recurrenceDay) {
+                                const dueDate = new Date(`${formData.due_date}T12:00:00`);
+                                recurrenceDay = String(dueDate.getDate());
+                            }
+                            setFormData({
+                                ...formData,
+                                is_recurring: isRecurring,
+                                recurrence_day: recurrenceDay,
+                            });
+                        }}
                         className="w-4 h-4 rounded border-input"
                         disabled={!!editingId}
                     />
@@ -635,13 +661,14 @@ function EntryForm(props: EntryFormProps) {
                 </label>
 
                 {formData.is_recurring && (
-                    <div className="grid grid-cols-3 gap-4 mt-4">
+                    <div className="grid grid-cols-4 gap-4 mt-4">
                         <div>
                             <label className="block text-sm font-medium text-foreground mb-2">Tipo de Recorrência</label>
                             <select
                                 className="input-financial"
                                 value={formData.recurrence_type}
                                 onChange={(e) => setFormData({ ...formData, recurrence_type: e.target.value as RecurrenceType | '' })}
+                                required
                             >
                                 <option value="">Selecione...</option>
                                 <option value="diario">Diário</option>
@@ -682,7 +709,22 @@ function EntryForm(props: EntryFormProps) {
                             )}
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">Data Final</label>
+                            <label className="block text-sm font-medium text-foreground mb-2">Qtd. Parcelas</label>
+                            <input
+                                type="number"
+                                min="2"
+                                max="120"
+                                className="input-financial"
+                                placeholder="12"
+                                value={formData.recurrence_count}
+                                onChange={(e) => setFormData({ ...formData, recurrence_count: e.target.value })}
+                                disabled={!!formData.recurrence_end_date}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">
+                                Ou Data Final
+                            </label>
                             <input
                                 type="date"
                                 className="input-financial"

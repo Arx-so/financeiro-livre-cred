@@ -142,14 +142,34 @@ export async function createFinancialEntries(entries: FinancialEntryInsert[]): P
 export function calculateRecurringDates(
     startDate: string,
     recurrenceType: 'diario' | 'semanal' | 'mensal' | 'anual',
-    recurrenceDay: number | null,
-    count: number = 12
+    recurrenceDay: number | null | undefined,
+    endDateOrCount: string | number = 12
 ): string[] {
     const dates: string[] = [];
-    const start = new Date(startDate);
+    const start = new Date(`${startDate}T12:00:00`); // Use noon to avoid timezone issues
 
-    for (let i = 1; i <= count; i++) {
+    // If no recurrence day specified for mensal, use the day from the start date
+    const effectiveRecurrenceDay = recurrenceDay ?? start.getDate();
+
+    // Calculate the end date and max iterations
+    let endDate: Date | null = null;
+    let maxIterations = 120; // Safety limit
+
+    if (typeof endDateOrCount === 'string') {
+        // It's an end date string
+        endDate = new Date(`${endDateOrCount}T12:00:00`);
+    } else {
+        // It's a count
+        maxIterations = endDateOrCount;
+    }
+
+    // Include the first date
+    dates.push(start.toISOString().split('T')[0]);
+
+    let i = 1;
+    while (i <= maxIterations) {
         const nextDate = new Date(start);
+        let lastDay: number;
 
         switch (recurrenceType) {
             case 'diario':
@@ -160,18 +180,27 @@ export function calculateRecurringDates(
                 break;
             case 'mensal':
                 nextDate.setMonth(start.getMonth() + i);
-                // If recurrenceDay is set, use that day
-                if (recurrenceDay) {
-                    const lastDayOfMonth = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
-                    nextDate.setDate(Math.min(recurrenceDay, lastDayOfMonth));
-                }
+                // Set the day to the recurrence day, handling months with fewer days
+                lastDay = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
+                nextDate.setDate(Math.min(effectiveRecurrenceDay, lastDay));
                 break;
             case 'anual':
                 nextDate.setFullYear(start.getFullYear() + i);
+                // For annual, also respect the recurrence day
+                lastDay = new Date(nextDate.getFullYear(), nextDate.getMonth() + 1, 0).getDate();
+                nextDate.setDate(Math.min(effectiveRecurrenceDay, lastDay));
+                break;
+            default:
                 break;
         }
 
+        // Stop if we've passed the end date
+        if (endDate && nextDate > endDate) {
+            break;
+        }
+
         dates.push(nextDate.toISOString().split('T')[0]);
+        i++;
     }
 
     return dates;
@@ -385,4 +414,28 @@ export async function updateOverdueEntries(branchId: string): Promise<number> {
     }
 
     return data?.length || 0;
+}
+
+// Get financial entries linked to a specific contract
+export async function getFinancialEntriesByContractId(
+    contractId: string
+): Promise<FinancialEntryWithRelations[]> {
+    const { data, error } = await supabase
+        .from('financial_entries')
+        .select(`
+            *,
+            category:categories(id, name, color),
+            subcategory:subcategories(id, name),
+            favorecido:favorecidos(id, name),
+            bank_account:bank_accounts(id, name, bank_name)
+        `)
+        .eq('contract_id', contractId)
+        .order('due_date', { ascending: true });
+
+    if (error) {
+        console.error('Error fetching entries by contract:', error);
+        throw error;
+    }
+
+    return data || [];
 }

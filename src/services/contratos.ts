@@ -5,8 +5,11 @@ import type {
     ContractUpdate,
     ContractFile,
     ContractFileInsert,
-    ContractStatus
+    ContractStatus,
+    Product,
+    FinancialEntryInsert,
 } from '@/types/database';
+import { createFinancialEntries } from '@/services/financeiro';
 
 export interface ContractWithRelations extends Contract {
   favorecido?: { id: string; name: string } | null;
@@ -331,4 +334,260 @@ export async function rejectContract(id: string): Promise<Contract> {
 // End contract
 export async function endContract(id: string): Promise<Contract> {
     return updateContract(id, { status: 'encerrado' });
+}
+
+// Fee label map for descriptions
+const FEE_LABELS: Record<string, string> = {
+    cadastro: 'Cadastro',
+    operacao: 'Operação',
+    seguro: 'Seguro',
+};
+
+/**
+ * Calculate installment dates for a contract based on recurrence_type, start/end dates,
+ * and payment_due_day.
+ */
+function calculateInstallmentDates(
+    startDate: string,
+    endDate: string | null,
+    recurrenceType: string,
+    paymentDueDay: number | null
+): string[] {
+    const start = new Date(startDate);
+    const end = endDate ? new Date(endDate) : null;
+
+    if (recurrenceType === 'unico' || !end) {
+        // Single payment — use due day in the start month if provided
+        const dueDay = paymentDueDay || start.getDate();
+        const date = new Date(start.getFullYear(), start.getMonth(), dueDay);
+        return [date.toISOString().split('T')[0]];
+    }
+
+    const dates: string[] = [];
+    const dueDay = paymentDueDay || start.getDate();
+
+    if (recurrenceType === 'mensal') {
+        const current = new Date(start.getFullYear(), start.getMonth(), 1);
+        while (current <= end) {
+            const lastDay = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
+            const day = Math.min(dueDay, lastDay);
+            const dueDate = new Date(current.getFullYear(), current.getMonth(), day);
+            if (dueDate >= start && dueDate <= end) {
+                dates.push(dueDate.toISOString().split('T')[0]);
+            }
+            current.setMonth(current.getMonth() + 1);
+        }
+    } else if (recurrenceType === 'anual') {
+        let year = start.getFullYear();
+        const month = start.getMonth();
+        while (year <= end.getFullYear()) {
+            const lastDay = new Date(year, month + 1, 0).getDate();
+            const day = Math.min(dueDay, lastDay);
+            const dueDate = new Date(year, month, day);
+            if (dueDate >= start && dueDate <= end) {
+                dates.push(dueDate.toISOString().split('T')[0]);
+            }
+            year++;
+        }
+    }
+
+    return dates.length > 0 ? dates : [startDate];
+}
+
+/**
+ * Calculate installment value using Price Table (Tabela Price).
+ * PMT = PV × [i(1+i)^n / ((1+i)^n - 1)]
+ * @param principal - loan amount (PV)
+ * @param monthlyRate - monthly interest rate as decimal (e.g. 0.02 for 2%)
+ * @param numInstallments - number of installments (n)
+ */
+function calculatePriceTableInstallment(
+    principal: number,
+    monthlyRate: number,
+    numInstallments: number
+): number {
+    if (monthlyRate === 0 || numInstallments <= 0) {
+        return numInstallments > 0 ? principal / numInstallments : principal;
+    }
+    const factor = (1 + monthlyRate) ** numInstallments;
+    const pmt = principal * ((monthlyRate * factor) / (factor - 1));
+    return Math.round(pmt * 100) / 100;
+}
+
+export interface GeneratedEntriesSummary {
+    revenueCount: number;
+    revenueInstallmentValue: number;
+    totalWithInterest: number;
+    interestRate: number;
+    expenses: { description: string; value: number }[];
+    totalExpenses: number;
+}
+
+/**
+ * Preview the financial entries that would be generated for a contract.
+ * Does NOT create entries — used for the confirmation dialog.
+ */
+export function previewContractEntries(
+    contract: ContractWithRelations & { payment_due_day?: number | null; interest_rate?: number | null },
+    product: Product | null
+): GeneratedEntriesSummary {
+    const dates = calculateInstallmentDates(
+        contract.start_date,
+        contract.end_date,
+        contract.recurrence_type,
+        contract.payment_due_day ?? null
+    );
+
+    const revenueCount = dates.length;
+    const interestRate = contract.interest_rate ?? 0;
+    const monthlyRate = interestRate / 100;
+
+    const revenueInstallmentValue = monthlyRate > 0 && revenueCount > 1
+        ? calculatePriceTableInstallment(contract.value, monthlyRate, revenueCount)
+        : (revenueCount > 0 ? Math.round((contract.value / revenueCount) * 100) / 100 : contract.value);
+
+    const totalWithInterest = Math.round(revenueInstallmentValue * revenueCount * 100) / 100;
+
+    const expenses: { description: string; value: number }[] = [];
+
+    // Product fees
+    if (product?.other_fees) {
+        Object.entries(product.other_fees).forEach(([key, val]) => {
+            if (val && val > 0) {
+                expenses.push({
+                    description: `Taxa de ${FEE_LABELS[key] || key}`,
+                    value: val,
+                });
+            }
+        });
+    }
+
+    // Seller commission
+    if (contract.seller_id && product?.commission_pct != null && product.commission_pct > 0) {
+        const isPercentual = !product.commission_type || product.commission_type === 'percentual';
+        const commissionValue = isPercentual
+            ? Math.round(((contract.value * product.commission_pct) / 100) * 100) / 100
+            : product.commission_pct;
+        if (commissionValue > 0) {
+            expenses.push({
+                description: 'Comissão do vendedor',
+                value: commissionValue,
+            });
+        }
+    }
+
+    return {
+        revenueCount,
+        revenueInstallmentValue,
+        totalWithInterest,
+        interestRate,
+        expenses,
+        totalExpenses: expenses.reduce((sum, e) => sum + e.value, 0),
+    };
+}
+
+/**
+ * Generate financial entries (receita + despesa) for an approved contract.
+ */
+export async function generateFinancialEntriesFromContract(
+    contract: ContractWithRelations & { payment_due_day?: number | null; interest_rate?: number | null },
+    product: Product | null
+): Promise<number> {
+    const entries: FinancialEntryInsert[] = [];
+
+    // --- Revenue installments ---
+    const dates = calculateInstallmentDates(
+        contract.start_date,
+        contract.end_date,
+        contract.recurrence_type,
+        contract.payment_due_day ?? null
+    );
+
+    const totalInstallments = dates.length;
+    const interestRate = contract.interest_rate ?? 0;
+    const monthlyRate = interestRate / 100;
+
+    const installmentValue = monthlyRate > 0 && totalInstallments > 1
+        ? calculatePriceTableInstallment(contract.value, monthlyRate, totalInstallments)
+        : (totalInstallments > 0
+            ? Math.round((contract.value / totalInstallments) * 100) / 100
+            : contract.value);
+
+    const totalWithInterest = Math.round(installmentValue * totalInstallments * 100) / 100;
+
+    // Adjust last installment for rounding difference
+    const roundingDiff = Math.round(
+        (totalWithInterest - installmentValue * totalInstallments) * 100
+    ) / 100;
+
+    dates.forEach((dueDate, index) => {
+        const isLast = index === totalInstallments - 1;
+        const value = isLast ? installmentValue + roundingDiff : installmentValue;
+        const suffix = totalInstallments > 1 ? ` (${index + 1}/${totalInstallments})` : '';
+
+        entries.push({
+            branch_id: contract.branch_id,
+            type: 'receita',
+            description: `Venda: ${contract.title}${suffix}`,
+            value,
+            due_date: dueDate,
+            status: 'pendente',
+            category_id: contract.category_id ?? undefined,
+            favorecido_id: contract.favorecido_id ?? undefined,
+            contract_id: contract.id,
+        });
+    });
+
+    // --- Expense entries (fees) ---
+    if (product?.other_fees) {
+        Object.entries(product.other_fees).forEach(([key, val]) => {
+            if (val && val > 0) {
+                entries.push({
+                    branch_id: contract.branch_id,
+                    type: 'despesa',
+                    description: `Custo venda: ${contract.title} - Taxa de ${FEE_LABELS[key] || key}`,
+                    value: val,
+                    due_date: contract.start_date,
+                    status: 'pendente',
+                    category_id: contract.category_id ?? undefined,
+                    contract_id: contract.id,
+                });
+            }
+        });
+    }
+
+    // --- Expense entry (commission) ---
+    if (contract.seller_id && product?.commission_pct != null && product.commission_pct > 0) {
+        const isPercentual = !product.commission_type || product.commission_type === 'percentual';
+        const commissionValue = isPercentual
+            ? Math.round(((contract.value * product.commission_pct) / 100) * 100) / 100
+            : product.commission_pct;
+
+        if (commissionValue > 0) {
+            // Commission due date: use commission_payment_day from product if set
+            let commissionDueDate = contract.start_date;
+            if (product.commission_payment_day) {
+                const start = new Date(contract.start_date);
+                const lastDay = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
+                const day = Math.min(product.commission_payment_day, lastDay);
+                const commDate = new Date(start.getFullYear(), start.getMonth(), day);
+                [commissionDueDate] = commDate.toISOString().split('T');
+            }
+
+            entries.push({
+                branch_id: contract.branch_id,
+                type: 'despesa',
+                description: `Comissão venda: ${contract.title}`,
+                value: commissionValue,
+                due_date: commissionDueDate,
+                status: 'pendente',
+                contract_id: contract.id,
+            });
+        }
+    }
+
+    if (entries.length === 0) return 0;
+
+    await createFinancialEntries(entries);
+    return entries.length;
 }

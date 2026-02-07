@@ -20,6 +20,7 @@ import {
     Repeat,
     Printer,
     XCircle,
+    DollarSign,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -47,10 +48,16 @@ import {
     submitForApproval,
     approveContract,
     rejectContract,
+    generateFinancialEntriesFromContract,
+    previewContractEntries,
 } from '@/services/contratos';
+import { getFinancialEntriesByContractId } from '@/services/financeiro';
 import { useCategories } from '@/hooks/useCategorias';
-import { useFavorecidos, useVendedores } from '@/hooks/useCadastros';
-import { useProducts } from '@/hooks/useProducts';
+import {
+    useFavorecidos, useVendedores, useCreateFavorecido, useUploadFavorecidoPhoto
+} from '@/hooks/useCadastros';
+import { useProducts, useCreateProduct, useProductCategories } from '@/hooks/useProducts';
+import { useCreateUser } from '@/hooks/useUsers';
 import {
     PageHeader, EmptyState, LoadingState, StatCard, SearchInput
 } from '@/components/shared';
@@ -61,7 +68,11 @@ import {
     generateContractFromTemplate,
     exportContractToPDF,
 } from '@/services/contractTemplates';
-import type { ContractInsert, ContractRecurrenceType } from '@/types/database';
+import type {
+    ContractInsert, ContractRecurrenceType, ProductInsert, ProductOtherFees, ProductCommissionReceivedBy
+} from '@/types/database';
+import { FavorecidoForm } from '@/pages/Favorecidos/components/FavorecidoForm';
+import { ProductForm, type ProductFormData } from '@/pages/Produtos/components/ProductForm';
 import { ProductRulesPanel } from './components/ProductRulesPanel';
 
 export default function Contratos() {
@@ -87,6 +98,11 @@ export default function Contratos() {
     const [pdfContractId, setPdfContractId] = useState<string | null>(null);
     const [pdfIntent, setPdfIntent] = useState<'download' | 'print'>('download');
 
+    // Generate entries modal state
+    const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
+    const [generateContractId, setGenerateContractId] = useState<string | null>(null);
+    const [isGeneratingEntries, setIsGeneratingEntries] = useState(false);
+
     // Form state
     const [formData, setFormData] = useState({
         title: '',
@@ -100,6 +116,8 @@ export default function Contratos() {
         product_id: '',
         recurrence_type: 'unico' as ContractRecurrenceType,
         seller_id: '',
+        payment_due_day: '',
+        interest_rate: '',
     });
 
     // Fetch data
@@ -121,10 +139,11 @@ export default function Contratos() {
         enabled: !!unidadeAtual?.id,
     });
 
-    const { data: favorecidos } = useFavorecidos({ isActive: true });
+    const { data: favorecidos, refetch: refetchFavorecidos } = useFavorecidos({ isActive: true });
     const { data: categories } = useCategories();
-    const { data: vendedores } = useVendedores();
-    const { data: products } = useProducts({ isActive: true });
+    const { data: vendedores, refetch: refetchVendedores } = useVendedores();
+    const { data: products, refetch: refetchProducts } = useProducts({ isActive: true });
+    const { data: productCategories } = useProductCategories();
 
     const selectedProduct = useMemo(
         () => (formData.product_id ? products?.find((p) => p.id === formData.product_id) : null),
@@ -145,6 +164,287 @@ export default function Contratos() {
         queryKey: ['contract-templates'],
         queryFn: () => getTemplates({ isActive: true }),
     });
+
+    // --- Inline Favorecido creation ---
+    const [isFavorecidoModalOpen, setIsFavorecidoModalOpen] = useState(false);
+    const [favorecidoFormData, setFavorecidoFormData] = useState<any>({
+        type: 'cliente',
+        name: '',
+        document: '',
+        email: '',
+        phone: '',
+        address: '',
+        city: '',
+        state: '',
+        zip_code: '',
+        category: '',
+        categoria_contratacao: '',
+        notes: '',
+        bank_name: '',
+        bank_agency: '',
+        bank_account: '',
+        bank_account_type: '',
+        pix_key: '',
+        pix_key_type: '',
+        preferred_payment_type: '',
+        birth_date: '',
+    });
+    const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const favorecidoFileInputRef = useRef<HTMLInputElement>(null);
+    const favorecidoDocumentInputRef = useRef<HTMLInputElement>(null);
+    const createFavorecido = useCreateFavorecido();
+    const uploadPhoto = useUploadFavorecidoPhoto();
+
+    const resetFavorecidoForm = useCallback(() => {
+        setFavorecidoFormData({
+            type: 'cliente',
+            name: '',
+            document: '',
+            email: '',
+            phone: '',
+            address: '',
+            city: '',
+            state: '',
+            zip_code: '',
+            category: '',
+            categoria_contratacao: '',
+            notes: '',
+            bank_name: '',
+            bank_agency: '',
+            bank_account: '',
+            bank_account_type: '',
+            pix_key: '',
+            pix_key_type: '',
+            preferred_payment_type: '',
+            birth_date: '',
+        });
+        setSelectedPhoto(null);
+        setPhotoPreview(null);
+    }, []);
+
+    const handlePhotoSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setSelectedPhoto(file);
+            const reader = new FileReader();
+            reader.onloadend = () => { setPhotoPreview(reader.result as string); };
+            reader.readAsDataURL(file);
+        }
+    }, []);
+
+    const handleSubmitFavorecido = useCallback(async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const newFav = await createFavorecido.mutateAsync({
+                type: favorecidoFormData.type,
+                name: favorecidoFormData.name,
+                document: favorecidoFormData.document || null,
+                email: favorecidoFormData.email || null,
+                phone: favorecidoFormData.phone || null,
+                address: favorecidoFormData.address || null,
+                city: favorecidoFormData.city || null,
+                state: favorecidoFormData.state || null,
+                zip_code: favorecidoFormData.zip_code || null,
+                notes: favorecidoFormData.notes || null,
+            });
+            if (selectedPhoto && newFav.id) {
+                await uploadPhoto.mutateAsync({ favorecidoId: newFav.id, file: selectedPhoto });
+            }
+            await refetchFavorecidos();
+            setFormData((prev) => ({ ...prev, favorecido_id: newFav.id }));
+            toast.success('Favorecido criado!');
+            setIsFavorecidoModalOpen(false);
+            resetFavorecidoForm();
+        } catch {
+            toast.error('Erro ao criar favorecido');
+        }
+    }, [favorecidoFormData, selectedPhoto, createFavorecido, uploadPhoto, refetchFavorecidos, resetFavorecidoForm]);
+
+    // --- Inline Product creation ---
+    const initialProductForm: ProductFormData = {
+        name: '',
+        code: '',
+        description: '',
+        commercial_description: '',
+        product_category_id: '',
+        reference_value: '0',
+        bank_percentage: '0',
+        company_percentage: '0',
+        is_active: true,
+        eligible_client_type: '',
+        target_audience: [],
+        value_min: '',
+        value_max: '',
+        term_months_min: '',
+        term_months_max: '',
+        interest_rate_min: '',
+        interest_rate_max: '',
+        billing_type: [],
+        iof_applicable: false,
+        other_fees_cadastro: '',
+        other_fees_operacao: '',
+        other_fees_seguro: '',
+        specific_rules: '',
+        commission_type: '',
+        commission_pct: '',
+        commission_min: '',
+        commission_max: '',
+        commission_received_by_product: '',
+        commission_received_by_term: '',
+        commission_received_by_value: '',
+        commission_payment_day: '',
+        required_docs: [],
+        required_docs_other: '',
+        recurrence_type: 'unico',
+    };
+    const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+    const [productFormData, setProductFormData] = useState<ProductFormData>(initialProductForm);
+    const createProductMutation = useCreateProduct();
+
+    const resetProductForm = useCallback(() => {
+        setProductFormData(initialProductForm);
+    }, []);
+
+    const handleSubmitProduct = useCallback(async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!productFormData.name.trim()) {
+            toast.error('Nome do produto é obrigatório');
+            return;
+        }
+        const ref = parseFloat(productFormData.reference_value) || 0;
+        const bankPct = parseFloat(productFormData.bank_percentage) || 0;
+        const companyPct = parseFloat(productFormData.company_percentage) || 0;
+
+        const otherFees: ProductOtherFees = {};
+        const cad = parseFloat(productFormData.other_fees_cadastro);
+        const ope = parseFloat(productFormData.other_fees_operacao);
+        const seg = parseFloat(productFormData.other_fees_seguro);
+        if (Number.isFinite(cad) && cad > 0) otherFees.cadastro = cad;
+        if (Number.isFinite(ope) && ope > 0) otherFees.operacao = ope;
+        if (Number.isFinite(seg) && seg > 0) otherFees.seguro = seg;
+
+        const commissionReceivedBy: ProductCommissionReceivedBy = {};
+        const crP = parseFloat(productFormData.commission_received_by_product);
+        const crT = parseFloat(productFormData.commission_received_by_term);
+        const crV = parseFloat(productFormData.commission_received_by_value);
+        if (Number.isFinite(crP) && crP > 0) commissionReceivedBy.by_product = crP;
+        if (Number.isFinite(crT) && crT > 0) commissionReceivedBy.by_term = crT;
+        if (Number.isFinite(crV) && crV > 0) commissionReceivedBy.by_value = crV;
+
+        const cpd = productFormData.commission_payment_day.trim();
+        const commissionPayDay = cpd !== '' && /^\d+$/.test(cpd)
+            ? Math.min(31, Math.max(1, parseInt(cpd, 10)))
+            : null;
+
+        const productData: ProductInsert = {
+            name: productFormData.name.trim(),
+            code: productFormData.code.trim() || null,
+            description: productFormData.description.trim() || null,
+            commercial_description: productFormData.commercial_description.trim() || null,
+            product_category_id: productFormData.product_category_id || null,
+            bank_value: (ref * bankPct) / 100,
+            bank_percentage: bankPct,
+            company_value: (ref * companyPct) / 100,
+            company_percentage: companyPct,
+            is_active: productFormData.is_active,
+            eligible_client_type: productFormData.eligible_client_type.trim() || null,
+            target_audience: productFormData.target_audience.length > 0 ? productFormData.target_audience : null,
+            value_min: productFormData.value_min !== '' ? parseFloat(productFormData.value_min) || null : null,
+            value_max: productFormData.value_max !== '' ? parseFloat(productFormData.value_max) || null : null,
+            term_months_min: productFormData.term_months_min !== '' ? parseInt(productFormData.term_months_min, 10) || null : null,
+            term_months_max: productFormData.term_months_max !== '' ? parseInt(productFormData.term_months_max, 10) || null : null,
+            interest_rate_min: productFormData.interest_rate_min !== '' ? parseFloat(productFormData.interest_rate_min) || null : null,
+            interest_rate_max: productFormData.interest_rate_max !== '' ? parseFloat(productFormData.interest_rate_max) || null : null,
+            billing_type: productFormData.billing_type.length > 0 ? productFormData.billing_type : null,
+            iof_applicable: productFormData.iof_applicable,
+            other_fees: Object.keys(otherFees).length > 0 ? otherFees : null,
+            commission_type: (productFormData.commission_type === 'fixa' || productFormData.commission_type === 'percentual'
+                ? productFormData.commission_type : null) as 'fixa' | 'percentual' | null,
+            commission_pct: productFormData.commission_pct !== '' ? parseFloat(productFormData.commission_pct) || null : null,
+            commission_min: productFormData.commission_min !== '' ? parseFloat(productFormData.commission_min) || null : null,
+            commission_max: productFormData.commission_max !== '' ? parseFloat(productFormData.commission_max) || null : null,
+            commission_received_by: Object.keys(commissionReceivedBy).length > 0 ? commissionReceivedBy : null,
+            commission_payment_day: commissionPayDay,
+            required_docs: productFormData.required_docs.length > 0 ? productFormData.required_docs : null,
+            required_docs_other: productFormData.required_docs_other.trim() || null,
+            recurrence_type: ['unico', 'mensal', 'anual'].includes(productFormData.recurrence_type)
+                ? productFormData.recurrence_type as 'unico' | 'mensal' | 'anual' : 'unico',
+        };
+
+        try {
+            const newProduct = await createProductMutation.mutateAsync(productData);
+            await refetchProducts();
+            const catByProdName = productCategories?.find(
+                (pc) => pc.id === newProduct.product_category_id
+            );
+            const catMatch = catByProdName?.name
+                ? categories?.find((c) => c.name.toLowerCase() === catByProdName.name.toLowerCase())
+                : null;
+            setFormData((prev) => ({
+                ...prev,
+                product_id: newProduct.id,
+                type: newProduct.commercial_description || newProduct.name,
+                category_id: catMatch?.id ?? (vendasCategory?.id || prev.category_id),
+                recurrence_type: (newProduct.recurrence_type as ContractRecurrenceType) ?? prev.recurrence_type,
+            }));
+            toast.success('Produto criado!');
+            setIsProductModalOpen(false);
+            resetProductForm();
+        } catch {
+            toast.error('Erro ao criar produto');
+        }
+    }, [
+        productFormData, createProductMutation, refetchProducts,
+        productCategories, categories, vendasCategory, resetProductForm,
+    ]);
+
+    // --- Inline Vendedor creation ---
+    const [isVendedorModalOpen, setIsVendedorModalOpen] = useState(false);
+    const [vendedorFormData, setVendedorFormData] = useState({
+        name: '',
+        email: '',
+        password: '',
+    });
+    const createUserMutation = useCreateUser();
+
+    const resetVendedorForm = useCallback(() => {
+        setVendedorFormData({ name: '', email: '', password: '' });
+    }, []);
+
+    const handleSubmitVendedor = useCallback(async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!vendedorFormData.name.trim() || !vendedorFormData.email.trim() || !vendedorFormData.password.trim()) {
+            toast.error('Preencha nome, email e senha');
+            return;
+        }
+        if (vendedorFormData.password.length < 6) {
+            toast.error('A senha deve ter no mínimo 6 caracteres');
+            return;
+        }
+        try {
+            const result = await createUserMutation.mutateAsync({
+                email: vendedorFormData.email.trim(),
+                password: vendedorFormData.password,
+                name: vendedorFormData.name.trim(),
+                role: 'vendas',
+                branchIds: unidadeAtual?.id ? [unidadeAtual.id] : [],
+            });
+            if (!result.success) {
+                toast.error(result.error || 'Erro ao criar vendedor');
+                return;
+            }
+            await refetchVendedores();
+            if (result.userId) {
+                setFormData((prev) => ({ ...prev, seller_id: result.userId! }));
+            }
+            toast.success('Vendedor criado!');
+            setIsVendedorModalOpen(false);
+            resetVendedorForm();
+        } catch {
+            toast.error('Erro ao criar vendedor');
+        }
+    }, [vendedorFormData, unidadeAtual?.id, createUserMutation, refetchVendedores, resetVendedorForm]);
 
     // Mutations
     const createMutation = useMutation({
@@ -248,6 +548,8 @@ export default function Contratos() {
             product_id: '',
             recurrence_type: 'unico',
             seller_id: '',
+            payment_due_day: '',
+            interest_rate: '',
         });
         setEditingId(null);
     }, []);
@@ -289,6 +591,15 @@ export default function Contratos() {
                     return;
                 }
             }
+            const rate = parseFloat(formData.interest_rate) || 0;
+            if (product.interest_rate_min != null && rate < product.interest_rate_min) {
+                toast.error(`A taxa de juros deve ser no mínimo ${product.interest_rate_min}% a.m. (regra do produto).`);
+                return;
+            }
+            if (product.interest_rate_max != null && rate > product.interest_rate_max) {
+                toast.error(`A taxa de juros deve ser no máximo ${product.interest_rate_max}% a.m. (regra do produto).`);
+                return;
+            }
         }
 
         const contractData: ContractInsert = {
@@ -304,6 +615,8 @@ export default function Contratos() {
             product_id: formData.product_id || null,
             recurrence_type: formData.recurrence_type,
             seller_id: formData.seller_id || null,
+            payment_due_day: formData.payment_due_day ? parseInt(formData.payment_due_day, 10) : null,
+            interest_rate: formData.interest_rate ? parseFloat(formData.interest_rate) : null,
             status: editingId ? undefined : 'criado',
         };
 
@@ -359,6 +672,8 @@ export default function Contratos() {
             product_id: contract.product_id || '',
             recurrence_type: product?.recurrence_type ?? contract.recurrence_type ?? 'unico',
             seller_id: contract.seller_id || '',
+            payment_due_day: contract.payment_due_day?.toString() || '',
+            interest_rate: contract.interest_rate?.toString() || '',
         });
         setEditingId(contract.id);
         setIsModalOpen(true);
@@ -413,6 +728,69 @@ export default function Contratos() {
             }
         }
     }, [uploadFileMutation]);
+
+    // Query to check which contracts already have financial entries
+    const approvedContractIds = useMemo(
+        () => (contracts || [])
+            .filter((c) => c.status === 'aprovado' || c.status === 'ativo')
+            .map((c) => c.id),
+        [contracts]
+    );
+
+    const { data: contractsWithEntries } = useQuery({
+        queryKey: ['contract-entries-check', approvedContractIds],
+        queryFn: async () => {
+            const results: Record<string, boolean> = {};
+            await Promise.all(
+                approvedContractIds.map(async (id) => {
+                    const entries = await getFinancialEntriesByContractId(id);
+                    results[id] = entries.length > 0;
+                })
+            );
+            return results;
+        },
+        enabled: approvedContractIds.length > 0,
+    });
+
+    // Preview data for the generate modal
+    const generatePreview = useMemo(() => {
+        if (!generateContractId) return null;
+        const contract = contracts?.find((c) => c.id === generateContractId);
+        if (!contract) return null;
+        const product = contract.product_id
+            ? products?.find((p) => p.id === contract.product_id) ?? null
+            : null;
+        return previewContractEntries(contract as any, product ?? null);
+    }, [generateContractId, contracts, products]);
+
+    const handleGenerateEntries = useCallback(async () => {
+        if (!generateContractId) return;
+        const contract = contracts?.find((c) => c.id === generateContractId);
+        if (!contract) return;
+        const product = contract.product_id
+            ? products?.find((p) => p.id === contract.product_id) ?? null
+            : null;
+
+        setIsGeneratingEntries(true);
+        try {
+            const count = await generateFinancialEntriesFromContract(contract as any, product ?? null);
+            toast.success(`${count} lançamentos financeiros criados!`);
+            queryClient.invalidateQueries({ queryKey: ['contract-entries-check'] });
+            queryClient.invalidateQueries({ queryKey: ['financial-entries'] });
+            setIsGenerateModalOpen(false);
+            setGenerateContractId(null);
+        } catch (error) {
+            console.error('Error generating entries:', error);
+            toast.error('Erro ao gerar lançamentos financeiros');
+        } finally {
+            setIsGeneratingEntries(false);
+        }
+    }, [generateContractId, contracts, products, queryClient]);
+
+    const openGenerateModal = useCallback((contractId: string) => {
+        setGenerateContractId(contractId);
+        setIsGenerateModalOpen(true);
+    }, []);
 
     const isSaving = createMutation.isPending || updateMutation.isPending;
 
@@ -495,16 +873,26 @@ export default function Contratos() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-foreground mb-2">Cliente</label>
-                                        <select
-                                            className="input-financial"
-                                            value={formData.favorecido_id}
-                                            onChange={(e) => setFormData({ ...formData, favorecido_id: e.target.value })}
-                                        >
-                                            <option value="">Selecione</option>
-                                            {favorecidos?.map((f) => (
-                                                <option key={f.id} value={f.id}>{f.name}</option>
-                                            ))}
-                                        </select>
+                                        <div className="flex gap-2">
+                                            <select
+                                                className="input-financial flex-1"
+                                                value={formData.favorecido_id}
+                                                onChange={(e) => setFormData({ ...formData, favorecido_id: e.target.value })}
+                                            >
+                                                <option value="">Selecione</option>
+                                                {favorecidos?.map((f) => (
+                                                    <option key={f.id} value={f.id}>{f.name}</option>
+                                                ))}
+                                            </select>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsFavorecidoModalOpen(true)}
+                                                className="inline-flex items-center px-3 py-2.5 rounded-lg font-medium text-primary border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-colors shrink-0"
+                                                title="Adicionar novo cliente"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-foreground mb-2">Valor</label>
@@ -538,36 +926,46 @@ export default function Contratos() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-foreground mb-2">Produto (cadastro)</label>
-                                        <select
-                                            className="input-financial"
-                                            value={formData.product_id}
-                                            required
-                                            onChange={(e) => {
-                                                const productId = e.target.value;
-                                                const product = products?.find((p) => p.id === productId);
-                                                const categoryByProductName = product?.product_category?.name
-                                                    ? categories?.find(
-                                                        (c) => c.name.toLowerCase() === product.product_category!.name.toLowerCase()
-                                                    )
-                                                    : null;
-                                                const categoryId = categoryByProductName?.id ?? (vendasCategory?.id || '');
-                                                setFormData({
-                                                    ...formData,
-                                                    product_id: productId,
-                                                    type: product ? (product.commercial_description || product.name) : formData.type,
-                                                    category_id: product ? categoryId : formData.category_id,
-                                                    recurrence_type: product?.recurrence_type ?? formData.recurrence_type,
-                                                });
-                                            }}
-                                        >
-                                            <option value="">Selecione um produto (obrigatório)</option>
-                                            {products?.map((p) => (
-                                                <option key={p.id} value={p.id}>
-                                                    {p.name}
-                                                    {p.code ? ` (${p.code})` : ''}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div className="flex gap-2">
+                                            <select
+                                                className="input-financial flex-1"
+                                                value={formData.product_id}
+                                                required
+                                                onChange={(e) => {
+                                                    const productId = e.target.value;
+                                                    const product = products?.find((p) => p.id === productId);
+                                                    const categoryByProductName = product?.product_category?.name
+                                                        ? categories?.find(
+                                                            (c) => c.name.toLowerCase() === product.product_category!.name.toLowerCase()
+                                                        )
+                                                        : null;
+                                                    const categoryId = categoryByProductName?.id ?? (vendasCategory?.id || '');
+                                                    setFormData({
+                                                        ...formData,
+                                                        product_id: productId,
+                                                        type: product ? (product.commercial_description || product.name) : formData.type,
+                                                        category_id: product ? categoryId : formData.category_id,
+                                                        recurrence_type: product?.recurrence_type ?? formData.recurrence_type,
+                                                    });
+                                                }}
+                                            >
+                                                <option value="">Selecione um produto (obrigatório)</option>
+                                                {products?.map((p) => (
+                                                    <option key={p.id} value={p.id}>
+                                                        {p.name}
+                                                        {p.code ? ` (${p.code})` : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsProductModalOpen(true)}
+                                                className="inline-flex items-center px-3 py-2.5 rounded-lg font-medium text-primary border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-colors shrink-0"
+                                                title="Adicionar novo produto"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-foreground mb-2">Tipo / descrição</label>
@@ -609,6 +1007,49 @@ export default function Contratos() {
                                             <p className="text-xs text-muted-foreground mt-1">Definida pelo produto</p>
                                         )}
                                     </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-2">Dia de vencimento</label>
+                                        <input
+                                            type="number"
+                                            className="input-financial"
+                                            placeholder="1-31"
+                                            min={1}
+                                            max={31}
+                                            value={formData.payment_due_day}
+                                            onChange={(e) => setFormData({ ...formData, payment_due_day: e.target.value })}
+                                        />
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Dia do mês para vencimento das parcelas
+                                        </p>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-foreground mb-2">
+                                        Taxa de juros (% a.m.)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        className="input-financial"
+                                        placeholder={
+                                            selectedProduct
+                                                ? `${selectedProduct.interest_rate_min ?? 0} - ${selectedProduct.interest_rate_max ?? '∞'}%`
+                                                : '0.00'
+                                        }
+                                        step="0.01"
+                                        min={0}
+                                        value={formData.interest_rate}
+                                        onChange={(e) => setFormData({ ...formData, interest_rate: e.target.value })}
+                                    />
+                                    {selectedProduct && (selectedProduct.interest_rate_min != null || selectedProduct.interest_rate_max != null) && (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Faixa do produto:
+                                            {' '}
+                                            {selectedProduct.interest_rate_min ?? 0}
+                                            {'% - '}
+                                            {selectedProduct.interest_rate_max ?? '∞'}
+                                            % a.m.
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -642,27 +1083,35 @@ export default function Contratos() {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-foreground mb-2">Vendedor</label>
-                                        <select
-                                            className="input-financial"
-                                            value={formData.seller_id}
-                                            onChange={(e) => {
-                                                const sellerId = e.target.value;
-                                                setFormData({
-                                                    ...formData,
-                                                    seller_id: sellerId,
-                                                    // Auto-set category to "Vendas" when seller is selected
-                                                    // Clear category if seller is removed and it was "Vendas"
-                                                    category_id: sellerId && vendasCategory
-                                                        ? vendasCategory.id
-                                                        : (formData.category_id === vendasCategory?.id ? '' : formData.category_id)
-                                                });
-                                            }}
-                                        >
-                                            <option value="">Selecione</option>
-                                            {vendedores?.map((v) => (
-                                                <option key={v.id} value={v.id}>{v.name}</option>
-                                            ))}
-                                        </select>
+                                        <div className="flex gap-2">
+                                            <select
+                                                className="input-financial flex-1"
+                                                value={formData.seller_id}
+                                                onChange={(e) => {
+                                                    const sellerId = e.target.value;
+                                                    setFormData({
+                                                        ...formData,
+                                                        seller_id: sellerId,
+                                                        category_id: sellerId && vendasCategory
+                                                            ? vendasCategory.id
+                                                            : (formData.category_id === vendasCategory?.id ? '' : formData.category_id)
+                                                    });
+                                                }}
+                                            >
+                                                <option value="">Selecione</option>
+                                                {vendedores?.map((v) => (
+                                                    <option key={v.id} value={v.id}>{v.name}</option>
+                                                ))}
+                                            </select>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsVendedorModalOpen(true)}
+                                                className="inline-flex items-center px-3 py-2.5 rounded-lg font-medium text-primary border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-colors shrink-0"
+                                                title="Adicionar novo vendedor"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div>
@@ -854,6 +1303,24 @@ export default function Contratos() {
                                         </>
                                     )}
 
+                                    {(contract.status === 'aprovado' || contract.status === 'ativo') && (
+                                        <button
+                                            className="btn-primary py-2"
+                                            onClick={() => openGenerateModal(contract.id)}
+                                            disabled={contractsWithEntries?.[contract.id]}
+                                            title={
+                                                contractsWithEntries?.[contract.id]
+                                                    ? 'Lançamentos já gerados'
+                                                    : 'Gerar lançamentos financeiros'
+                                            }
+                                        >
+                                            <DollarSign className="w-4 h-4" />
+                                            {contractsWithEntries?.[contract.id]
+                                                ? 'Lançamentos gerados'
+                                                : 'Gerar Lançamentos'}
+                                        </button>
+                                    )}
+
                                     {(contract.status === 'aprovado' || contract.status === 'pendente') && (
                                         <button
                                             className="btn-secondary py-2"
@@ -958,6 +1425,201 @@ export default function Contratos() {
                             </button>
                         </div>
                     </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Inline Favorecido Creation Modal */}
+            <Dialog
+                open={isFavorecidoModalOpen}
+                onOpenChange={(open) => { setIsFavorecidoModalOpen(open); if (!open) resetFavorecidoForm(); }}
+            >
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Novo Cliente / Favorecido</DialogTitle>
+                        <DialogDescription>
+                            Cadastre um novo favorecido para usar nesta venda.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <FavorecidoForm
+                        formData={favorecidoFormData}
+                        setFormData={setFavorecidoFormData}
+                        editingId={null}
+                        photoPreview={photoPreview}
+                        fileInputRef={favorecidoFileInputRef}
+                        documentInputRef={favorecidoDocumentInputRef}
+                        favorecidoDocuments={[]}
+                        documentsLoading={false}
+                        favorecidoLogs={[]}
+                        logsLoading={false}
+                        isUploadingDocument={false}
+                        isSaving={createFavorecido.isPending}
+                        onPhotoSelect={handlePhotoSelect}
+                        onDocumentUpload={() => {}}
+                        onDeleteDocument={() => {}}
+                        onSubmit={handleSubmitFavorecido}
+                        onCancel={() => { setIsFavorecidoModalOpen(false); resetFavorecidoForm(); }}
+                    />
+                </DialogContent>
+            </Dialog>
+
+            {/* Inline Product Creation Modal */}
+            <Dialog
+                open={isProductModalOpen}
+                onOpenChange={(open) => { setIsProductModalOpen(open); if (!open) resetProductForm(); }}
+            >
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Novo Produto</DialogTitle>
+                        <DialogDescription>
+                            Cadastre um novo produto para vincular a esta venda.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <ProductForm
+                        formData={productFormData}
+                        setFormData={setProductFormData}
+                        productCategories={productCategories || []}
+                        editingId={null}
+                        isSaving={createProductMutation.isPending}
+                        onSubmit={handleSubmitProduct}
+                        onCancel={() => { setIsProductModalOpen(false); resetProductForm(); }}
+                    />
+                </DialogContent>
+            </Dialog>
+
+            {/* Inline Vendedor Creation Modal */}
+            <Dialog
+                open={isVendedorModalOpen}
+                onOpenChange={(open) => { setIsVendedorModalOpen(open); if (!open) resetVendedorForm(); }}
+            >
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Novo Vendedor</DialogTitle>
+                        <DialogDescription>
+                            Crie um novo usuário com perfil de vendedor.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form className="space-y-4 mt-4" onSubmit={handleSubmitVendedor}>
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">Nome</label>
+                            <input
+                                type="text"
+                                className="input-financial"
+                                value={vendedorFormData.name}
+                                onChange={(e) => setVendedorFormData({ ...vendedorFormData, name: e.target.value })}
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">Email</label>
+                            <input
+                                type="email"
+                                className="input-financial"
+                                value={vendedorFormData.email}
+                                onChange={(e) => setVendedorFormData({ ...vendedorFormData, email: e.target.value })}
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">Senha</label>
+                            <input
+                                type="password"
+                                className="input-financial"
+                                value={vendedorFormData.password}
+                                onChange={(e) => setVendedorFormData({ ...vendedorFormData, password: e.target.value })}
+                                minLength={6}
+                                required
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">Mínimo 6 caracteres</p>
+                        </div>
+                        <div className="flex justify-end gap-3 pt-4">
+                            <button
+                                type="button"
+                                className="btn-secondary"
+                                onClick={() => { setIsVendedorModalOpen(false); resetVendedorForm(); }}
+                            >
+                                Cancelar
+                            </button>
+                            <button type="submit" className="btn-primary" disabled={createUserMutation.isPending}>
+                                {createUserMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                                Criar Vendedor
+                            </button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Generate Financial Entries Modal */}
+            <Dialog open={isGenerateModalOpen} onOpenChange={(open) => { setIsGenerateModalOpen(open); if (!open) setGenerateContractId(null); }}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Gerar Lançamentos Financeiros</DialogTitle>
+                        <DialogDescription>
+                            Confira o resumo dos lançamentos que serão criados para esta venda.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {generatePreview && (
+                        <div className="space-y-4 mt-4">
+                            <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
+                                <h4 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 mb-1">
+                                    Receitas (parcelas)
+                                </h4>
+                                <p className="text-sm text-emerald-600 dark:text-emerald-300">
+                                    {generatePreview.revenueCount}
+                                    {' '}
+                                    parcela(s) de
+                                    {' '}
+                                    {formatCurrency(generatePreview.revenueInstallmentValue)}
+                                </p>
+                                {generatePreview.interestRate > 0 && (
+                                    <p className="text-xs text-emerald-500 dark:text-emerald-400 mt-1">
+                                        Juros:
+                                        {' '}
+                                        {generatePreview.interestRate}
+                                        % a.m. (Tabela Price) — Total:
+                                        {' '}
+                                        {formatCurrency(generatePreview.totalWithInterest)}
+                                    </p>
+                                )}
+                            </div>
+                            {generatePreview.expenses.length > 0 && (
+                                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                                    <h4 className="text-sm font-semibold text-red-700 dark:text-red-400 mb-1">
+                                        Despesas
+                                    </h4>
+                                    <ul className="space-y-1">
+                                        {generatePreview.expenses.map((exp, i) => (
+                                            <li key={i} className="text-sm text-red-600 dark:text-red-300 flex justify-between">
+                                                <span>{exp.description}</span>
+                                                <span className="font-mono">{formatCurrency(exp.value)}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <div className="mt-2 pt-2 border-t border-red-200 dark:border-red-800 text-sm font-semibold text-red-700 dark:text-red-400 flex justify-between">
+                                        <span>Total despesas</span>
+                                        <span className="font-mono">{formatCurrency(generatePreview.totalExpenses)}</span>
+                                    </div>
+                                </div>
+                            )}
+                            <div className="flex justify-end gap-3 pt-4">
+                                <button
+                                    type="button"
+                                    className="btn-secondary"
+                                    onClick={() => { setIsGenerateModalOpen(false); setGenerateContractId(null); }}
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn-primary"
+                                    onClick={handleGenerateEntries}
+                                    disabled={isGeneratingEntries}
+                                >
+                                    {isGeneratingEntries && <Loader2 className="w-4 h-4 animate-spin" />}
+                                    Confirmar e gerar
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </DialogContent>
             </Dialog>
 
