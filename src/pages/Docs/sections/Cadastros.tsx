@@ -9,12 +9,12 @@ export function Cadastros() {
             </p>
 
             <h3 className="text-lg font-semibold text-foreground">Favorecidos (Clientes/Fornecedores)</h3>
-            <p className="text-sm text-muted-foreground mb-3">Cadastre pessoas físicas ou jurídicas:</p>
+            <p className="text-sm text-muted-foreground mb-3">Cadastre pessoas fisicas ou juridicas:</p>
             <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
                 <li>
-                    <strong>Dados Básicos:</strong>
+                    <strong>Dados Basicos:</strong>
                     {' '}
-                    Nome, CPF/CNPJ, tipo (Cliente, Fornecedor, Funcionário, Outro)
+                    Nome, CPF/CNPJ, tipo (Cliente, Fornecedor, Funcionario, Outro)
                 </li>
                 <li>
                     <strong>Contato:</strong>
@@ -22,9 +22,9 @@ export function Cadastros() {
                     E-mail, telefone
                 </li>
                 <li>
-                    <strong>Endereço:</strong>
+                    <strong>Endereco:</strong>
                     {' '}
-                    CEP (preenchimento automático), rua, cidade, etc.
+                    CEP (preenchimento automatico), rua, cidade, etc.
                 </li>
                 <li>
                     <strong>Foto:</strong>
@@ -39,53 +39,53 @@ export function Cadastros() {
                 <li>
                     <strong>Data de Nascimento:</strong>
                     {' '}
-                    Para lembretes de aniversário na agenda
+                    Para lembretes de aniversario na agenda
                 </li>
             </ul>
 
-            <h3 className="text-lg font-semibold text-foreground mt-6">Dados Bancários do Favorecido</h3>
-            <p className="text-sm text-muted-foreground mb-3">Cadastre informações bancárias para pagamentos:</p>
+            <h3 className="text-lg font-semibold text-foreground mt-6">Dados Bancarios do Favorecido</h3>
+            <p className="text-sm text-muted-foreground mb-3">Cadastre informacoes bancarias para pagamentos:</p>
             <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
                 <li>
-                    <strong>Banco, Agência e Conta:</strong>
+                    <strong>Banco, Agencia e Conta:</strong>
                     {' '}
-                    Para transferências TED/DOC
+                    Para transferencias TED/DOC
                 </li>
                 <li>
                     <strong>Tipo de Conta:</strong>
                     {' '}
-                    Corrente ou Poupança
+                    Corrente ou Poupanca
                 </li>
                 <li>
                     <strong>Chave PIX:</strong>
                     {' '}
-                    CPF, CNPJ, E-mail, Telefone ou Chave Aleatória
+                    CPF, CNPJ, E-mail, Telefone ou Chave Aleatoria
                 </li>
                 <li>
                     <strong>Forma de Pagamento Preferida:</strong>
                     {' '}
-                    PIX, TED, Boleto, Cartão ou Dinheiro
+                    PIX, TED, Boleto, Cartao ou Dinheiro
                 </li>
             </ul>
 
-            <h3 className="text-lg font-semibold text-foreground mt-6">Histórico de Atividades</h3>
+            <h3 className="text-lg font-semibold text-foreground mt-6">Historico de Atividades</h3>
             <p className="text-sm text-muted-foreground mb-3">
-                Cada favorecido possui um histórico de atividades que registra automaticamente:
+                Cada favorecido possui um historico de atividades que registra automaticamente:
             </p>
             <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                <li>Criação e edição do cadastro</li>
-                <li>Upload e remoção de documentos</li>
-                <li>Alterações de dados</li>
-                <li>Usuário e data/hora de cada ação</li>
+                <li>Criacao e edicao do cadastro</li>
+                <li>Upload e remocao de documentos</li>
+                <li>Alteracoes de dados</li>
+                <li>Usuario e data/hora de cada acao</li>
             </ul>
 
             <h3 className="text-lg font-semibold text-foreground mt-6">Categorias</h3>
-            <p className="text-sm text-muted-foreground mb-3">Organize seus lançamentos por categorias:</p>
+            <p className="text-sm text-muted-foreground mb-3">Organize seus lancamentos por categorias:</p>
             <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
                 <li>
                     <strong>Nome e Cor:</strong>
                     {' '}
-                    Para identificação visual
+                    Para identificacao visual
                 </li>
                 <li>
                     <strong>Tipo:</strong>
@@ -95,12 +95,12 @@ export function Cadastros() {
                 <li>
                     <strong>Subcategorias:</strong>
                     {' '}
-                    Crie subdivisões mais específicas
+                    Crie subdivisoes mais especificas
                 </li>
                 <li>
-                    <strong>Recorrência padrão:</strong>
+                    <strong>Recorrencia padrao:</strong>
                     {' '}
-                    Defina se a categoria é recorrente por padrão
+                    Defina se a categoria e recorrente por padrao
                 </li>
             </ul>
 
@@ -110,8 +110,8 @@ export function Cadastros() {
                     <div>
                         <h4 className="font-semibold text-foreground">Dica</h4>
                         <p className="text-sm text-muted-foreground">
-                            Ao selecionar uma categoria com recorrência padrão em um lançamento,
-                            os campos de recorrência são preenchidos automaticamente.
+                            Ao selecionar uma categoria com recorrencia padrao em um lancamento,
+                            os campos de recorrencia sao preenchidos automaticamente.
                         </p>
                     </div>
                 </div>
@@ -120,89 +120,39 @@ export function Cadastros() {
             <h3 className="text-lg font-semibold text-foreground mt-6">Filiais (Admin)</h3>
             <p className="text-sm text-muted-foreground mb-3">Gerencie as unidades da empresa:</p>
             <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                <li>Nome da filial e Código</li>
-                <li>Endereço completo</li>
+                <li>Nome da filial e Codigo</li>
+                <li>Endereco completo</li>
                 <li>Telefone de contato</li>
                 <li>Ativar/Desativar filiais</li>
             </ul>
 
-            <h3 className="text-lg font-semibold text-foreground mt-6">Contas Bancárias (Admin/Gerente)</h3>
+            <h3 className="text-lg font-semibold text-foreground mt-6">Contas Bancarias (Admin/Gerente)</h3>
             <p className="text-sm text-muted-foreground mb-3">Cadastre as contas da empresa:</p>
             <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                <li>Nome (identificação da conta)</li>
-                <li>Banco, Agência e Conta</li>
-                <li>Saldo Inicial (para conciliação)</li>
+                <li>Nome (identificacao da conta)</li>
+                <li>Banco, Agencia e Conta</li>
+                <li>Saldo Inicial (para conciliacao)</li>
             </ul>
 
-            <h3 className="text-lg font-semibold text-foreground mt-6">Usuários (Admin)</h3>
-            <p className="text-sm text-muted-foreground mb-3">Gerencie os usuários do sistema:</p>
+            <h3 className="text-lg font-semibold text-foreground mt-6">Usuarios (Admin)</h3>
+            <p className="text-sm text-muted-foreground mb-3">Gerencie os usuarios do sistema:</p>
             <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
                 <li>
-                    <strong>Visualizar usuários:</strong>
+                    <strong>Visualizar usuarios:</strong>
                     {' '}
-                    Lista de todos os usuários cadastrados
+                    Lista de todos os usuarios cadastrados
                 </li>
                 <li>
-                    <strong>Alterar função:</strong>
+                    <strong>Alterar funcao:</strong>
                     {' '}
-                    Admin, Gerente ou Usuário
+                    Admin, Gerente, Vendas, Financeiro ou Usuario
                 </li>
                 <li>
                     <strong>Filiais permitidas:</strong>
                     {' '}
-                    Defina quais filiais cada usuário pode acessar
+                    Defina quais filiais cada usuario pode acessar
                 </li>
             </ul>
-
-            <h3 className="text-lg font-semibold text-foreground mt-6">Folha de Pagamento</h3>
-            <p className="text-sm text-muted-foreground mb-3">
-                Gerencie a folha de pagamento dos funcionários com cadastro completo e integração financeira:
-            </p>
-            <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                <li>
-                    <strong>Funcionário:</strong>
-                    {' '}
-                    Selecione um favorecido do tipo "Funcionário"
-                </li>
-                <li>
-                    <strong>Período:</strong>
-                    {' '}
-                    Mês e ano de referência da folha
-                </li>
-                <li>
-                    <strong>Proventos:</strong>
-                    {' '}
-                    Salário base, horas extras e valor das horas extras
-                </li>
-                <li>
-                    <strong>Benefícios:</strong>
-                    {' '}
-                    Vale transporte, vale alimentação e outros benefícios
-                </li>
-                <li>
-                    <strong>Descontos:</strong>
-                    {' '}
-                    INSS, IRRF e outros descontos
-                </li>
-                <li>
-                    <strong>Salário Líquido:</strong>
-                    {' '}
-                    Calculado automaticamente (proventos + benefícios - descontos)
-                </li>
-            </ul>
-
-            <div className="p-4 bg-muted rounded-lg mt-4">
-                <div className="flex gap-3">
-                    <Lightbulb className="w-5 h-5 text-warning shrink-0 mt-0.5" />
-                    <div>
-                        <h4 className="font-semibold text-foreground">Integração Financeira</h4>
-                        <p className="text-sm text-muted-foreground">
-                            Use o botão "Gerar Lançamento" para criar automaticamente uma despesa financeira
-                            vinculada à folha de pagamento. O lançamento será criado com o valor do salário líquido.
-                        </p>
-                    </div>
-                </div>
-            </div>
 
             <div className="p-4 bg-primary/10 rounded-lg border border-primary/20 mt-4">
                 <div className="flex gap-3">
@@ -210,8 +160,8 @@ export function Cadastros() {
                     <div>
                         <h4 className="font-semibold text-foreground">Importante</h4>
                         <p className="text-sm text-muted-foreground">
-                            Administradores têm acesso a todas as filiais automaticamente.
-                            Gerentes e Usuários só veem dados das filiais atribuídas a eles.
+                            Administradores tem acesso a todas as filiais automaticamente.
+                            Gerentes e usuarios so veem dados das filiais atribuidas a eles.
                         </p>
                     </div>
                 </div>

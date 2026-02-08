@@ -1,58 +1,147 @@
+import { Lightbulb } from 'lucide-react';
+
 export function Relatorios() {
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-foreground">Relatórios</h2>
+            <h2 className="text-2xl font-bold text-foreground">Relatorios</h2>
             <p className="text-muted-foreground">
-                Análises financeiras detalhadas para tomada de decisão.
+                O sistema oferece 8 categorias de relatorios para analise completa do negocio.
+                Acesse pelo menu lateral e navegue entre as abas.
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <h3 className="text-lg font-semibold text-foreground">Categorias de Relatorios</h3>
+
+            <div className="space-y-4">
                 <div className="p-4 border border-border rounded-lg">
-                    <h4 className="font-semibold text-foreground mb-2">DRE - Demonstração do Resultado</h4>
-                    <p className="text-sm text-muted-foreground">
-                        Visão consolidada de receitas e despesas, resultado líquido e margem percentual.
+                    <h4 className="font-semibold text-foreground mb-2">Executivos</h4>
+                    <p className="text-sm text-muted-foreground mb-2">
+                        Visao de alto nivel para gestores com indicadores consolidados:
                     </p>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                        <li>Resumo financeiro geral</li>
+                        <li>Receitas e despesas por categoria</li>
+                        <li>Analise de comissoes</li>
+                        <li>Graficos comparativos</li>
+                    </ul>
                 </div>
+
                 <div className="p-4 border border-border rounded-lg">
-                    <h4 className="font-semibold text-foreground mb-2">Por Categoria</h4>
-                    <p className="text-sm text-muted-foreground">
-                        Gráficos de pizza e barras mostrando distribuição de gastos por categoria.
+                    <h4 className="font-semibold text-foreground mb-2">Financeiros</h4>
+                    <p className="text-sm text-muted-foreground mb-2">
+                        Relatorios detalhados de operacoes financeiras:
                     </p>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                        <li>Custo Operacional x Venda</li>
+                        <li>Inadimplencia e Atrasos</li>
+                        <li>Clientes em Atraso</li>
+                        <li>Valor Total Exposto (risco)</li>
+                        <li>Receita por Produto/Convenio</li>
+                        <li>Aging Report (vencimentos)</li>
+                        <li>Margem Liquida por Contrato</li>
+                        <li>Fluxo de Caixa</li>
+                        <li>Contas a Pagar/Receber</li>
+                        <li>Relatorio de Comissoes</li>
+                    </ul>
                 </div>
-                <div className="p-4 border border-border rounded-lg">
-                    <h4 className="font-semibold text-foreground mb-2">Comparativo Mensal</h4>
-                    <p className="text-sm text-muted-foreground">
-                        Gráfico de evolução de receitas e despesas ao longo do ano.
-                    </p>
-                </div>
-                <div className="p-4 border border-border rounded-lg">
-                    <h4 className="font-semibold text-foreground mb-2">Fluxo de Caixa</h4>
-                    <p className="text-sm text-muted-foreground">
-                        Projeção de entradas e saídas com alertas de saldo negativo.
-                    </p>
-                </div>
-                <div className="p-4 border border-border rounded-lg md:col-span-2">
-                    <h4 className="font-semibold text-foreground mb-2">Aging (Vencimentos)</h4>
-                    <p className="text-sm text-muted-foreground">
-                        Análise de contas por período de vencimento: A vencer, 1-30 dias,
-                        31-60 dias, 61-90 dias, &gt;90 dias.
-                    </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 border border-border rounded-lg">
+                        <h4 className="font-semibold text-foreground mb-2">Vendas e Metas</h4>
+                        <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                            <li>Vendas vs Metas por vendedor</li>
+                            <li>Acompanhamento de comissoes</li>
+                            <li>Atingimento de metas</li>
+                        </ul>
+                    </div>
+
+                    <div className="p-4 border border-border rounded-lg">
+                        <h4 className="font-semibold text-foreground mb-2">Clientes</h4>
+                        <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                            <li>Top clientes por receita</li>
+                            <li>Top fornecedores por despesa</li>
+                            <li>Ranking com volume de transacoes</li>
+                        </ul>
+                    </div>
+
+                    <div className="p-4 border border-border rounded-lg">
+                        <h4 className="font-semibold text-foreground mb-2">Recursos Humanos</h4>
+                        <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                            <li>Custos com pessoal</li>
+                            <li>Resultado de comissoes</li>
+                            <li>Metricas de equipe</li>
+                        </ul>
+                    </div>
+
+                    <div className="p-4 border border-border rounded-lg">
+                        <h4 className="font-semibold text-foreground mb-2">Operacoes e Compliance</h4>
+                        <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                            <li>Metricas operacionais</li>
+                            <li>Indicadores de conformidade</li>
+                            <li>Auditoria de processos</li>
+                        </ul>
+                    </div>
+
+                    <div className="p-4 border border-border rounded-lg">
+                        <h4 className="font-semibold text-foreground mb-2">Marketing e Canais</h4>
+                        <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                            <li>Origem do Cliente (fonte de aquisicao)</li>
+                            <li>Indicadores de Crescimento</li>
+                            <li>Analise por canal</li>
+                        </ul>
+                    </div>
+
+                    <div className="p-4 border border-border rounded-lg">
+                        <h4 className="font-semibold text-foreground mb-2">Estrategicos</h4>
+                        <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                            <li>Meta vs Risco</li>
+                            <li>Caixa Critico (alertas)</li>
+                            <li>Vendedor Fora do Padrao</li>
+                            <li>Score de Performance do Vendedor</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
 
-            <h3 className="text-lg font-semibold text-foreground mt-6">Exportação</h3>
+            <h3 className="text-lg font-semibold text-foreground mt-6">Filtros</h3>
+            <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                <li>
+                    <strong>Periodo:</strong>
+                    {' '}
+                    Selecione data inicial e final
+                </li>
+                <li>
+                    <strong>Por vendedor, produto ou periodo:</strong>
+                    {' '}
+                    Filtros especificos por relatorio
+                </li>
+            </ul>
+
+            <h3 className="text-lg font-semibold text-foreground mt-6">Exportacao</h3>
             <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
                 <li>
                     <strong>PDF:</strong>
                     {' '}
-                    Para impressão ou compartilhamento
+                    Para impressao ou compartilhamento
                 </li>
                 <li>
                     <strong>Excel:</strong>
                     {' '}
-                    Para análises adicionais em planilhas
+                    Para analises adicionais em planilhas
                 </li>
             </ul>
+
+            <div className="p-4 bg-muted rounded-lg mt-4">
+                <div className="flex gap-3">
+                    <Lightbulb className="w-5 h-5 text-warning shrink-0 mt-0.5" />
+                    <div>
+                        <h4 className="font-semibold text-foreground">Dica</h4>
+                        <p className="text-sm text-muted-foreground">
+                            Todos os relatorios sao filtrados pela filial selecionada no topo da pagina.
+                            Alterne a filial para ver dados de diferentes unidades.
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }
