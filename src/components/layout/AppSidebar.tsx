@@ -22,13 +22,13 @@ import {
     Package,
     ShoppingCart,
     Receipt,
-    Target,
     Shield,
     Megaphone,
     Brain,
     UserCheck,
 } from 'lucide-react';
 import { useAuthStore, useBranchStore } from '@/stores';
+import { ProfileModal } from './ProfileModal';
 import {
     Sidebar,
     SidebarContent,
@@ -242,6 +242,8 @@ export function AppSidebar() {
 
     const location = useLocation();
     const navigate = useNavigate();
+
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
 
     // Abre o accordion da seção que contém a rota atual; apenas um aberto por vez
     const activeGroupLabel = navigationGroups.find((g) => g.items.some((i) => i.href === location.pathname),)?.label;
@@ -462,13 +464,9 @@ export function AppSidebar() {
                                     </div>
                                 </div>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setIsProfileOpen(true)}>
                                     <User className="mr-2 size-4" />
                                     Meu Perfil
-                                </DropdownMenuItem>
-                                <DropdownMenuItem>
-                                    <Settings className="mr-2 size-4" />
-                                    Configurações
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
@@ -485,6 +483,8 @@ export function AppSidebar() {
             </SidebarFooter>
 
             <SidebarRail />
+
+            <ProfileModal open={isProfileOpen} onOpenChange={setIsProfileOpen} />
         </Sidebar>
     );
 }
