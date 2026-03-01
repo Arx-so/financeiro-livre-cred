@@ -143,7 +143,7 @@ export function useFinanceiroPage() {
     const { data: summary } = useFinancialSummary(undefined, startDate, endDate);
     const { data: categories } = useCategories();
     const { data: subcategories } = useSubcategories(formData.category_id);
-    const { data: favorecidos, refetch: refetchFavorecidos } = useFavorecidos({ isActive: true });
+    const { refetch: refetchFavorecidos } = useFavorecidos({ isActive: true });
     const { data: bankAccounts } = useQuery({
         queryKey: ['bank-accounts', unidadeAtual?.id],
         queryFn: () => getBankAccounts(unidadeAtual?.id),
@@ -568,7 +568,6 @@ export function useFinanceiroPage() {
         summary,
         categories: categories || [],
         subcategories: subcategories || [],
-        favorecidos: favorecidos || [],
         bankAccounts: bankAccounts || [],
 
         // Mutation states

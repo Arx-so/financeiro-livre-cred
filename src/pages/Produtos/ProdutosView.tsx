@@ -78,7 +78,7 @@ export function ProdutosView(props: ProdutosViewProps) {
                                 Novo Produto
                             </button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-2xl max-h-[90vh] min-w-[640px] overflow-y-auto">
+                        <DialogContent className="max-w-2xl max-h-[90vh] min-w-[60vw] ">
                             <DialogHeader>
                                 <DialogTitle>
                                     {editingId ? 'Editar Produto' : 'Novo Produto'}

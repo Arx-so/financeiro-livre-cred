@@ -107,7 +107,7 @@ export function ProductForm({
     onCancel,
 }: ProductFormProps) {
     return (
-        <form className="space-y-4 mt-4 max-h-[80vh] overflow-y-auto pr-2" onSubmit={onSubmit}>
+        <form className="space-y-4 mt-4 max-h-[80vh] overflow-y-auto" onSubmit={onSubmit}>
             {/* Identificação */}
             <div className="space-y-4">
                 <h4 className="text-sm font-semibold text-foreground border-b border-border pb-1">

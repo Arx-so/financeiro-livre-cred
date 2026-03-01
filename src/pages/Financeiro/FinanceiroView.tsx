@@ -31,7 +31,7 @@ import {
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
-    PageHeader, EmptyState, LoadingState, StatCard, SearchInput
+    PageHeader, EmptyState, LoadingState, StatCard, SearchInput, FavorecidoSelect
 } from '@/components/shared';
 import { FavorecidoForm } from '@/pages/Favorecidos/components/FavorecidoForm';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -89,7 +89,6 @@ export function FinanceiroView(props: FinanceiroViewProps) {
         summary,
         categories,
         subcategories,
-        favorecidos,
         bankAccounts,
         // Mutation states
         isSaving,
@@ -170,7 +169,6 @@ export function FinanceiroView(props: FinanceiroViewProps) {
                                 editingId={editingId}
                                 categories={categories}
                                 subcategories={subcategories}
-                                favorecidos={favorecidos}
                                 bankAccounts={bankAccounts}
                                 isSaving={isSaving}
                                 onSubmit={handleSubmit}
@@ -420,7 +418,6 @@ interface EntryFormProps {
     editingId: string | null;
     categories: any[];
     subcategories: any[];
-    favorecidos: any[];
     bankAccounts: any[];
     isSaving: boolean;
     onSubmit: (e: React.FormEvent) => void;
@@ -436,7 +433,6 @@ function EntryForm(props: EntryFormProps) {
         editingId,
         categories,
         subcategories,
-        favorecidos,
         bankAccounts,
         isSaving,
         onSubmit,
@@ -549,16 +545,11 @@ function EntryForm(props: EntryFormProps) {
                 <div>
                     <label className="block text-sm font-medium text-foreground mb-2">Favorecido</label>
                     <div className="flex gap-2">
-                        <select
-                            className="input-financial flex-1"
+                        <FavorecidoSelect
                             value={formData.favorecido_id}
-                            onChange={(e) => setFormData({ ...formData, favorecido_id: e.target.value })}
-                        >
-                            <option value="">Selecione</option>
-                            {favorecidos.map((f) => (
-                                <option key={f.id} value={f.id}>{f.name}</option>
-                            ))}
-                        </select>
+                            onChange={(id) => setFormData({ ...formData, favorecido_id: id })}
+                            className="flex-1"
+                        />
                         <button
                             type="button"
                             onClick={onOpenFavorecidoModal}

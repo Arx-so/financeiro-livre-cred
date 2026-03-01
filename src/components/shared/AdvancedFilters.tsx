@@ -3,9 +3,9 @@ import {
     Filter, X, Save, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { useCategories } from '@/hooks/useCategorias';
-import { useFavorecidos } from '@/hooks/useCadastros';
 import { useBranches } from '@/hooks/useBranches';
 import { useBankAccounts } from '@/hooks/useBankAccounts';
+import { FavorecidoSelect } from './FavorecidoSelect';
 import {
     Collapsible,
     CollapsibleContent,
@@ -71,7 +71,6 @@ export function AdvancedFilters({
     });
 
     const { data: categories } = useCategories();
-    const { data: favorecidos } = useFavorecidos({});
     const { data: branches } = useBranches();
     const { data: bankAccounts } = useBankAccounts();
 
@@ -228,18 +227,11 @@ export function AdvancedFilters({
                                     <label className="block text-xs text-muted-foreground mb-1">
                                         Favorecido
                                     </label>
-                                    <select
-                                        className="input-financial"
+                                    <FavorecidoSelect
                                         value={filters.favorecidoId || ''}
-                                        onChange={(e) => handleChange('favorecidoId', e.target.value)}
-                                    >
-                                        <option value="">Todos</option>
-                                        {favorecidos?.map((fav) => (
-                                            <option key={fav.id} value={fav.id}>
-                                                {fav.name}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        onChange={(id) => handleChange('favorecidoId', id)}
+                                        placeholder="Todos"
+                                    />
                                 </div>
                             )}
 

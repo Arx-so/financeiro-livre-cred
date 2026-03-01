@@ -59,7 +59,7 @@ import {
 import { useProducts, useCreateProduct, useProductCategories } from '@/hooks/useProducts';
 import { useCreateUser } from '@/hooks/useUsers';
 import {
-    PageHeader, EmptyState, LoadingState, StatCard, SearchInput
+    PageHeader, EmptyState, LoadingState, StatCard, SearchInput, FavorecidoSelect, VendedorSelect, ProductSelect
 } from '@/components/shared';
 import { getContractStatusBadge, ContractStatusType } from '@/components/shared/StatusBadge';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -139,9 +139,9 @@ export default function Contratos() {
         enabled: !!unidadeAtual?.id,
     });
 
-    const { data: favorecidos, refetch: refetchFavorecidos } = useFavorecidos({ isActive: true });
+    const { refetch: refetchFavorecidos } = useFavorecidos({ isActive: true });
     const { data: categories } = useCategories();
-    const { data: vendedores, refetch: refetchVendedores } = useVendedores();
+    const { refetch: refetchVendedores } = useVendedores();
     const { data: products, refetch: refetchProducts } = useProducts({ isActive: true });
     const { data: productCategories } = useProductCategories();
 
@@ -852,7 +852,7 @@ export default function Contratos() {
                                 Novo Contrato
                             </button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                        <DialogContent className="max-w-lg max-h-[90vh] min-w-[60vw] overflow-y-auto">
                             <DialogHeader>
                                 <DialogTitle>{editingId ? 'Editar Contrato' : 'Novo Contrato'}</DialogTitle>
                                 <DialogDescription>
@@ -874,16 +874,11 @@ export default function Contratos() {
                                     <div>
                                         <label className="block text-sm font-medium text-foreground mb-2">Cliente</label>
                                         <div className="flex gap-2">
-                                            <select
-                                                className="input-financial flex-1"
+                                            <FavorecidoSelect
                                                 value={formData.favorecido_id}
-                                                onChange={(e) => setFormData({ ...formData, favorecido_id: e.target.value })}
-                                            >
-                                                <option value="">Selecione</option>
-                                                {favorecidos?.map((f) => (
-                                                    <option key={f.id} value={f.id}>{f.name}</option>
-                                                ))}
-                                            </select>
+                                                onChange={(id) => setFormData({ ...formData, favorecido_id: id })}
+                                                className="flex-1"
+                                            />
                                             <button
                                                 type="button"
                                                 onClick={() => setIsFavorecidoModalOpen(true)}
@@ -927,13 +922,11 @@ export default function Contratos() {
                                     <div>
                                         <label className="block text-sm font-medium text-foreground mb-2">Produto (cadastro)</label>
                                         <div className="flex gap-2">
-                                            <select
-                                                className="input-financial flex-1"
+                                            <ProductSelect
                                                 value={formData.product_id}
-                                                required
-                                                onChange={(e) => {
-                                                    const productId = e.target.value;
-                                                    const product = products?.find((p) => p.id === productId);
+                                                className="flex-1"
+                                                placeholder="Selecione um produto (obrigatório)"
+                                                onChange={(id, product) => {
                                                     const categoryByProductName = product?.product_category?.name
                                                         ? categories?.find(
                                                             (c) => c.name.toLowerCase() === product.product_category!.name.toLowerCase()
@@ -942,21 +935,13 @@ export default function Contratos() {
                                                     const categoryId = categoryByProductName?.id ?? (vendasCategory?.id || '');
                                                     setFormData({
                                                         ...formData,
-                                                        product_id: productId,
+                                                        product_id: id,
                                                         type: product ? (product.commercial_description || product.name) : formData.type,
                                                         category_id: product ? categoryId : formData.category_id,
                                                         recurrence_type: product?.recurrence_type ?? formData.recurrence_type,
                                                     });
                                                 }}
-                                            >
-                                                <option value="">Selecione um produto (obrigatório)</option>
-                                                {products?.map((p) => (
-                                                    <option key={p.id} value={p.id}>
-                                                        {p.name}
-                                                        {p.code ? ` (${p.code})` : ''}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                            />
                                             <button
                                                 type="button"
                                                 onClick={() => setIsProductModalOpen(true)}
@@ -1084,11 +1069,10 @@ export default function Contratos() {
                                     <div>
                                         <label className="block text-sm font-medium text-foreground mb-2">Vendedor</label>
                                         <div className="flex gap-2">
-                                            <select
-                                                className="input-financial flex-1"
+                                            <VendedorSelect
                                                 value={formData.seller_id}
-                                                onChange={(e) => {
-                                                    const sellerId = e.target.value;
+                                                className="flex-1"
+                                                onChange={(sellerId) => {
                                                     setFormData({
                                                         ...formData,
                                                         seller_id: sellerId,
@@ -1097,12 +1081,7 @@ export default function Contratos() {
                                                             : (formData.category_id === vendasCategory?.id ? '' : formData.category_id)
                                                     });
                                                 }}
-                                            >
-                                                <option value="">Selecione</option>
-                                                {vendedores?.map((v) => (
-                                                    <option key={v.id} value={v.id}>{v.name}</option>
-                                                ))}
-                                            </select>
+                                            />
                                             <button
                                                 type="button"
                                                 onClick={() => setIsVendedorModalOpen(true)}
@@ -1156,19 +1135,12 @@ export default function Contratos() {
                         placeholder="Buscar contratos..."
                         className="max-w-md"
                     />
-                    <select
-                        className="input-financial w-auto min-w-[200px]"
+                    <ProductSelect
                         value={filterProductId}
-                        onChange={(e) => setFilterProductId(e.target.value)}
-                    >
-                        <option value="">Todos os produtos</option>
-                        {products?.map((p) => (
-                            <option key={p.id} value={p.id}>
-                                {p.name}
-                                {p.code ? ` (${p.code})` : ''}
-                            </option>
-                        ))}
-                    </select>
+                        onChange={(id) => setFilterProductId(id)}
+                        placeholder="Todos os produtos"
+                        className="w-auto min-w-[200px]"
+                    />
                 </div>
 
                 {/* Contracts List */}
