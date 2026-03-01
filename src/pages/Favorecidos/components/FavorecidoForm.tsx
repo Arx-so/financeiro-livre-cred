@@ -21,6 +21,14 @@ import type {
     FavorecidoTipo, BankAccountType, PixKeyType, PaymentType
 } from '@/types/database';
 
+const PAYMENT_OPTIONS: { value: PaymentType; label: string }[] = [
+    { value: 'pix', label: 'PIX' },
+    { value: 'ted', label: 'TED' },
+    { value: 'boleto', label: 'Boleto' },
+    { value: 'cartao', label: 'Cartão' },
+    { value: 'dinheiro', label: 'Dinheiro' },
+];
+
 interface FavorecidoFormProps {
     formData: any;
     setFormData: (data: any) => void;
@@ -172,10 +180,11 @@ export function FavorecidoForm(props: FavorecidoFormProps) {
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Telefone</label>
+                    <label className="block text-sm font-medium text-foreground mb-2">Telefone *</label>
                     <PhoneInput
                         value={formData.phone}
                         onChange={(value) => setFormData({ ...formData, phone: value })}
+                        required
                     />
                 </div>
             </div>
@@ -269,19 +278,33 @@ export function FavorecidoForm(props: FavorecidoFormProps) {
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">Forma de Pagamento Preferida</label>
-                        <select
-                            className="input-financial"
-                            value={formData.preferred_payment_type}
-                            onChange={(e) => setFormData({ ...formData, preferred_payment_type: e.target.value as PaymentType | '' })}
-                        >
-                            <option value="">Selecione</option>
-                            <option value="pix">PIX</option>
-                            <option value="ted">TED</option>
-                            <option value="boleto">Boleto</option>
-                            <option value="cartao">Cartão</option>
-                            <option value="dinheiro">Dinheiro</option>
-                        </select>
+                        <label className="block text-sm font-medium text-foreground mb-2">Formas de Pagamento Preferidas</label>
+                        <div className="flex flex-wrap gap-x-4 gap-y-2 pt-1">
+                            {PAYMENT_OPTIONS.map((opt) => {
+                                const selected = formData.preferred_payment_type
+                                    ? formData.preferred_payment_type.split(',').includes(opt.value)
+                                    : false;
+                                return (
+                                    <label key={opt.value} className="flex items-center gap-1.5 cursor-pointer select-none">
+                                        <input
+                                            type="checkbox"
+                                            checked={selected}
+                                            onChange={() => {
+                                                const current = formData.preferred_payment_type
+                                                    ? formData.preferred_payment_type.split(',').filter(Boolean)
+                                                    : [];
+                                                const updated = selected
+                                                    ? current.filter((v) => v !== opt.value)
+                                                    : [...current, opt.value];
+                                                setFormData({ ...formData, preferred_payment_type: updated.join(',') });
+                                            }}
+                                            className="rounded border-border text-primary"
+                                        />
+                                        <span className="text-sm text-foreground">{opt.label}</span>
+                                    </label>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
 

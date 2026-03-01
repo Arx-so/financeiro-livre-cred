@@ -21,6 +21,8 @@ import {
     Printer,
     XCircle,
     DollarSign,
+    LayoutGrid,
+    List,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -74,6 +76,7 @@ import type {
 import { FavorecidoForm } from '@/pages/Favorecidos/components/FavorecidoForm';
 import { ProductForm, type ProductFormData } from '@/pages/Produtos/components/ProductForm';
 import { ProductRulesPanel } from './components/ProductRulesPanel';
+import { KanbanView } from './KanbanView';
 
 export default function Contratos() {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
@@ -83,6 +86,7 @@ export default function Contratos() {
 
     const [searchTerm, setSearchTerm] = useState('');
     const [filterProductId, setFilterProductId] = useState('');
+    const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [uploadingContractId, setUploadingContractId] = useState<string | null>(null);
@@ -1141,10 +1145,44 @@ export default function Contratos() {
                         placeholder="Todos os produtos"
                         className="w-auto min-w-[200px]"
                     />
+                    {canApprove && (
+                        <div className="flex items-center gap-1 ml-auto border border-border rounded-lg p-1">
+                            <button
+                                className={viewMode === 'list' ? 'btn-primary py-1.5 px-3' : 'btn-secondary py-1.5 px-3'}
+                                onClick={() => setViewMode('list')}
+                                title="Visualização em lista"
+                            >
+                                <List className="w-4 h-4" />
+                            </button>
+                            <button
+                                className={viewMode === 'kanban' ? 'btn-primary py-1.5 px-3' : 'btn-secondary py-1.5 px-3'}
+                                onClick={() => setViewMode('kanban')}
+                                title="Visualização Kanban"
+                            >
+                                <LayoutGrid className="w-4 h-4" />
+                            </button>
+                        </div>
+                    )}
                 </div>
 
-                {/* Contracts List */}
-                {isLoading ? (
+                {/* Kanban View (admin/gerente only) */}
+                {canApprove && viewMode === 'kanban' ? (
+                    isLoading ? (
+                        <LoadingState />
+                    ) : (
+                        <KanbanView
+                            contracts={contracts || []}
+                            contractsWithEntries={contractsWithEntries}
+                            onApprove={handleApprove}
+                            onReject={handleReject}
+                            onGenerateEntries={openGenerateModal}
+                            onResubmit={handleSubmitForApproval}
+                            isApprovePending={approveMutation.isPending}
+                            isRejectPending={rejectMutation.isPending}
+                            isResubmitPending={submitForApprovalMutation.isPending}
+                        />
+                    )
+                ) : isLoading ? (
                     <LoadingState />
                 ) : !contracts?.length ? (
                     <EmptyState icon={FileText} message="Nenhum contrato encontrado" />
@@ -1273,6 +1311,17 @@ export default function Contratos() {
                                                 Rejeitar
                                             </button>
                                         </>
+                                    )}
+
+                                    {contract.status === 'rejeitado' && (
+                                        <button
+                                            className="btn-secondary py-2"
+                                            onClick={() => handleSubmitForApproval(contract.id)}
+                                            disabled={submitForApprovalMutation.isPending}
+                                        >
+                                            <Send className="w-4 h-4" />
+                                            Re-enviar p/ Aprovação
+                                        </button>
                                     )}
 
                                     {(contract.status === 'aprovado' || contract.status === 'ativo') && (

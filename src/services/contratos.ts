@@ -322,10 +322,10 @@ export async function approveContract(id: string, approvedBy: string): Promise<C
     });
 }
 
-// Reject contract (back to draft)
+// Reject contract
 export async function rejectContract(id: string): Promise<Contract> {
     return updateContract(id, {
-        status: 'criado',
+        status: 'rejeitado',
         approved_by: null,
         approved_at: null
     });

@@ -18,7 +18,6 @@ import type {
     FavorecidoInsert,
     BankAccountType,
     PixKeyType,
-    PaymentType,
 } from '@/types/database';
 
 export interface FavorecidoFormData {
@@ -40,7 +39,7 @@ export interface FavorecidoFormData {
     bank_account_type: BankAccountType | '';
     pix_key: string;
     pix_key_type: PixKeyType | '';
-    preferred_payment_type: PaymentType | '';
+    preferred_payment_type: string;
     birth_date: string;
 }
 

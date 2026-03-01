@@ -40,7 +40,7 @@ export function getEntryStatusBadge(status: EntryStatusType) {
 }
 
 // Helper para status de contratos
-export type ContractStatusType = 'criado' | 'em_aprovacao' | 'aprovado' | 'ativo' | 'pendente' | 'encerrado';
+export type ContractStatusType = 'criado' | 'em_aprovacao' | 'aprovado' | 'ativo' | 'pendente' | 'encerrado' | 'rejeitado';
 
 export function getContractStatusBadge(status: ContractStatusType) {
     const config: Record<ContractStatusType, { variant: BadgeVariant; label: string }> = {
@@ -50,6 +50,7 @@ export function getContractStatusBadge(status: ContractStatusType) {
         ativo: { variant: 'success', label: 'Ativo' },
         pendente: { variant: 'warning', label: 'Pendente Assinatura' },
         encerrado: { variant: 'neutral', label: 'Encerrado' },
+        rejeitado: { variant: 'danger', label: 'Rejeitado' },
     };
 
     const { variant, label } = config[status] || { variant: 'neutral', label: status };
