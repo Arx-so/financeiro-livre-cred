@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
-import { useAuthStore } from '@/stores';
+import { useAuthStore, useBranchStore } from '@/stores';
 import {
     useFavorecidos,
     useCreateFavorecido,
@@ -68,6 +68,7 @@ const initialFavorecidoForm: FavorecidoFormData = {
 
 export function useFavorecidosPage() {
     const user = useAuthStore((state) => state.user);
+    const branchId = useBranchStore((state) => state.unidadeAtual?.id);
 
     // Confirmation dialog
     const { confirm, dialogProps } = useConfirmDialog();
@@ -96,6 +97,7 @@ export function useFavorecidosPage() {
 
     // Fetch data
     const { data: favorecidos, isLoading: favorecidosLoading } = useFavorecidos({
+        branchId,
         type: filterType === 'todos' ? undefined : filterType,
         search: searchTerm || undefined,
         isActive: true,
@@ -175,6 +177,7 @@ export function useFavorecidosPage() {
         e.preventDefault();
 
         const favorecidoData: FavorecidoInsert = {
+            branch_id: branchId || null,
             type: formData.type,
             name: formData.name,
             document: formData.document || null,
@@ -217,7 +220,7 @@ export function useFavorecidosPage() {
         } catch {
             toast.error('Erro ao salvar cadastro');
         }
-    }, [formData, editingId, selectedPhoto, createFavorecido, updateFavorecido, uploadPhoto, resetForm]);
+    }, [formData, editingId, selectedPhoto, branchId, createFavorecido, updateFavorecido, uploadPhoto, resetForm]);
 
     const handleDeleteFavorecido = useCallback((id: string, name: string) => {
         confirm(async () => {

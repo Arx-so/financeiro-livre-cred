@@ -6,6 +6,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { cadastrosKeys } from '@/hooks/useCadastros';
 import { getFavorecidos } from '@/services/cadastros';
 import { supabase } from '@/lib/supabase';
+import { useBranchStore } from '@/stores';
 import type { Favorecido, FavorecidoTipo } from '@/types/database';
 import { cn } from '@/lib/utils';
 
@@ -40,6 +41,7 @@ export function FavorecidoSelect({
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [internalSelected, setInternalSelected] = useState<Favorecido | null>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
+    const branchId = useBranchStore((state) => state.unidadeAtual?.id);
 
     useEffect(() => {
         if (open) {
@@ -52,7 +54,12 @@ export function FavorecidoSelect({
         return () => clearTimeout(timer);
     }, [search]);
 
-    const searchFilters = { search: debouncedSearch || undefined, isActive: true as const, type: filterType };
+    const searchFilters = {
+        branchId,
+        search: debouncedSearch || undefined,
+        isActive: true as const,
+        type: filterType,
+    };
 
     const { data: results, isLoading } = useQuery({
         queryKey: cadastrosKeys.list(searchFilters),

@@ -7,9 +7,6 @@ import {
     deleteFavorecido,
     uploadFavorecidoPhoto,
     deleteFavorecidoPhoto,
-    getClientes,
-    getFornecedores,
-    getFuncionarios,
     getVendedores,
     getFavorecidoDocuments,
     uploadFavorecidoDocument,
@@ -17,6 +14,7 @@ import {
     FavorecidoFilters,
 } from '@/services/cadastros';
 import type { FavorecidoInsert, FavorecidoUpdate } from '@/types/database';
+import { useBranchStore } from '@/stores';
 
 // Query keys
 export const cadastrosKeys = {
@@ -49,23 +47,26 @@ export function useFavorecido(id: string) {
 }
 
 export function useClientes() {
+    const branchId = useBranchStore((state) => state.unidadeAtual?.id);
     return useQuery({
         queryKey: cadastrosKeys.clientes(),
-        queryFn: getClientes,
+        queryFn: () => getFavorecidos({ branchId, type: 'cliente', isActive: true }),
     });
 }
 
 export function useFornecedores() {
+    const branchId = useBranchStore((state) => state.unidadeAtual?.id);
     return useQuery({
         queryKey: cadastrosKeys.fornecedores(),
-        queryFn: getFornecedores,
+        queryFn: () => getFavorecidos({ branchId, type: 'fornecedor', isActive: true }),
     });
 }
 
 export function useFuncionarios() {
+    const branchId = useBranchStore((state) => state.unidadeAtual?.id);
     return useQuery({
         queryKey: cadastrosKeys.funcionarios(),
-        queryFn: getFuncionarios,
+        queryFn: () => getFavorecidos({ branchId, type: 'funcionario', isActive: true }),
     });
 }
 

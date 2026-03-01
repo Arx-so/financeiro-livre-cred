@@ -8,6 +8,7 @@ import type {
 } from '@/types/database';
 
 export interface FavorecidoFilters {
+  branchId?: string;
   type?: FavorecidoTipo;
   search?: string;
   isActive?: boolean;
@@ -19,6 +20,10 @@ export async function getFavorecidos(filters: FavorecidoFilters = {}): Promise<F
         .from('favorecidos')
         .select('*')
         .order('name');
+
+    if (filters.branchId) {
+        query = query.eq('branch_id', filters.branchId);
+    }
 
     if (filters.type) {
         query = query.eq('type', filters.type);

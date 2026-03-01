@@ -197,6 +197,7 @@ export interface Database {
       favorecidos: {
         Row: {
           id: string;
+          branch_id: string | null;
           type: FavorecidoTipo;
           name: string;
           document: string | null;
@@ -226,6 +227,7 @@ export interface Database {
         };
         Insert: {
           id?: string;
+          branch_id?: string | null;
           type: FavorecidoTipo;
           name: string;
           document?: string | null;
@@ -254,6 +256,7 @@ export interface Database {
           updated_at?: string;
         };
         Update: {
+          branch_id?: string | null;
           type?: FavorecidoTipo;
           name?: string;
           document?: string | null;

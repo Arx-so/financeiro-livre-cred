@@ -241,6 +241,7 @@ export default function Contratos() {
         e.preventDefault();
         try {
             const newFav = await createFavorecido.mutateAsync({
+                branch_id: unidadeAtual?.id || null,
                 type: favorecidoFormData.type,
                 name: favorecidoFormData.name,
                 document: favorecidoFormData.document || null,
