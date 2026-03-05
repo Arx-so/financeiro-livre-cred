@@ -78,6 +78,10 @@ export function useFavorecidosPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState<FavorecidoTipo | 'todos'>('todos');
 
+    // Pagination
+    const PAGE_SIZE = 24;
+    const [currentPage, setCurrentPage] = useState(1);
+
     // Modal states
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -95,12 +99,24 @@ export function useFavorecidosPage() {
     const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
+    const handleSetSearchTerm = useCallback((value: string) => {
+        setSearchTerm(value);
+        setCurrentPage(1);
+    }, []);
+
+    const handleSetFilterType = useCallback((value: FavorecidoTipo | 'todos') => {
+        setFilterType(value);
+        setCurrentPage(1);
+    }, []);
+
     // Fetch data
-    const { data: favorecidos, isLoading: favorecidosLoading } = useFavorecidos({
+    const { data: favorecidosPage, isLoading: favorecidosLoading } = useFavorecidos({
         branchId,
         type: filterType === 'todos' ? undefined : filterType,
         search: searchTerm || undefined,
         isActive: true,
+        page: currentPage,
+        pageSize: PAGE_SIZE,
     });
 
     const { data: favorecidoDocuments, isLoading: documentsLoading, refetch: refetchDocuments } = useFavorecidoDocuments(editingId || '');
@@ -268,6 +284,9 @@ export function useFavorecidosPage() {
         setIsModalOpen(true);
     }, []);
 
+    const totalCount = favorecidosPage?.count ?? 0;
+    const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
     return {
         // User
         user,
@@ -278,9 +297,16 @@ export function useFavorecidosPage() {
 
         // Search and filters
         searchTerm,
-        setSearchTerm,
+        setSearchTerm: handleSetSearchTerm,
         filterType,
-        setFilterType,
+        setFilterType: handleSetFilterType,
+
+        // Pagination
+        currentPage,
+        setCurrentPage,
+        totalCount,
+        totalPages,
+        pageSize: PAGE_SIZE,
 
         // Modal states
         isModalOpen,
@@ -301,7 +327,7 @@ export function useFavorecidosPage() {
         photoPreview,
 
         // Data
-        favorecidos: favorecidos || [],
+        favorecidos: favorecidosPage?.data || [],
         favorecidosLoading,
         favorecidoDocuments: favorecidoDocuments || [],
         documentsLoading,

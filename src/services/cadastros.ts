@@ -12,14 +12,26 @@ export interface FavorecidoFilters {
   type?: FavorecidoTipo;
   search?: string;
   isActive?: boolean;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface FavorecidosPage {
+    data: Favorecido[];
+    count: number;
 }
 
 // Get all favorecidos with filters
-export async function getFavorecidos(filters: FavorecidoFilters = {}): Promise<Favorecido[]> {
+export async function getFavorecidos(filters: FavorecidoFilters = {}): Promise<FavorecidosPage> {
+    const { page = 1, pageSize = 24 } = filters;
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
     let query = supabase
         .from('favorecidos')
-        .select('*')
-        .order('name');
+        .select('*', { count: 'exact' })
+        .order('name')
+        .range(from, to);
 
     if (filters.branchId) {
         query = query.eq('branch_id', filters.branchId);
@@ -37,14 +49,14 @@ export async function getFavorecidos(filters: FavorecidoFilters = {}): Promise<F
         query = query.or(`name.ilike.%${filters.search}%,email.ilike.%${filters.search}%,document.ilike.%${filters.search}%`);
     }
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
 
     if (error) {
         console.error('Error fetching favorecidos:', error);
         throw error;
     }
 
-    return data || [];
+    return { data: data || [], count: count ?? 0 };
 }
 
 // Get single favorecido
@@ -174,17 +186,20 @@ export async function deleteFavorecidoPhoto(favorecidoId: string, photoUrl: stri
 
 // Get clients only
 export async function getClientes(): Promise<Favorecido[]> {
-    return getFavorecidos({ type: 'cliente', isActive: true });
+    const { data } = await getFavorecidos({ type: 'cliente', isActive: true, pageSize: 1000 });
+    return data;
 }
 
 // Get suppliers only
 export async function getFornecedores(): Promise<Favorecido[]> {
-    return getFavorecidos({ type: 'fornecedor', isActive: true });
+    const { data } = await getFavorecidos({ type: 'fornecedor', isActive: true, pageSize: 1000 });
+    return data;
 }
 
 // Get employees only
 export async function getFuncionarios(): Promise<Favorecido[]> {
-    return getFavorecidos({ type: 'funcionario', isActive: true });
+    const { data } = await getFavorecidos({ type: 'funcionario', isActive: true, pageSize: 1000 });
+    return data;
 }
 
 // Get sellers (users with role 'vendas')

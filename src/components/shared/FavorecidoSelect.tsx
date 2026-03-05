@@ -61,11 +61,12 @@ export function FavorecidoSelect({
         type: filterType,
     };
 
-    const { data: results, isLoading } = useQuery({
+    const { data: resultsPage, isLoading } = useQuery({
         queryKey: cadastrosKeys.list(searchFilters),
         queryFn: () => getFavorecidos(searchFilters),
         enabled: open,
     });
+    const results = resultsPage?.data;
 
     const { data: resolvedFavorecido } = useQuery({
         queryKey: ['favorecidos', 'detail', value],
