@@ -384,14 +384,34 @@ export async function createUser(
         // Only set branch access after we're sure the profile exists (avoids user_branch_access_user_id_fkey)
         if (profileCheck && branchIds.length > 0) {
             await setUserBranchAccess(userId, branchIds);
+
+            // Check which branches already have a favorecido for this user (e.g. created by DB trigger)
+            const { data: existingFavorecidos } = await supabase
+                .from('favorecidos')
+                .select('branch_id')
+                .eq('user_id', userId);
+
+            const existingBranchIds = new Set((existingFavorecidos || []).map((f) => f.branch_id));
+            const missingBranchIds = branchIds.filter((id) => !existingBranchIds.has(id));
+
+            if (missingBranchIds.length > 0) {
+                const favorecidoInserts = missingBranchIds.map((branchId) => ({
+                    branch_id: branchId,
+                    name,
+                    email,
+                    type: 'funcionario' as const,
+                    user_id: userId,
+                }));
+
+                const { error: favorecidoError } = await supabase
+                    .from('favorecidos')
+                    .insert(favorecidoInserts);
+
+                if (favorecidoError) {
+                    console.error('Error creating favorecidos for branches:', favorecidoError);
+                }
+            }
         }
-
-        // Wait a bit more for the trigger to create the favorecido
-        await new Promise((resolve) => { setTimeout(resolve, 1000); });
-
-        // Verify that favorecido was created (trigger should handle this)
-        // If not, we'll let the trigger handle it on next profile update
-        // The trigger will create it automatically
 
         // Check if email confirmation is required
         // identities.length === 0 means email is not confirmed yet
