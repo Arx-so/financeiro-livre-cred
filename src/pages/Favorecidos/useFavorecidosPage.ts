@@ -7,6 +7,7 @@ import {
     useUpdateFavorecido,
     useDeleteFavorecido,
     useUploadFavorecidoPhoto,
+    useDeleteFavorecidoPhoto,
     useFavorecidoDocuments,
     useUploadFavorecidoDocument,
     useDeleteFavorecidoDocument,
@@ -90,6 +91,7 @@ export function useFavorecidosPage() {
 
     // File refs
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const cameraInputRef = useRef<HTMLInputElement>(null);
     const documentInputRef = useRef<HTMLInputElement>(null);
 
     // Form states
@@ -127,6 +129,7 @@ export function useFavorecidosPage() {
     const updateFavorecido = useUpdateFavorecido();
     const deleteFavorecido = useDeleteFavorecido();
     const uploadPhoto = useUploadFavorecidoPhoto();
+    const deletePhoto = useDeleteFavorecidoPhoto();
     const uploadDocument = useUploadFavorecidoDocument();
     const deleteDocument = useDeleteFavorecidoDocument();
 
@@ -142,6 +145,22 @@ export function useFavorecidosPage() {
             reader.readAsDataURL(file);
         }
     }, []);
+
+    const handleRemovePhoto = useCallback(async () => {
+        if (editingId && photoPreview) {
+            try {
+                await deletePhoto.mutateAsync({ favorecidoId: editingId, photoUrl: photoPreview });
+                toast.success('Foto removida!');
+            } catch {
+                toast.error('Erro ao remover foto');
+                return;
+            }
+        }
+        setSelectedPhoto(null);
+        setPhotoPreview(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        if (cameraInputRef.current) cameraInputRef.current.value = '';
+    }, [editingId, photoPreview, deletePhoto, fileInputRef, cameraInputRef]);
 
     const handleDocumentUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
         const { files } = e.target;
@@ -317,6 +336,7 @@ export function useFavorecidosPage() {
 
         // Refs
         fileInputRef,
+        cameraInputRef,
         documentInputRef,
 
         // Form states
@@ -337,9 +357,11 @@ export function useFavorecidosPage() {
         // Mutations loading states
         isSavingFavorecido: createFavorecido.isPending || updateFavorecido.isPending || uploadPhoto.isPending,
         isUploadingDocument: uploadDocument.isPending,
+        isDeletingPhoto: deletePhoto.isPending,
 
         // Handlers
         handlePhotoSelect,
+        handleRemovePhoto,
         handleDocumentUpload,
         handleDeleteDocument,
         resetForm,

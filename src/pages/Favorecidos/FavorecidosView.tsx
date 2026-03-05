@@ -41,6 +41,7 @@ export function FavorecidosView(props: FavorecidosViewProps) {
         editingId,
         // Refs
         fileInputRef,
+        cameraInputRef,
         documentInputRef,
         // Form states
         formData,
@@ -57,8 +58,10 @@ export function FavorecidosView(props: FavorecidosViewProps) {
         // Mutations loading states
         isSavingFavorecido,
         isUploadingDocument,
+        isDeletingPhoto,
         // Handlers
         handlePhotoSelect,
+        handleRemovePhoto,
         handleDocumentUpload,
         handleDeleteDocument,
         resetForm,
@@ -115,14 +118,17 @@ export function FavorecidosView(props: FavorecidosViewProps) {
                                     editingId={editingId}
                                     photoPreview={photoPreview}
                                     fileInputRef={fileInputRef}
+                                    cameraInputRef={cameraInputRef}
                                     documentInputRef={documentInputRef}
                                     favorecidoDocuments={favorecidoDocuments}
                                     documentsLoading={documentsLoading}
                                     favorecidoLogs={favorecidoLogs}
                                     logsLoading={logsLoading}
                                     isUploadingDocument={isUploadingDocument}
+                                    isDeletingPhoto={isDeletingPhoto}
                                     isSaving={isSavingFavorecido}
                                     onPhotoSelect={handlePhotoSelect}
+                                    onRemovePhoto={handleRemovePhoto}
                                     onDocumentUpload={handleDocumentUpload}
                                     onDeleteDocument={handleDeleteDocument}
                                     onSubmit={handleSubmitFavorecido}

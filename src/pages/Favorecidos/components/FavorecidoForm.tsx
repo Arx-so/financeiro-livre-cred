@@ -35,14 +35,17 @@ interface FavorecidoFormProps {
     editingId: string | null;
     photoPreview: string | null;
     fileInputRef: React.RefObject<HTMLInputElement>;
+    cameraInputRef: React.RefObject<HTMLInputElement>;
     documentInputRef: React.RefObject<HTMLInputElement>;
     favorecidoDocuments: any[];
     documentsLoading: boolean;
     favorecidoLogs: any[];
     logsLoading: boolean;
     isUploadingDocument: boolean;
+    isDeletingPhoto: boolean;
     isSaving: boolean;
     onPhotoSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onRemovePhoto: () => void;
     onDocumentUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
     onDeleteDocument: (docId: string, fileName: string) => void;
     onSubmit: (e: React.FormEvent) => void;
@@ -51,9 +54,9 @@ interface FavorecidoFormProps {
 
 export function FavorecidoForm(props: FavorecidoFormProps) {
     const {
-        formData, setFormData, editingId, photoPreview, fileInputRef, documentInputRef,
+        formData, setFormData, editingId, photoPreview, fileInputRef, cameraInputRef, documentInputRef,
         favorecidoDocuments, documentsLoading, favorecidoLogs, logsLoading,
-        isUploadingDocument, isSaving, onPhotoSelect, onDocumentUpload, onDeleteDocument,
+        isUploadingDocument, isDeletingPhoto, isSaving, onPhotoSelect, onRemovePhoto, onDocumentUpload, onDeleteDocument,
         onSubmit, onCancel,
     } = props;
 
@@ -73,20 +76,53 @@ export function FavorecidoForm(props: FavorecidoFormProps) {
                         <Camera className="w-6 h-6 text-muted-foreground" />
                     )}
                 </div>
-                <div>
-                    <button
-                        type="button"
-                        className="btn-secondary"
-                        onClick={() => fileInputRef.current?.click()}
-                    >
-                        <Upload className="w-4 h-4" />
-                        Upload Foto
-                    </button>
-                    <p className="text-xs text-muted-foreground mt-1">JPG, PNG ou GIF até 5MB</p>
+                <div className="flex flex-col gap-2">
+                    <div className="flex gap-2">
+                        <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            <Upload className="w-4 h-4" />
+                            Upload Foto
+                        </button>
+                        <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => cameraInputRef.current?.click()}
+                        >
+                            <Camera className="w-4 h-4" />
+                            Câmera
+                        </button>
+                        {photoPreview && (
+                            <button
+                                type="button"
+                                className="btn-secondary text-destructive hover:text-destructive"
+                                onClick={onRemovePhoto}
+                                disabled={isDeletingPhoto}
+                            >
+                                {isDeletingPhoto ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <Trash2 className="w-4 h-4" />
+                                )}
+                                Remover
+                            </button>
+                        )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">JPG, PNG ou GIF até 5MB</p>
                     <input
                         ref={fileInputRef}
                         type="file"
                         accept="image/*"
+                        className="hidden"
+                        onChange={onPhotoSelect}
+                    />
+                    <input
+                        ref={cameraInputRef}
+                        type="file"
+                        accept="image/*"
+                        capture="user"
                         className="hidden"
                         onChange={onPhotoSelect}
                     />
