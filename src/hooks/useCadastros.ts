@@ -50,7 +50,7 @@ export function useClientes() {
     const branchId = useBranchStore((state) => state.unidadeAtual?.id);
     return useQuery({
         queryKey: cadastrosKeys.clientes(),
-        queryFn: () => getFavorecidos({ branchId, type: 'cliente', isActive: true }),
+        queryFn: () => getFavorecidos({ branchId, type: 'cliente', isActive: true, pageSize: 1000 }).then((r) => r.data),
     });
 }
 
@@ -58,7 +58,7 @@ export function useFornecedores() {
     const branchId = useBranchStore((state) => state.unidadeAtual?.id);
     return useQuery({
         queryKey: cadastrosKeys.fornecedores(),
-        queryFn: () => getFavorecidos({ branchId, type: 'fornecedor', isActive: true }),
+        queryFn: () => getFavorecidos({ branchId, type: 'fornecedor', isActive: true, pageSize: 1000 }).then((r) => r.data),
     });
 }
 
@@ -66,7 +66,7 @@ export function useFuncionarios() {
     const branchId = useBranchStore((state) => state.unidadeAtual?.id);
     return useQuery({
         queryKey: cadastrosKeys.funcionarios(),
-        queryFn: () => getFavorecidos({ branchId, type: 'funcionario', isActive: true }),
+        queryFn: () => getFavorecidos({ branchId, type: 'funcionario', isActive: true, pageSize: 1000 }).then((r) => r.data),
     });
 }
 

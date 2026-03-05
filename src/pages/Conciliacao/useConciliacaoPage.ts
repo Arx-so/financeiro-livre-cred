@@ -106,7 +106,7 @@ export function useConciliacaoPage() {
 
     // Fetch categories and favorecidos for the create entry form
     const { data: categories } = useCategories();
-    const { data: favorecidos } = useFavorecidos({ isActive: true });
+    const { data: favorecidos } = useFavorecidos({ isActive: true, pageSize: 1000 });
 
     // Get selected statement for creating entry
     const selectedStatement = useMemo(
@@ -343,7 +343,7 @@ export function useConciliacaoPage() {
         summary,
         matchCandidates: matchCandidates || [],
         categories: categories || [],
-        favorecidos: favorecidos || [],
+        favorecidos: favorecidos?.data || [],
         selectedStatement,
 
         // Mutation states
