@@ -269,16 +269,21 @@ export async function deleteContractFile(fileId: string): Promise<void> {
 }
 
 // Get contract summary
-export async function getContractsSummary(branchId: string): Promise<{
+export async function getContractsSummary(branchId: string | undefined): Promise<{
   total: number;
   active: number;
   pending: number;
   totalValue: number;
 }> {
-    const { data, error } = await supabase
+    let contractsQuery = supabase
         .from('contracts')
-        .select('status, value')
-        .eq('branch_id', branchId);
+        .select('status, value');
+
+    if (branchId) {
+        contractsQuery = contractsQuery.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await contractsQuery;
 
     if (error) {
         console.error('Error fetching contracts summary:', error);

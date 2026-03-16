@@ -56,14 +56,14 @@ export function BranchCard({
                     <Edit className="w-4 h-4" />
                     Editar
                 </button>
-                {branch.is_active ? (
+                {branch.is_active && branch.code !== 'ADM' ? (
                     <button
                         className="btn-secondary py-2 px-3 text-destructive hover:bg-destructive/10"
                         onClick={onDelete}
                     >
                         <Trash2 className="w-4 h-4" />
                     </button>
-                ) : (
+                ) : !branch.is_active ? (
                     <button
                         className="btn-secondary py-2 px-3 text-income hover:bg-income/10"
                         onClick={onReactivate}
@@ -71,7 +71,7 @@ export function BranchCard({
                     >
                         <RotateCcw className="w-4 h-4" />
                     </button>
-                )}
+                ) : null}
             </div>
         </div>
     );

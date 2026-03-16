@@ -44,18 +44,23 @@ export interface SalesTargetSummary {
  * do orçamento (soma dos valores dos lançamentos com a mesma categoria no período).
  */
 async function getBudgetActualsFromEntries(
-    branchId: string,
+    branchId: string | undefined,
     year: number
 ): Promise<Map<string, Map<number, number>>> {
     const startDate = `${year}-01-01`;
     const endDate = `${year}-12-31`;
-    const { data: entries, error } = await supabase
+    let entriesQuery = supabase
         .from('financial_entries')
         .select('category_id, due_date, value')
-        .eq('branch_id', branchId)
         .gte('due_date', startDate)
         .lte('due_date', endDate)
         .neq('status', 'cancelado');
+
+    if (branchId) {
+        entriesQuery = entriesQuery.eq('branch_id', branchId);
+    }
+
+    const { data: entries, error } = await entriesQuery;
 
     if (error) throw error;
 
@@ -245,15 +250,18 @@ export async function deleteBudgetItem(id: string): Promise<void> {
 }
 
 export async function getBudgetSummary(
-    branchId: string,
+    branchId: string | undefined,
     year: number,
     versionId?: string | null
 ): Promise<BudgetSummary> {
     let query = supabase
         .from('budget_items')
         .select('category_id, month, budgeted_amount')
-        .eq('branch_id', branchId)
         .eq('year', year);
+
+    if (branchId) {
+        query = query.eq('branch_id', branchId);
+    }
 
     if (versionId) {
         query = query.eq('budget_version_id', versionId);
@@ -315,7 +323,7 @@ export async function getBudgetSummary(
  * Get budget data organized hierarchically by category with subcategories
  */
 export async function getBudgetHierarchical(
-    branchId: string,
+    branchId: string | undefined,
     year: number,
     versionId?: string | null
 ): Promise<BudgetCategoryWithSubcategories[]> {
@@ -338,8 +346,11 @@ export async function getBudgetHierarchical(
     let budgetQuery = supabase
         .from('budget_items')
         .select('*')
-        .eq('branch_id', branchId)
         .eq('year', year);
+
+    if (branchId) {
+        budgetQuery = budgetQuery.eq('branch_id', branchId);
+    }
 
     if (versionId) {
         budgetQuery = budgetQuery.eq('budget_version_id', versionId);
@@ -445,20 +456,25 @@ export async function getBudgetHierarchical(
  * Get actuals grouped by subcategory and month
  */
 async function getBudgetActualsBySubcategory(
-    branchId: string,
+    branchId: string | undefined,
     year: number
 ): Promise<Map<string, Map<number, number>>> {
     const startDate = `${year}-01-01`;
     const endDate = `${year}-12-31`;
 
-    const { data: entries, error } = await supabase
+    let entriesQuery = supabase
         .from('financial_entries')
         .select('subcategory_id, due_date, value')
-        .eq('branch_id', branchId)
         .gte('due_date', startDate)
         .lte('due_date', endDate)
         .neq('status', 'cancelado')
         .not('subcategory_id', 'is', null);
+
+    if (branchId) {
+        entriesQuery = entriesQuery.eq('branch_id', branchId);
+    }
+
+    const { data: entries, error } = await entriesQuery;
 
     if (error) throw error;
 
@@ -596,7 +612,7 @@ export interface AnnualSummaryResult {
 }
 
 export async function getAnnualSummary(
-    branchId: string,
+    branchId: string | undefined,
     year: number,
     versionId?: string | null
 ): Promise<AnnualSummaryResult> {
@@ -619,8 +635,11 @@ export async function getAnnualSummary(
     let budgetQuery = supabase
         .from('budget_items')
         .select('category_id, subcategory_id, month, budgeted_amount')
-        .eq('branch_id', branchId)
         .eq('year', year);
+
+    if (branchId) {
+        budgetQuery = budgetQuery.eq('branch_id', branchId);
+    }
 
     if (versionId) {
         budgetQuery = budgetQuery.eq('budget_version_id', versionId);
@@ -720,7 +739,7 @@ export async function getAnnualSummary(
 // ============================================
 
 export async function getSalesTargets(
-    branchId: string,
+    branchId: string | undefined,
     year: number,
     month?: number
 ): Promise<SalesTargetWithSeller[]> {
@@ -730,9 +749,12 @@ export async function getSalesTargets(
       *,
       seller:profiles(id, name, email)
     `)
-        .eq('branch_id', branchId)
         .eq('year', year)
         .order('month');
+
+    if (branchId) {
+        query = query.eq('branch_id', branchId);
+    }
 
     if (month) {
         query = query.eq('month', month);
@@ -792,7 +814,7 @@ export async function deleteSalesTarget(id: string): Promise<void> {
 }
 
 export async function getSalesTargetSummary(
-    branchId: string,
+    branchId: string | undefined,
     year: number,
     month?: number
 ): Promise<SalesTargetSummary> {

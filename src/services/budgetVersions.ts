@@ -43,18 +43,23 @@ export interface CreateBudgetVersionParams {
 
 // Get all budget versions for a branch and year
 export async function getBudgetVersions(
-    branchId: string,
+    branchId: string | undefined,
     year: number
 ): Promise<BudgetVersionWithApprover[]> {
-    const { data, error } = await (supabase.from('budget_versions') as any)
+    let query = (supabase.from('budget_versions') as any)
         .select(`
             *,
             approver:profiles!approved_by(id, name),
             creator:profiles!created_by(id, name)
         `)
-        .eq('branch_id', branchId)
         .eq('year', year)
         .order('version', { ascending: false });
+
+    if (branchId) {
+        query = query.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         console.error('Error fetching budget versions:', error);

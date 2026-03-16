@@ -43,12 +43,12 @@ export interface CashFlowProjection {
 
 // Get DRE (Income Statement) data
 export async function getDREData(
-    branchId: string,
+    branchId: string | undefined,
     startDate: string,
     endDate: string
 ): Promise<DREReport> {
     // Get all entries for the period
-    const { data: entries, error } = await supabase
+    let entriesQuery = supabase
         .from('financial_entries')
         .select(`
       type,
@@ -56,9 +56,14 @@ export async function getDREData(
       status,
       category:categories(name, type)
     `)
-        .eq('branch_id', branchId)
         .gte('due_date', startDate)
         .lte('due_date', endDate);
+
+    if (branchId) {
+        entriesQuery = entriesQuery.eq('branch_id', branchId);
+    }
+
+    const { data: entries, error } = await entriesQuery;
 
     if (error) {
         console.error('Error fetching DRE data:', error);
@@ -67,15 +72,20 @@ export async function getDREData(
 
     // Get budget data for planned values
     const year = new Date(startDate).getFullYear();
-    const { data: budgetItems } = await supabase
+    let budgetQuery = supabase
         .from('budget_items')
         .select(`
       budgeted_amount,
       actual_amount,
       category:categories(name, type)
     `)
-        .eq('branch_id', branchId)
         .eq('year', year);
+
+    if (branchId) {
+        budgetQuery = budgetQuery.eq('branch_id', branchId);
+    }
+
+    const { data: budgetItems } = await budgetQuery;
 
     // Calculate DRE items
     let receitaBruta = 0;
@@ -174,21 +184,26 @@ export async function getDREData(
 
 // Get category breakdown
 export async function getCategoryBreakdown(
-    branchId: string,
+    branchId: string | undefined,
     type: EntryType,
     startDate: string,
     endDate: string
 ): Promise<CategoryBreakdown[]> {
-    const { data, error } = await supabase
+    let query = supabase
         .from('financial_entries')
         .select(`
       value,
       category:categories(name, color)
     `)
-        .eq('branch_id', branchId)
         .eq('type', type)
         .gte('due_date', startDate)
         .lte('due_date', endDate);
+
+    if (branchId) {
+        query = query.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         console.error('Error fetching category breakdown:', error);
@@ -224,15 +239,20 @@ export async function getCategoryBreakdown(
 
 // Get monthly comparison
 export async function getMonthlyComparison(
-    branchId: string,
+    branchId: string | undefined,
     year: number
 ): Promise<MonthlyComparison[]> {
-    const { data, error } = await supabase
+    let query = supabase
         .from('financial_entries')
         .select('type, value, due_date')
-        .eq('branch_id', branchId)
         .gte('due_date', `${year}-01-01`)
         .lte('due_date', `${year}-12-31`);
+
+    if (branchId) {
+        query = query.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         console.error('Error fetching monthly comparison:', error);
@@ -268,18 +288,23 @@ export async function getMonthlyComparison(
 
 // Get cash flow projection
 export async function getCashFlowProjection(
-    branchId: string,
+    branchId: string | undefined,
     startDate: string,
     endDate: string,
     initialBalance: number = 0
 ): Promise<CashFlowProjection[]> {
-    const { data, error } = await supabase
+    let query = supabase
         .from('financial_entries')
         .select('type, value, due_date')
-        .eq('branch_id', branchId)
         .gte('due_date', startDate)
         .lte('due_date', endDate)
         .order('due_date');
+
+    if (branchId) {
+        query = query.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         console.error('Error fetching cash flow projection:', error);
@@ -330,18 +355,23 @@ export async function getCashFlowProjection(
 
 // Get top clients/suppliers by value
 export async function getTopFavorecidos(
-    branchId: string,
+    branchId: string | undefined,
     type: EntryType,
     limit: number = 10
 ): Promise<{ name: string; value: number; count: number }[]> {
-    const { data, error } = await supabase
+    let query = supabase
         .from('financial_entries')
         .select(`
       value,
       favorecido:favorecidos(name)
     `)
-        .eq('branch_id', branchId)
         .eq('type', type);
+
+    if (branchId) {
+        query = query.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         console.error('Error fetching top favorecidos:', error);
@@ -737,17 +767,22 @@ export interface VendedorForaPadraoData {
 
 // Get aging report (contas a pagar/receber por idade)
 export async function getAgingReport(
-    branchId: string,
+    branchId: string | undefined,
     type: EntryType
 ): Promise<AgingReportItem[]> {
     const today = new Date();
 
-    const { data, error } = await supabase
+    let query = supabase
         .from('financial_entries')
         .select('value, due_date')
-        .eq('branch_id', branchId)
         .eq('type', type)
         .eq('status', 'pendente');
+
+    if (branchId) {
+        query = query.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         console.error('Error fetching aging report:', error);

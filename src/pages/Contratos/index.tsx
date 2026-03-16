@@ -124,23 +124,25 @@ export default function Contratos() {
         interest_rate: '',
     });
 
+    const isAdm = unidadeAtual?.code === 'ADM';
+
     // Fetch data
     const filters: ContractFilters = useMemo(() => ({
-        branchId: unidadeAtual?.id,
+        branchId: unidadeAtual?.code === 'ADM' ? undefined : unidadeAtual?.id,
         search: searchTerm || undefined,
         productId: filterProductId || undefined,
-    }), [unidadeAtual?.id, searchTerm, filterProductId]);
+    }), [unidadeAtual?.id, unidadeAtual?.code, searchTerm, filterProductId]);
 
     const { data: contracts, isLoading } = useQuery({
         queryKey: ['contracts', filters],
         queryFn: () => getContracts(filters),
-        enabled: !!unidadeAtual?.id,
+        enabled: !!unidadeAtual?.id || isAdm,
     });
 
     const { data: summary } = useQuery({
         queryKey: ['contracts-summary', unidadeAtual?.id],
-        queryFn: () => getContractsSummary(unidadeAtual!.id),
-        enabled: !!unidadeAtual?.id,
+        queryFn: () => getContractsSummary(unidadeAtual?.code === 'ADM' ? undefined : unidadeAtual?.id),
+        enabled: !!unidadeAtual?.id || isAdm,
     });
 
     const { refetch: refetchFavorecidos } = useFavorecidos({ isActive: true });

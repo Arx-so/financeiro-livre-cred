@@ -47,26 +47,38 @@ export function useFavorecido(id: string) {
 }
 
 export function useClientes() {
-    const branchId = useBranchStore((state) => state.unidadeAtual?.id);
+    const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
+    const isAdm = unidadeAtual?.code === 'ADM';
+    const branchId = isAdm ? undefined : unidadeAtual?.id;
     return useQuery({
-        queryKey: cadastrosKeys.clientes(),
-        queryFn: () => getFavorecidos({ branchId, type: 'cliente', isActive: true, pageSize: 1000 }).then((r) => r.data),
+        queryKey: [...cadastrosKeys.clientes(), branchId ?? 'adm'],
+        queryFn: () => getFavorecidos({
+            branchId, type: 'cliente', isActive: true, pageSize: 1000
+        }).then((r) => r.data),
     });
 }
 
 export function useFornecedores() {
-    const branchId = useBranchStore((state) => state.unidadeAtual?.id);
+    const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
+    const isAdm = unidadeAtual?.code === 'ADM';
+    const branchId = isAdm ? undefined : unidadeAtual?.id;
     return useQuery({
-        queryKey: cadastrosKeys.fornecedores(),
-        queryFn: () => getFavorecidos({ branchId, type: 'fornecedor', isActive: true, pageSize: 1000 }).then((r) => r.data),
+        queryKey: [...cadastrosKeys.fornecedores(), branchId ?? 'adm'],
+        queryFn: () => getFavorecidos({
+            branchId, type: 'fornecedor', isActive: true, pageSize: 1000
+        }).then((r) => r.data),
     });
 }
 
 export function useFuncionarios() {
-    const branchId = useBranchStore((state) => state.unidadeAtual?.id);
+    const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
+    const isAdm = unidadeAtual?.code === 'ADM';
+    const branchId = isAdm ? undefined : unidadeAtual?.id;
     return useQuery({
-        queryKey: cadastrosKeys.funcionarios(),
-        queryFn: () => getFavorecidos({ branchId, type: 'funcionario', isActive: true, pageSize: 1000 }).then((r) => r.data),
+        queryKey: [...cadastrosKeys.funcionarios(), branchId ?? 'adm'],
+        queryFn: () => getFavorecidos({
+            branchId, type: 'funcionario', isActive: true, pageSize: 1000
+        }).then((r) => r.data),
     });
 }
 

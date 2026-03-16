@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
-import { useAuthStore, useBranchStore } from '@/stores';
+import { useAuthStore, useBranchStore, useBranchIdForFilter } from '@/stores';
 import {
     useFavorecidos,
     useCreateFavorecido,
@@ -69,7 +69,7 @@ const initialFavorecidoForm: FavorecidoFormData = {
 
 export function useFavorecidosPage() {
     const user = useAuthStore((state) => state.user);
-    const branchId = useBranchStore((state) => state.unidadeAtual?.id);
+    const branchId = useBranchIdForFilter();
 
     // Confirmation dialog
     const { confirm, dialogProps } = useConfirmDialog();

@@ -53,11 +53,14 @@ export default function Dashboard() {
     const { data: recentTransactions, isLoading: recentLoading } = useRecentTransactions(5, undefined, selectedYear);
     const { data: upcomingPayments, isLoading: upcomingLoading } = useUpcomingPayments(15);
 
+    const isAdm = unidadeAtual?.code === 'ADM';
+    const branchIdForFilter = isAdm ? undefined : unidadeAtual?.id;
+
     // Receitas por categoria (todas do período, não só as 5 transações recentes)
     const { data: categoryBreakdownReceitas, isLoading: categoryLoading } = useQuery({
-        queryKey: ['dashboard-receitas-por-categoria', unidadeAtual?.id, yearStartDate, yearEndDate],
-        queryFn: () => getCategoryBreakdown(unidadeAtual!.id, 'receita', yearStartDate, yearEndDate),
-        enabled: !!unidadeAtual?.id,
+        queryKey: ['dashboard-receitas-por-categoria', branchIdForFilter ?? 'adm', yearStartDate, yearEndDate],
+        queryFn: () => getCategoryBreakdown(branchIdForFilter, 'receita', yearStartDate, yearEndDate),
+        enabled: !!unidadeAtual?.id || isAdm,
     });
 
     // Prepare chart data
@@ -88,10 +91,14 @@ export default function Dashboard() {
                             !
                         </h1>
                         <p className="text-muted-foreground">
-                            Aqui está o resumo financeiro de
-                            {' '}
-                            {selectedYear}
-                            {unidadeAtual && ` • ${unidadeAtual.name}`}
+                            {isAdm ? 'Visão consolidada de todas as filiais' : 'Aqui está o resumo financeiro de'}
+                            {!isAdm && (
+                                <>
+                                    {' '}
+                                    {selectedYear}
+                                    {unidadeAtual && ` • ${unidadeAtual.name}`}
+                                </>
+                            )}
                         </p>
                     </div>
                     <div className="flex items-center gap-3">

@@ -37,12 +37,13 @@ export const financialKeys = {
 // Hooks
 export function useFinancialEntries(filters: FinancialFilters = {}) {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
-    const branchId = filters.branchId || unidadeAtual?.id;
+    const isAdm = unidadeAtual?.code === 'ADM';
+    const branchId = isAdm ? undefined : (filters.branchId || unidadeAtual?.id);
 
     return useQuery({
         queryKey: financialKeys.list({ ...filters, branchId }),
         queryFn: () => getFinancialEntries({ ...filters, branchId }),
-        enabled: !!branchId,
+        enabled: !!branchId || isAdm,
     });
 }
 
@@ -56,45 +57,49 @@ export function useFinancialEntry(id: string) {
 
 export function useFinancialSummary(branchId?: string, startDate?: string, endDate?: string) {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
-    const effectiveBranchId = branchId || unidadeAtual?.id;
+    const isAdm = unidadeAtual?.code === 'ADM';
+    const effectiveBranchId = isAdm ? undefined : (branchId || unidadeAtual?.id);
 
     return useQuery({
-        queryKey: [...financialKeys.summary(effectiveBranchId || ''), startDate, endDate],
-        queryFn: () => getFinancialSummary(effectiveBranchId!, startDate, endDate),
-        enabled: !!effectiveBranchId,
+        queryKey: [...financialKeys.summary(effectiveBranchId || 'adm'), startDate, endDate],
+        queryFn: () => getFinancialSummary(effectiveBranchId, startDate, endDate),
+        enabled: !!effectiveBranchId || isAdm,
     });
 }
 
 export function useMonthlyData(year: number, branchId?: string) {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
-    const effectiveBranchId = branchId || unidadeAtual?.id;
+    const isAdm = unidadeAtual?.code === 'ADM';
+    const effectiveBranchId = isAdm ? undefined : (branchId || unidadeAtual?.id);
 
     return useQuery({
-        queryKey: financialKeys.monthly(effectiveBranchId || '', year),
-        queryFn: () => getMonthlyData(effectiveBranchId!, year),
-        enabled: !!effectiveBranchId,
+        queryKey: financialKeys.monthly(effectiveBranchId || 'adm', year),
+        queryFn: () => getMonthlyData(effectiveBranchId, year),
+        enabled: !!effectiveBranchId || isAdm,
     });
 }
 
 export function useUpcomingPayments(days: number = 30, branchId?: string) {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
-    const effectiveBranchId = branchId || unidadeAtual?.id;
+    const isAdm = unidadeAtual?.code === 'ADM';
+    const effectiveBranchId = isAdm ? undefined : (branchId || unidadeAtual?.id);
 
     return useQuery({
-        queryKey: [...financialKeys.upcoming(effectiveBranchId || ''), days],
-        queryFn: () => getUpcomingPayments(effectiveBranchId!, days),
-        enabled: !!effectiveBranchId,
+        queryKey: [...financialKeys.upcoming(effectiveBranchId || 'adm'), days],
+        queryFn: () => getUpcomingPayments(effectiveBranchId, days),
+        enabled: !!effectiveBranchId || isAdm,
     });
 }
 
 export function useRecentTransactions(limit: number = 10, branchId?: string, year?: number) {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
-    const effectiveBranchId = branchId || unidadeAtual?.id;
+    const isAdm = unidadeAtual?.code === 'ADM';
+    const effectiveBranchId = isAdm ? undefined : (branchId || unidadeAtual?.id);
 
     return useQuery({
-        queryKey: [...financialKeys.recent(effectiveBranchId || ''), limit, year],
-        queryFn: () => getRecentTransactions(effectiveBranchId!, limit, year),
-        enabled: !!effectiveBranchId,
+        queryKey: [...financialKeys.recent(effectiveBranchId || 'adm'), limit, year],
+        queryFn: () => getRecentTransactions(effectiveBranchId, limit, year),
+        enabled: !!effectiveBranchId || isAdm,
     });
 }
 
@@ -169,7 +174,9 @@ export function useUpdateOverdueEntries() {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
 
     return useMutation({
-        mutationFn: () => updateOverdueEntries(unidadeAtual?.id || ''),
+        mutationFn: () => updateOverdueEntries(
+            unidadeAtual?.code === 'ADM' ? undefined : (unidadeAtual?.id || undefined)
+        ),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: financialKeys.all });
         },
