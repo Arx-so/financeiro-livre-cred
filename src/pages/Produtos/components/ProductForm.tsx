@@ -36,6 +36,7 @@ export interface ProductFormData {
     interest_rate_max: string;
     billing_type: string[];
     iof_applicable: boolean;
+    iof_percentage: string;
     other_fees_cadastro: string;
     other_fees_operacao: string;
     other_fees_seguro: string;
@@ -358,12 +359,29 @@ export function ProductForm({
                         onCheckedChange={(checked) => setFormData({
                             ...formData,
                             iof_applicable: checked === true,
+                            iof_percentage: checked === true ? formData.iof_percentage : '',
                         })}
                     />
                     <label htmlFor="iof_applicable" className="text-sm font-medium cursor-pointer">
                         IOF aplicável?
                     </label>
                 </div>
+                {formData.iof_applicable && (
+                    <div>
+                        <label className="block text-sm font-medium text-muted-foreground mb-2">
+                            % IOF (despesa do produto)
+                        </label>
+                        <input
+                            type="number"
+                            step="0.001"
+                            min="0"
+                            className="input-financial w-48"
+                            placeholder="0.000"
+                            value={formData.iof_percentage}
+                            onChange={(e) => setFormData({ ...formData, iof_percentage: e.target.value })}
+                        />
+                    </div>
+                )}
                 <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
                         Outras taxas (R$)

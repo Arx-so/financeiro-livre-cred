@@ -57,7 +57,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                             <BreadcrumbList>
                                 <BreadcrumbItem className="hidden md:block">
                                     <BreadcrumbLink asChild>
-                                        <Link to="/dashboard">FinControl</Link>
+                                        <Link to="/dashboard">LivreCred</Link>
                                     </BreadcrumbLink>
                                 </BreadcrumbItem>
                                 <BreadcrumbSeparator className="hidden md:block" />

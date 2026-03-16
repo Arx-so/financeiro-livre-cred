@@ -81,7 +81,7 @@ export default function Login() {
                     <div className="flex items-center gap-4 mb-8">
                         <img
                             src="/logo.jpeg"
-                            alt="FinControl Logo"
+                            alt="LivreCred Logo"
                             className="w-32 h-32 rounded-2xl object-cover"
                         />
                         <div>
@@ -99,7 +99,7 @@ export default function Login() {
                     <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
                         <img
                             src="/logo.jpeg"
-                            alt="FinControl Logo"
+                            alt="LivreCred Logo"
                             className="w-32 h-32 rounded-xl object-cover"
                         />
                         <div>

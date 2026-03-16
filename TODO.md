@@ -1,4 +1,4 @@
-# TODO - Sistema FinControl
+# TODO - Sistema LivreCred
 
 > Análise realizada em: 15/01/2026  
 > Status geral: ~85% do escopo implementado  

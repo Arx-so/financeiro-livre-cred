@@ -1,4 +1,4 @@
-# FinControl - Sistema de Gestão Financeira
+# LivreCred - Sistema de Gestão Financeira
 
 Sistema completo de gestão financeira empresarial desenvolvido com React, TypeScript e Supabase.
 

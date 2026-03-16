@@ -15,9 +15,9 @@ import {
 export function VisaoGeral() {
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-foreground">Bem-vindo ao FinControl!</h2>
+            <h2 className="text-2xl font-bold text-foreground">Bem-vindo ao LivreCred!</h2>
             <p className="text-muted-foreground">
-                O FinControl é um sistema completo de gestão financeira empresarial que permite controlar
+                O LivreCred é um sistema completo de gestão financeira empresarial que permite controlar
                 todas as operações financeiras da sua empresa de forma simples e eficiente.
             </p>
 

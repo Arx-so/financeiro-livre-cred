@@ -1,4 +1,4 @@
-# Relatório de Status - Sistema FinControl
+# Relatório de Status - Sistema LivreCred
 
 **Data:** 15/01/2026
 **Progresso Geral:** 70-75% concluído

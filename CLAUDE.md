@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-**FinControl** — Financial management system (Portuguese/Brazilian). React 18 + TypeScript + Vite, backed by Supabase.
+**LivreCred** — Financial management system (Portuguese/Brazilian). React 18 + TypeScript + Vite, backed by Supabase.
 
 ### Data flow
 

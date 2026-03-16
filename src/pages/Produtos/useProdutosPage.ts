@@ -35,6 +35,7 @@ const initialFormData: ProductFormData = {
     interest_rate_max: '',
     billing_type: [],
     iof_applicable: false,
+    iof_percentage: '',
     other_fees_cadastro: '',
     other_fees_operacao: '',
     other_fees_seguro: '',
@@ -143,6 +144,7 @@ export function useProdutosPage() {
             interest_rate_max: product.interest_rate_max != null ? String(product.interest_rate_max) : '',
             billing_type: billingType,
             iof_applicable: product.iof_applicable ?? false,
+            iof_percentage: otherFees?.iof != null ? String(otherFees.iof) : '',
             other_fees_cadastro: otherFees?.cadastro != null ? String(otherFees.cadastro) : '',
             other_fees_operacao: otherFees?.operacao != null ? String(otherFees.operacao) : '',
             other_fees_seguro: otherFees?.seguro != null ? String(otherFees.seguro) : '',
@@ -189,9 +191,11 @@ export function useProdutosPage() {
             const cad = parseFloat(formData.other_fees_cadastro);
             const ope = parseFloat(formData.other_fees_operacao);
             const seg = parseFloat(formData.other_fees_seguro);
+            const iofPct = parseFloat(formData.iof_percentage);
             if (Number.isFinite(cad) && cad > 0) other_fees.cadastro = cad;
             if (Number.isFinite(ope) && ope > 0) other_fees.operacao = ope;
             if (Number.isFinite(seg) && seg > 0) other_fees.seguro = seg;
+            if (formData.iof_applicable && Number.isFinite(iofPct) && iofPct > 0) other_fees.iof = iofPct;
 
             const commission_received_by: ProductCommissionReceivedBy = {};
             const crProduct = parseFloat(formData.commission_received_by_product);
