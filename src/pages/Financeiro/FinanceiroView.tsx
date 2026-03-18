@@ -35,6 +35,7 @@ import {
 } from '@/components/shared';
 import { FavorecidoForm } from '@/pages/Favorecidos/components/FavorecidoForm';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { RecurringEditDialog } from './RecurringEditDialog';
 import type { useFinanceiroPage } from './useFinanceiroPage';
 import type { EntryType, EntryStatus, RecurrenceType } from '@/types/database';
 
@@ -101,6 +102,12 @@ export function FinanceiroView(props: FinanceiroViewProps) {
         openEditModal,
         handleExport,
         handleImportNFE,
+        // Recurring edit
+        recurringEditDialogOpen,
+        recurringEditEntry,
+        recurringGroup,
+        handleRecurringEditConfirm,
+        handleRecurringEditCancel,
         // Favorecido modal
         isFavorecidoModalOpen,
         setIsFavorecidoModalOpen,
@@ -374,6 +381,14 @@ export function FinanceiroView(props: FinanceiroViewProps) {
                     </div>
                 )}
             </div>
+
+            <RecurringEditDialog
+                open={recurringEditDialogOpen}
+                entry={recurringEditEntry}
+                groupEntries={recurringGroup}
+                onConfirm={handleRecurringEditConfirm}
+                onCancel={handleRecurringEditCancel}
+            />
 
             <ConfirmDialog {...dialogProps} isLoading={isDeleting} />
 

@@ -10,6 +10,7 @@ import {
     CheckCircle,
     Clock,
     Users,
+    Zap,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import {
@@ -32,6 +33,7 @@ import {
 import { formatCurrency } from '@/lib/utils';
 import { BatchPayrollForm } from './components/BatchPayrollForm';
 import { HiringCategoriesManager } from './components/HiringCategoriesManager';
+import { BatchFinancialGenerationDialog } from './components/BatchFinancialGenerationDialog';
 import type { useFolhaPagamentoPage } from './useFolhaPagamentoPage';
 
 type FolhaPagamentoViewProps = ReturnType<typeof useFolhaPagamentoPage>;
@@ -89,6 +91,9 @@ export function FolhaPagamentoView(props: FolhaPagamentoViewProps) {
         setBatchConfig,
         toggleBatchMode,
         handleBatchSubmit,
+        // Batch financial generation
+        isBatchGenerationOpen,
+        setIsBatchGenerationOpen,
     } = props;
 
     const currentYear = new Date().getFullYear();
@@ -103,6 +108,13 @@ export function FolhaPagamentoView(props: FolhaPagamentoViewProps) {
                     description="Gerencie os pagamentos dos funcionários"
                 >
                     <div className="flex items-center gap-2">
+                        <button
+                            className="btn-primary bg-income hover:bg-income/90 border-income"
+                            onClick={() => setIsBatchGenerationOpen(true)}
+                        >
+                            <Zap className="w-4 h-4" />
+                            Gerar Lançamentos
+                        </button>
                         <HiringCategoriesManager />
                         <Dialog
                             open={isModalOpen}
@@ -583,6 +595,12 @@ export function FolhaPagamentoView(props: FolhaPagamentoViewProps) {
             </div>
 
             <ConfirmDialog {...dialogProps} isLoading={isDeleting} />
+
+            <BatchFinancialGenerationDialog
+                open={isBatchGenerationOpen}
+                onClose={() => setIsBatchGenerationOpen(false)}
+                allEmployees={funcionarios}
+            />
         </AppLayout>
     );
 }

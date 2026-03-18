@@ -138,6 +138,65 @@ export async function createFinancialEntries(entries: FinancialEntryInsert[]): P
     return data || [];
 }
 
+// Create recurring financial entries with group linking via recurring_parent_id
+export async function createRecurringFinancialEntries(entries: FinancialEntryInsert[]): Promise<FinancialEntry[]> {
+    if (entries.length === 0) return [];
+    if (entries.length === 1) return [await createFinancialEntry(entries[0])];
+
+    // Create the first entry to obtain its ID, which becomes the group parent
+    const firstEntry = await createFinancialEntry(entries[0]);
+
+    // Create the remaining entries pointing back to the first entry
+    const { data, error } = await supabase
+        .from('financial_entries')
+        .insert(entries.slice(1).map((e) => ({ ...e, recurring_parent_id: firstEntry.id })))
+        .select();
+
+    if (error) {
+        console.error('Error creating recurring financial entries:', error);
+        throw error;
+    }
+
+    return [firstEntry, ...(data || [])];
+}
+
+// Get all entries belonging to the same recurring group as the given entry
+export async function getRecurringGroup(entry: {
+    id: string;
+    recurring_parent_id: string | null;
+}): Promise<FinancialEntry[]> {
+    // If the entry has a parent, use that as root; otherwise the entry itself is the root
+    const rootId = entry.recurring_parent_id ?? entry.id;
+
+    const { data, error } = await supabase
+        .from('financial_entries')
+        .select('*')
+        .or(`id.eq.${rootId},recurring_parent_id.eq.${rootId}`)
+        .order('due_date', { ascending: true });
+
+    if (error) {
+        console.error('Error fetching recurring group:', error);
+        throw error;
+    }
+
+    return data || [];
+}
+
+// Update multiple financial entries at once
+export async function updateFinancialEntries(ids: string[], update: FinancialEntryUpdate): Promise<void> {
+    if (ids.length === 0) return;
+
+    const { error } = await supabase
+        .from('financial_entries')
+        .update(update)
+        .in('id', ids);
+
+    if (error) {
+        console.error('Error updating financial entries:', error);
+        throw error;
+    }
+}
+
 // Helper function to calculate next recurrence dates
 export function calculateRecurringDates(
     startDate: string,

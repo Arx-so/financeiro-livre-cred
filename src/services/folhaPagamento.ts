@@ -213,6 +213,120 @@ export async function generateFinancialEntry(payrollId: string): Promise<Payroll
     return updatedPayroll;
 }
 
+const monthNamesService = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+];
+
+/**
+ * Busca folhas de pagamento em um intervalo de meses para geração em lote
+ */
+export async function getPayrollsInRange(
+    branchId: string | undefined,
+    employeeIds: string[] | undefined,
+    startYear: number,
+    startMonth: number,
+    endYear: number,
+    endMonth: number,
+): Promise<PayrollWithEmployee[]> {
+    let query = supabase
+        .from('payroll')
+        .select('*, employee:favorecidos(id, name, document, categoria_contratacao)')
+        .gte('reference_year', startYear)
+        .lte('reference_year', endYear)
+        .order('reference_year', { ascending: true })
+        .order('reference_month', { ascending: true });
+
+    if (branchId) query = query.eq('branch_id', branchId);
+    if (employeeIds && employeeIds.length > 0) query = query.in('employee_id', employeeIds);
+
+    const { data, error } = await query;
+
+    if (error) {
+        console.error('Error fetching payrolls in range:', error);
+        throw error;
+    }
+
+    const startIndex = startYear * 12 + startMonth;
+    const endIndex = endYear * 12 + endMonth;
+
+    return (data || []).filter((p) => {
+        const index = p.reference_year * 12 + p.reference_month;
+        return index >= startIndex && index <= endIndex;
+    });
+}
+
+export interface BatchGenerationResultItem {
+    payrollId: string;
+    employeeName: string;
+    period: string;
+    value: number;
+    status: 'created' | 'error';
+    error?: string;
+}
+
+/**
+ * Gera lançamentos financeiros em lote a partir de uma lista de folhas
+ * Folhas que já têm lançamento terão o antigo removido e um novo criado
+ */
+export async function generateFinancialEntriesBatch(
+    selectedPayrolls: PayrollWithEmployee[],
+): Promise<BatchGenerationResultItem[]> {
+    const results: BatchGenerationResultItem[] = [];
+
+    for (const payroll of selectedPayrolls) {
+        const employeeName = payroll.employee?.name || 'Funcionário';
+        const period = `${monthNamesService[payroll.reference_month - 1]}/${payroll.reference_year}`;
+
+        try {
+            // Remove lançamento anterior se existir
+            if (payroll.financial_entry_id) {
+                const { error: deleteError } = await supabase
+                    .from('financial_entries')
+                    .delete()
+                    .eq('id', payroll.financial_entry_id);
+                if (deleteError) throw deleteError;
+            }
+
+            const entryData: FinancialEntryInsert = {
+                branch_id: payroll.branch_id,
+                type: 'despesa',
+                description: `Folha de Pagamento - ${employeeName} - ${period}`,
+                value: payroll.net_salary,
+                due_date: `${payroll.reference_year}-${String(payroll.reference_month).padStart(2, '0')}-05`,
+                status: 'pendente',
+                favorecido_id: payroll.employee_id,
+                notes: 'Folha de pagamento gerada automaticamente. Salário líquido.',
+            };
+
+            const { data: entry, error: entryError } = await supabase
+                .from('financial_entries')
+                .insert(entryData)
+                .select()
+                .single();
+
+            if (entryError) throw entryError;
+
+            await updatePayroll(payroll.id, { financial_entry_id: entry.id });
+
+            results.push({
+                payrollId: payroll.id, employeeName, period, value: payroll.net_salary, status: 'created',
+            });
+        } catch (err: any) {
+            results.push({
+                payrollId: payroll.id,
+                employeeName,
+                period,
+                value: payroll.net_salary,
+                status: 'error',
+                error: err?.message || 'Erro desconhecido',
+            });
+        }
+    }
+
+    return results;
+}
+
 /**
  * Calcula o salário líquido
  */
