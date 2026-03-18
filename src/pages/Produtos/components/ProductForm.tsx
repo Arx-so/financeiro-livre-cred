@@ -1,5 +1,8 @@
 import { useMemo } from 'react';
-import { Loader2 } from 'lucide-react';
+import {
+    Loader2, CreditCard, Plus, Trash2,
+    Tag, Users, TrendingUp, Settings2, PieChart, Percent, FileCheck,
+} from 'lucide-react';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatCurrency } from '@/lib/utils';
@@ -11,9 +14,18 @@ import {
     COMMISSION_TYPES,
     COMMISSION_RECEIVED_BY_LABELS,
     REQUIRED_DOCS_OPTIONS,
+    CARD_BRANDS,
+    CARD_MACHINES,
 } from '@/constants/products';
 
+export interface MachineFeeTier {
+    from: string;
+    to: string;
+    fee: string;
+}
+
 export interface ProductFormData {
+    product_type: string;
     name: string;
     code: string;
     description: string;
@@ -23,6 +35,11 @@ export interface ProductFormData {
     bank_percentage: string;
     company_percentage: string;
     is_active: boolean;
+    // Cartão de crédito específico
+    card_brand: string;
+    card_machine: string;
+    card_machine_fee: string;
+    card_machine_fee_tiers: MachineFeeTier[];
     // Tipo de Cliente Elegível
     eligible_client_type: string;
     // Público-alvo
@@ -107,13 +124,266 @@ export function ProductForm({
     onSubmit,
     onCancel,
 }: ProductFormProps) {
+    const isCartaoCredito = formData.product_type === 'cartao_credito';
+
     return (
         <form className="space-y-4 mt-4 max-h-[80vh] overflow-y-auto" onSubmit={onSubmit}>
+
+            {/* Seção específica: Cartão de Crédito */}
+            {isCartaoCredito && (
+                <div className="rounded-xl border-2 border-blue-500/40 bg-blue-500/5 p-4 space-y-4">
+                    <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                            <CreditCard className="w-4 h-4" />
+                        </div>
+                        <h4 className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                            Configurações do Cartão de Crédito
+                        </h4>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">
+                                Bandeira *
+                            </label>
+                            <select
+                                className="input-financial"
+                                value={formData.card_brand}
+                                onChange={(e) => setFormData({ ...formData, card_brand: e.target.value })}
+                                required={isCartaoCredito}
+                            >
+                                <option value="">Selecione a bandeira</option>
+                                {CARD_BRANDS.map((b) => (
+                                    <option key={b.value} value={b.value}>{b.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">
+                                Máquina / Adquirente *
+                            </label>
+                            <select
+                                className="input-financial"
+                                value={formData.card_machine}
+                                onChange={(e) => setFormData({ ...formData, card_machine: e.target.value })}
+                                required={isCartaoCredito}
+                            >
+                                <option value="">Selecione a máquina</option>
+                                {CARD_MACHINES.map((m) => (
+                                    <option key={m.value} value={m.value}>{m.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">
+                                Parcelas mínimas
+                            </label>
+                            <input
+                                type="number"
+                                min="1"
+                                className="input-financial"
+                                placeholder="Ex: 2"
+                                value={formData.term_months_min}
+                                onChange={(e) => setFormData({ ...formData, term_months_min: e.target.value })}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">
+                                Parcelas máximas
+                            </label>
+                            <input
+                                type="number"
+                                min="1"
+                                className="input-financial"
+                                placeholder="Ex: 18"
+                                value={formData.term_months_max}
+                                onChange={(e) => setFormData({ ...formData, term_months_max: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                    {/* Taxa da maquineta — padrão + faixas variáveis */}
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <label className="block text-sm font-medium text-foreground">
+                                Taxa da maquineta (%)
+                            </label>
+                        </div>
+                        {/* Taxa padrão / fallback */}
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="100"
+                                className="input-financial w-40"
+                                placeholder="Ex: 3.99"
+                                value={formData.card_machine_fee}
+                                onChange={(e) => setFormData({ ...formData, card_machine_fee: e.target.value })}
+                            />
+                            <span className="text-sm text-muted-foreground">
+                                %
+                                {formData.card_machine_fee_tiers.length > 0 && ' (fallback)'}
+                            </span>
+                        </div>
+
+                        {/* Faixas por parcelas */}
+                        <div>
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                    Taxas por faixa de parcelas
+                                </span>
+                                <button
+                                    type="button"
+                                    className="inline-flex items-center gap-1 text-xs text-primary hover:text-primary/80 font-medium"
+                                    onClick={() => setFormData({
+                                        ...formData,
+                                        card_machine_fee_tiers: [
+                                            ...formData.card_machine_fee_tiers,
+                                            { from: '', to: '', fee: '' },
+                                        ],
+                                    })}
+                                >
+                                    <Plus className="w-3 h-3" />
+                                    Adicionar faixa
+                                </button>
+                            </div>
+                            {formData.card_machine_fee_tiers.length === 0 ? (
+                                <p className="text-xs text-muted-foreground">
+                                    Nenhuma faixa configurada — taxa única usada para todas as parcelas.
+                                </p>
+                            ) : (
+                                <div className="rounded-lg border border-border overflow-hidden">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="bg-muted/50 text-xs text-muted-foreground">
+                                                <th className="text-left px-3 py-2 font-medium">De (parcelas)</th>
+                                                <th className="text-left px-3 py-2 font-medium">Até (parcelas)</th>
+                                                <th className="text-left px-3 py-2 font-medium">Taxa (%)</th>
+                                                <th className="px-2 py-2" />
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {formData.card_machine_fee_tiers.map((tier, i) => (
+                                                <tr key={i} className="border-t border-border">
+                                                    <td className="px-3 py-2">
+                                                        <input
+                                                            type="number"
+                                                            min="1"
+                                                            className="input-financial w-full"
+                                                            placeholder="1"
+                                                            value={tier.from}
+                                                            onChange={(e) => {
+                                                                const tiers = [...formData.card_machine_fee_tiers];
+                                                                tiers[i] = { ...tiers[i], from: e.target.value };
+                                                                setFormData({ ...formData, card_machine_fee_tiers: tiers });
+                                                            }}
+                                                        />
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <input
+                                                            type="number"
+                                                            min="1"
+                                                            className="input-financial w-full"
+                                                            placeholder="12"
+                                                            value={tier.to}
+                                                            onChange={(e) => {
+                                                                const tiers = [...formData.card_machine_fee_tiers];
+                                                                tiers[i] = { ...tiers[i], to: e.target.value };
+                                                                setFormData({ ...formData, card_machine_fee_tiers: tiers });
+                                                            }}
+                                                        />
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <div className="flex items-center gap-1">
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                min="0"
+                                                                max="100"
+                                                                className="input-financial w-full"
+                                                                placeholder="3.99"
+                                                                value={tier.fee}
+                                                                onChange={(e) => {
+                                                                    const tiers = [...formData.card_machine_fee_tiers];
+                                                                    tiers[i] = { ...tiers[i], fee: e.target.value };
+                                                                    setFormData({ ...formData, card_machine_fee_tiers: tiers });
+                                                                }}
+                                                            />
+                                                            <span className="text-muted-foreground shrink-0">%</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-2 py-2">
+                                                        <button
+                                                            type="button"
+                                                            className="text-muted-foreground hover:text-destructive transition-colors"
+                                                            onClick={() => {
+                                                                const tiers = formData.card_machine_fee_tiers.filter((_, j) => j !== i);
+                                                                setFormData({ ...formData, card_machine_fee_tiers: tiers });
+                                                            }}
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                            {formData.card_machine_fee_tiers.length > 0 && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                    Parcelas fora das faixas usarão a taxa padrão acima.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">
+                                Taxa de juros mínima aceita (% total)
+                            </label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                className="input-financial"
+                                placeholder="Ex: 3.5"
+                                value={formData.interest_rate_min}
+                                onChange={(e) => setFormData({ ...formData, interest_rate_min: e.target.value })}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-foreground mb-2">
+                                Taxa de juros máxima aceita (% total)
+                            </label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                className="input-financial"
+                                placeholder="Ex: 10"
+                                value={formData.interest_rate_max}
+                                onChange={(e) => setFormData({ ...formData, interest_rate_max: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                    <p className="text-xs text-blue-600/80 dark:text-blue-400/80">
+                        Esses campos também aparecem nos Parâmetros Financeiros abaixo com seus valores gerais.
+                    </p>
+                </div>
+            )}
+
             {/* Identificação */}
-            <div className="space-y-4">
-                <h4 className="text-sm font-semibold text-foreground border-b border-border pb-1">
-                    Identificação
-                </h4>
+            <div className="rounded-xl border-2 border-slate-400/40 bg-slate-500/5 p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-slate-500/15 text-slate-600 dark:text-slate-400">
+                        <Tag className="w-4 h-4" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        Identificação
+                    </h4>
+                </div>
                 <div>
                     <label className="block text-sm font-medium text-foreground mb-2">Nome *</label>
                     <input
@@ -179,10 +449,15 @@ export function ProductForm({
             </div>
 
             {/* Tipo de Cliente Elegível + Público-alvo */}
-            <div className="border-t border-border pt-4 space-y-4">
-                <h4 className="text-sm font-semibold text-foreground border-b border-border pb-1">
-                    Cliente e Público-alvo
-                </h4>
+            <div className="rounded-xl border-2 border-teal-500/40 bg-teal-500/5 p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-teal-500/15 text-teal-600 dark:text-teal-400">
+                        <Users className="w-4 h-4" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-teal-700 dark:text-teal-300">
+                        Cliente e Público-alvo
+                    </h4>
+                </div>
                 <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
                         Tipo de Cliente Elegível
@@ -245,10 +520,15 @@ export function ProductForm({
             </div>
 
             {/* Parâmetros Financeiros */}
-            <div className="border-t border-border pt-4 space-y-4">
-                <h4 className="text-sm font-semibold text-foreground border-b border-border pb-1">
-                    Parâmetros Financeiros do Produto
-                </h4>
+            <div className="rounded-xl border-2 border-emerald-500/40 bg-emerald-500/5 p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                        <TrendingUp className="w-4 h-4" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                        Parâmetros Financeiros do Produto
+                    </h4>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-muted-foreground mb-2">
@@ -272,7 +552,7 @@ export function ProductForm({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-muted-foreground mb-2">
-                            Prazo mínimo (meses)
+                            {isCartaoCredito ? 'Parcelas mínimas' : 'Prazo mínimo (meses)'}
                         </label>
                         <input
                             type="number"
@@ -285,7 +565,7 @@ export function ProductForm({
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-muted-foreground mb-2">
-                            Prazo máximo (meses)
+                            {isCartaoCredito ? 'Parcelas máximas' : 'Prazo máximo (meses)'}
                         </label>
                         <input
                             type="number"
@@ -422,11 +702,16 @@ export function ProductForm({
             </div>
 
             {/* Regras Específicas */}
-            <div className="border-t border-border pt-4">
-                <h4 className="text-sm font-semibold text-foreground border-b border-border pb-1 mb-2">
-                    Regras Específicas por Produto
-                </h4>
-                <p className="text-xs text-muted-foreground mb-2">
+            <div className="rounded-xl border-2 border-amber-500/40 bg-amber-500/5 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                        <Settings2 className="w-4 h-4" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                        Regras Específicas por Produto
+                    </h4>
+                </div>
+                <p className="text-xs text-muted-foreground">
                     Ex.: Consignado (margem mínima, órgãos); FGTS (% antecipação); Veículo (ano
                     mínimo, % FIPE); Cartão (limite, % liberado); Energia (concessionárias).
                 </p>
@@ -439,11 +724,16 @@ export function ProductForm({
             </div>
 
             {/* Repartição do valor */}
-            <div className="border-t border-border pt-4">
-                <h4 className="text-sm font-semibold text-foreground border-b border-border pb-1 mb-3">
-                    Repartição do valor
-                </h4>
-                <p className="text-xs text-muted-foreground mb-3">
+            <div className="rounded-xl border-2 border-violet-500/40 bg-violet-500/5 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-violet-500/15 text-violet-600 dark:text-violet-400">
+                        <PieChart className="w-4 h-4" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-violet-700 dark:text-violet-300">
+                        Repartição do valor
+                    </h4>
+                </div>
+                <p className="text-xs text-muted-foreground">
                     Valor de referência e percentuais (banco + empresa = 100%). Ao alterar um, o outro
                     é preenchido automaticamente. Valores em R$ são calculados a partir do valor de referência.
                 </p>
@@ -510,10 +800,15 @@ export function ProductForm({
             </div>
 
             {/* Comissionamento */}
-            <div className="border-t border-border pt-4 space-y-4">
-                <h4 className="text-sm font-semibold text-foreground border-b border-border pb-1">
-                    Comissionamento
-                </h4>
+            <div className="rounded-xl border-2 border-yellow-500/40 bg-yellow-500/5 p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-yellow-500/15 text-yellow-600 dark:text-yellow-400">
+                        <Percent className="w-4 h-4" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-yellow-700 dark:text-yellow-300">
+                        Comissionamento
+                    </h4>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-foreground mb-2">
@@ -636,10 +931,15 @@ export function ProductForm({
             </div>
 
             {/* Documentação Exigida */}
-            <div className="border-t border-border pt-4">
-                <h4 className="text-sm font-semibold text-foreground border-b border-border pb-1 mb-2">
-                    Documentação Exigida
-                </h4>
+            <div className="rounded-xl border-2 border-indigo-500/40 bg-indigo-500/5 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+                        <FileCheck className="w-4 h-4" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+                        Documentação Exigida
+                    </h4>
+                </div>
                 <div className="flex flex-wrap gap-4 mb-3">
                     {REQUIRED_DOCS_OPTIONS.map((opt) => (
                         <label
@@ -677,7 +977,7 @@ export function ProductForm({
             </div>
 
             {/* Ativo */}
-            <div className="border-t border-border pt-4">
+            <div>
                 <label className="flex items-center gap-3 cursor-pointer">
                     <input
                         type="checkbox"

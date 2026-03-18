@@ -26,6 +26,7 @@ import {
     Megaphone,
     Brain,
     UserCheck,
+    HardHat,
 } from 'lucide-react';
 import { useAuthStore, useBranchStore } from '@/stores';
 import { ProfileModal } from './ProfileModal';
@@ -171,17 +172,28 @@ const navigationGroups: NavGroup[] = [
                 icon: Store,
                 roles: ['admin'],
             },
+        ],
+    },
+    {
+        label: 'Recursos Humanos',
+        items: [
             {
-                name: 'Usuários',
-                href: '/usuarios',
-                icon: UserCog,
-                roles: ['admin'],
+                name: 'Funcionários',
+                href: '/funcionarios',
+                icon: HardHat,
+                roles: ['admin', 'gerente', 'financeiro'],
             },
             {
                 name: 'Folha de Pagamento',
                 href: '/folha-pagamento',
                 icon: Receipt,
                 roles: ['admin', 'gerente', 'financeiro'],
+            },
+            {
+                name: 'Usuários',
+                href: '/usuarios',
+                icon: UserCog,
+                roles: ['admin'],
             },
         ],
     },

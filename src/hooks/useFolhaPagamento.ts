@@ -17,21 +17,25 @@ import type { PayrollInsert, PayrollUpdate } from '@/types/database';
 
 export function usePayrolls(filters: Omit<PayrollFilters, 'branchId'> = {}) {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
+    const isAdm = unidadeAtual?.code === 'ADM';
+    const branchId = isAdm ? undefined : unidadeAtual?.id;
 
     return useQuery({
-        queryKey: ['payrolls', unidadeAtual?.id, filters],
-        queryFn: () => getPayrolls({ ...filters, branchId: unidadeAtual?.id }),
-        enabled: !!unidadeAtual?.id,
+        queryKey: ['payrolls', branchId ?? 'adm', filters],
+        queryFn: () => getPayrolls({ ...filters, branchId }),
+        enabled: !!unidadeAtual?.id || isAdm,
     });
 }
 
 export function usePayrollSummary(month?: number, year?: number) {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
+    const isAdm = unidadeAtual?.code === 'ADM';
+    const branchId = isAdm ? undefined : unidadeAtual?.id;
 
     return useQuery({
-        queryKey: ['payroll-summary', unidadeAtual?.id, month, year],
-        queryFn: () => getPayrollSummary(unidadeAtual!.id, month, year),
-        enabled: !!unidadeAtual?.id,
+        queryKey: ['payroll-summary', branchId ?? 'adm', month, year],
+        queryFn: () => getPayrollSummary(branchId, month, year),
+        enabled: !!unidadeAtual?.id || isAdm,
     });
 }
 

@@ -10,12 +10,13 @@ import {
     useDeleteProduct,
 } from '@/hooks/useProducts';
 import type {
-    ProductInsert, ProductUpdate, ProductOtherFees, ProductCommissionReceivedBy
+    ProductInsert, ProductUpdate, ProductOtherFees, ProductCommissionReceivedBy, ProductType
 } from '@/types/database';
-import type { ProductFormData } from '@/pages/Produtos/components/ProductForm';
+import type { ProductFormData, MachineFeeTier } from '@/pages/Produtos/components/ProductForm';
 import type { ProductWithCategory } from '@/services/products';
 
 const initialFormData: ProductFormData = {
+    product_type: 'generico',
     name: '',
     code: '',
     description: '',
@@ -25,6 +26,10 @@ const initialFormData: ProductFormData = {
     bank_percentage: '0',
     company_percentage: '0',
     is_active: true,
+    card_brand: '',
+    card_machine: '',
+    card_machine_fee: '',
+    card_machine_fee_tiers: [],
     eligible_client_type: '',
     target_audience: [],
     value_min: '',
@@ -68,6 +73,7 @@ export function useProdutosPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterCategory, setFilterCategory] = useState<string>('');
     const [filterActive, setFilterActive] = useState<'todos' | 'ativos' | 'inativos'>('todos');
+    const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState<ProductFormData>(initialFormData);
@@ -97,10 +103,22 @@ export function useProdutosPage() {
         setEditingId(null);
     }, []);
 
-    const openModal = useCallback(() => {
+    // Abre o modal de seleção de tipo (para novos produtos)
+    const openTypeModal = useCallback(() => {
         resetForm();
-        setIsModalOpen(true);
+        setIsTypeModalOpen(true);
     }, [resetForm]);
+
+    const closeTypeModal = useCallback(() => {
+        setIsTypeModalOpen(false);
+    }, []);
+
+    // Chamado quando o usuário seleciona um tipo no modal
+    const handleTypeSelect = useCallback((type: string) => {
+        setFormData((prev) => ({ ...prev, product_type: type }));
+        setIsTypeModalOpen(false);
+        setIsModalOpen(true);
+    }, []);
 
     const closeModal = useCallback(() => {
         setIsModalOpen(false);
@@ -124,7 +142,31 @@ export function useProdutosPage() {
         const otherFees = product.other_fees as ProductOtherFees | null | undefined;
         const commissionReceived = product.commission_received_by as ProductCommissionReceivedBy | null | undefined;
 
+        // Extract card-specific fields from specific_rules
+        const rules = product.specific_rules as Record<string, unknown> | null;
+        const cardBrand = (rules?.card_brand as string) || '';
+        const cardMachine = (rules?.card_machine as string) || '';
+        const cardMachineFee = rules?.card_machine_fee != null ? String(rules.card_machine_fee) : '';
+        const rawTiers = rules?.card_machine_fee_tiers;
+        const cardMachineFeeTiers: MachineFeeTier[] = Array.isArray(rawTiers)
+            ? (rawTiers as Array<{ from: number; to: number; fee: number }>).map((t) => ({
+                from: String(t.from ?? ''),
+                to: String(t.to ?? ''),
+                fee: String(t.fee ?? ''),
+            }))
+            : [];
+        // Build display JSON without card-specific keys
+        const displayRules = rules ? { ...rules } : {};
+        delete displayRules.card_brand;
+        delete displayRules.card_machine;
+        delete displayRules.card_machine_fee;
+        delete displayRules.card_machine_fee_tiers;
+        const specificRulesStr = Object.keys(displayRules).length > 0
+            ? JSON.stringify(displayRules, null, 2)
+            : '';
+
         setFormData({
+            product_type: product.product_type || 'generico',
             name: product.name,
             code: product.code || '',
             description: product.description || '',
@@ -134,6 +176,10 @@ export function useProdutosPage() {
             bank_percentage: String(Math.round(bankPct * 100) / 100),
             company_percentage: String(Math.round(companyPct * 100) / 100),
             is_active: product.is_active,
+            card_brand: cardBrand,
+            card_machine: cardMachine,
+            card_machine_fee: cardMachineFee,
+            card_machine_fee_tiers: cardMachineFeeTiers,
             eligible_client_type: product.eligible_client_type || '',
             target_audience: targetAudience,
             value_min: product.value_min != null ? String(product.value_min) : '',
@@ -148,10 +194,7 @@ export function useProdutosPage() {
             other_fees_cadastro: otherFees?.cadastro != null ? String(otherFees.cadastro) : '',
             other_fees_operacao: otherFees?.operacao != null ? String(otherFees.operacao) : '',
             other_fees_seguro: otherFees?.seguro != null ? String(otherFees.seguro) : '',
-            specific_rules:
-                product.specific_rules && typeof product.specific_rules === 'object'
-                    ? JSON.stringify(product.specific_rules, null, 2)
-                    : '',
+            specific_rules: specificRulesStr,
             commission_type: product.commission_type || '',
             commission_pct: product.commission_pct != null ? String(product.commission_pct) : '',
             commission_min: product.commission_min != null ? String(product.commission_min) : '',
@@ -205,11 +248,36 @@ export function useProdutosPage() {
             if (Number.isFinite(crTerm) && crTerm > 0) commission_received_by.by_term = crTerm;
             if (Number.isFinite(crValue) && crValue > 0) commission_received_by.by_value = crValue;
 
-            const specific_rules = parseSpecificRules(formData.specific_rules);
+            // Merge card-specific fields into specific_rules
+            let specific_rules = parseSpecificRules(formData.specific_rules);
+            if (formData.product_type === 'cartao_credito') {
+                const machineFee = parseFloat(formData.card_machine_fee);
+                const validTiers = formData.card_machine_fee_tiers
+                    .map((t) => ({
+                        from: parseInt(t.from, 10),
+                        to: parseInt(t.to, 10),
+                        fee: parseFloat(t.fee),
+                    }))
+                    .filter((t) => Number.isFinite(t.from) && Number.isFinite(t.to) && Number.isFinite(t.fee));
+                specific_rules = {
+                    ...(specific_rules || {}),
+                    ...(formData.card_brand ? { card_brand: formData.card_brand } : {}),
+                    ...(formData.card_machine ? { card_machine: formData.card_machine } : {}),
+                    ...(Number.isFinite(machineFee) && machineFee > 0 ? { card_machine_fee: machineFee } : {}),
+                    ...(validTiers.length > 0 ? { card_machine_fee_tiers: validTiers } : {}),
+                };
+                if (Object.keys(specific_rules).length === 0) specific_rules = null;
+            }
+
             const commissionPaymentDay = formData.commission_payment_day.trim();
             const commission_payment_day = commissionPaymentDay !== '' && /^\d+$/.test(commissionPaymentDay)
                 ? Math.min(31, Math.max(1, parseInt(commissionPaymentDay, 10)))
                 : null;
+
+            const validProductTypes: ProductType[] = ['generico', 'cartao_credito', 'fgts', 'consignado'];
+            const product_type: ProductType = validProductTypes.includes(formData.product_type as ProductType)
+                ? (formData.product_type as ProductType)
+                : 'generico';
 
             const productData: ProductInsert | ProductUpdate = {
                 name: formData.name.trim(),
@@ -272,6 +340,7 @@ export function useProdutosPage() {
                     || formData.recurrence_type === 'anual'
                         ? formData.recurrence_type
                         : 'unico',
+                product_type,
             };
 
             try {
@@ -320,6 +389,7 @@ export function useProdutosPage() {
         setFilterCategory,
         filterActive,
         setFilterActive,
+        isTypeModalOpen,
         isModalOpen,
         setIsModalOpen,
         editingId,
@@ -332,7 +402,9 @@ export function useProdutosPage() {
         summary,
         productCategories: productCategories || [],
         isSaving,
-        openModal,
+        openTypeModal,
+        closeTypeModal,
+        handleTypeSelect,
         closeModal,
         openEditModal,
         handleSubmit,

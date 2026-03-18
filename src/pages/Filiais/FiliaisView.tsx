@@ -109,7 +109,7 @@ export function FiliaisView(props: FiliaisViewProps) {
                                 key={branch.id}
                                 branch={branch}
                                 onEdit={() => openEditBranchModal(branch)}
-                                onDelete={() => handleDeleteBranch(branch.id, branch.name)}
+                                onDelete={() => handleDeleteBranch(branch.id, branch.name, branch.code)}
                                 onReactivate={() => handleReactivateBranch(branch.id)}
                             />
                         ))}

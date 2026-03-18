@@ -34,6 +34,7 @@ import Contratos from "./pages/Contratos";
 import ContractTemplates from "./pages/Contratos/Templates";
 import Produtos from "./pages/Produtos";
 import FolhaPagamento from "./pages/FolhaPagamento";
+import Funcionarios from "./pages/Funcionarios";
 import Agenda from "./pages/Agenda";
 import Docs from "./pages/Docs";
 import ResetPassword from "./pages/ResetPassword";
@@ -139,6 +140,7 @@ function AppRoutes() {
             <Route path="/vendas/templates" element={<ProtectedRoute><ContractTemplates /></ProtectedRoute>} />
             <Route path="/produtos" element={<ProtectedRoute><Produtos /></ProtectedRoute>} />
             <Route path="/folha-pagamento" element={<ProtectedRoute><FolhaPagamento /></ProtectedRoute>} />
+            <Route path="/funcionarios" element={<ProtectedRoute><Funcionarios /></ProtectedRoute>} />
             <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
             <Route path="/docs" element={<ProtectedRoute><Docs /></ProtectedRoute>} />
 

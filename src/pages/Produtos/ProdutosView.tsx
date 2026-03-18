@@ -6,7 +6,6 @@ import {
     DialogDescription,
     DialogHeader,
     DialogTitle,
-    DialogTrigger,
 } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
@@ -16,8 +15,15 @@ import {
     StatCard,
     SearchInput,
 } from '@/components/shared';
-import { ProductForm, ProductCard } from './components';
+import { ProductForm, ProductCard, ProductTypeModal } from './components';
 import type { useProdutosPage } from './useProdutosPage';
+
+const PRODUCT_TYPE_LABELS: Record<string, string> = {
+    generico: 'Produto Genérico',
+    cartao_credito: 'Cartão de Crédito',
+    fgts: 'FGTS',
+    consignado: 'Consignado',
+};
 
 type ProdutosViewProps = ReturnType<typeof useProdutosPage>;
 
@@ -30,6 +36,7 @@ export function ProdutosView(props: ProdutosViewProps) {
         setFilterCategory,
         filterActive,
         setFilterActive,
+        isTypeModalOpen,
         isModalOpen,
         setIsModalOpen,
         editingId,
@@ -50,12 +57,19 @@ export function ProdutosView(props: ProdutosViewProps) {
         isSaving,
 
         // Handlers
+        openTypeModal,
+        closeTypeModal,
+        handleTypeSelect,
         closeModal,
         openEditModal,
         handleSubmit,
         handleDelete,
         resetForm,
     } = props;
+
+    const formTitle = editingId
+        ? `Editar Produto`
+        : `Novo ${PRODUCT_TYPE_LABELS[formData.product_type] || 'Produto'}`;
 
     return (
         <AppLayout>
@@ -65,40 +79,45 @@ export function ProdutosView(props: ProdutosViewProps) {
                     title="Produtos"
                     description="Gerencie o cadastro de produtos"
                 >
-                    <Dialog
-                        open={isModalOpen}
-                        onOpenChange={(open) => {
-                            setIsModalOpen(open);
-                            if (!open) resetForm();
-                        }}
-                    >
-                        <DialogTrigger asChild>
-                            <button className="btn-primary">
-                                <Plus className="w-4 h-4" />
-                                Novo Produto
-                            </button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl max-h-[90vh] min-w-[60vw] ">
-                            <DialogHeader>
-                                <DialogTitle>
-                                    {editingId ? 'Editar Produto' : 'Novo Produto'}
-                                </DialogTitle>
-                                <DialogDescription>
-                                    Preencha os dados do produto
-                                </DialogDescription>
-                            </DialogHeader>
-                            <ProductForm
-                                formData={formData}
-                                setFormData={setFormData}
-                                productCategories={productCategories}
-                                editingId={editingId}
-                                isSaving={isSaving}
-                                onSubmit={handleSubmit}
-                                onCancel={closeModal}
-                            />
-                        </DialogContent>
-                    </Dialog>
+                    <button className="btn-primary" onClick={openTypeModal}>
+                        <Plus className="w-4 h-4" />
+                        Novo Produto
+                    </button>
                 </PageHeader>
+
+                {/* Modal de seleção de tipo */}
+                <ProductTypeModal
+                    open={isTypeModalOpen}
+                    onSelect={handleTypeSelect}
+                    onClose={closeTypeModal}
+                />
+
+                {/* Dialog do formulário do produto */}
+                <Dialog
+                    open={isModalOpen}
+                    onOpenChange={(open) => {
+                        setIsModalOpen(open);
+                        if (!open) resetForm();
+                    }}
+                >
+                    <DialogContent className="max-w-2xl max-h-[90vh] min-w-[60vw]">
+                        <DialogHeader>
+                            <DialogTitle>{formTitle}</DialogTitle>
+                            <DialogDescription>
+                                Preencha os dados do produto
+                            </DialogDescription>
+                        </DialogHeader>
+                        <ProductForm
+                            formData={formData}
+                            setFormData={setFormData}
+                            productCategories={productCategories}
+                            editingId={editingId}
+                            isSaving={isSaving}
+                            onSubmit={handleSubmit}
+                            onCancel={closeModal}
+                        />
+                    </DialogContent>
+                </Dialog>
 
                 {/* Summary Cards */}
                 {summary && (

@@ -27,6 +27,7 @@ import {
     EmptyState,
     LoadingState,
     StatCard,
+    FavorecidoSelect,
 } from '@/components/shared';
 import { formatCurrency } from '@/lib/utils';
 import { BatchPayrollForm } from './components/BatchPayrollForm';
@@ -186,27 +187,25 @@ export function FolhaPagamentoView(props: FolhaPagamentoViewProps) {
                                     />
                                 ) : (
                                     <form className="space-y-4 mt-4" onSubmit={handleSubmit}>
-                                        {/* Funcionário e Período */}
+                                        {/* Funcionário */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-foreground mb-2">
+                                                Funcionário
+                                                <span className="text-destructive ml-1">*</span>
+                                            </label>
+                                            <FavorecidoSelect
+                                                value={formData.employee_id}
+                                                onChange={(id) => setFormData({ ...formData, employee_id: id })}
+                                                filterType="funcionario"
+                                                placeholder="Buscar funcionário..."
+                                            />
+                                        </div>
+
+                                        {/* Período */}
                                         <div className="grid grid-cols-3 gap-4">
                                             <div>
                                                 <label className="block text-sm font-medium text-foreground mb-2">
-                                                    Funcionário
-                                                </label>
-                                                <select
-                                                    className="input-financial"
-                                                    value={formData.employee_id}
-                                                    onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
-                                                    required
-                                                >
-                                                    <option value="">Selecione</option>
-                                                    {funcionarios.map((f) => (
-                                                        <option key={f.id} value={f.id}>{f.name}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-foreground mb-2">
-                                                    Mês
+                                                    Mês inicial
                                                 </label>
                                                 <select
                                                     className="input-financial"
@@ -231,6 +230,28 @@ export function FolhaPagamentoView(props: FolhaPagamentoViewProps) {
                                                         <option key={year} value={year}>{year}</option>
                                                     ))}
                                                 </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-foreground mb-2">
+                                                    Nº de meses
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max="24"
+                                                    className="input-financial"
+                                                    value={formData.recurring_months}
+                                                    onChange={(e) => setFormData({ ...formData, recurring_months: e.target.value })}
+                                                />
+                                                {parseInt(formData.recurring_months) > 1 && (
+                                                    <p className="text-xs text-muted-foreground mt-1">
+                                                        Criará folhas para
+                                                        {' '}
+                                                        {formData.recurring_months}
+                                                        {' '}
+                                                        meses consecutivos
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
 

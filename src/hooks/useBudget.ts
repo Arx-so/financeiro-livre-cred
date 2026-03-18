@@ -33,12 +33,14 @@ export const budgetKeys = {
 export function useBudgetHierarchical(
     branchId: string | undefined,
     year: number,
-    versionId?: string | null
+    versionId?: string | null,
+    enabledOverride?: boolean
 ) {
+    const isEnabled = enabledOverride !== undefined ? enabledOverride : !!branchId;
     return useQuery({
         queryKey: budgetKeys.hierarchical(branchId || '', year, versionId),
-        queryFn: () => getBudgetHierarchical(branchId!, year, versionId),
-        enabled: !!branchId,
+        queryFn: () => getBudgetHierarchical(branchId, year, versionId),
+        enabled: isEnabled,
     });
 }
 
@@ -53,24 +55,28 @@ export function useBudgetByCategory(branchId: string | undefined, year: number) 
 export function useBudgetSummary(
     branchId: string | undefined,
     year: number,
-    versionId?: string | null
+    versionId?: string | null,
+    enabledOverride?: boolean
 ) {
+    const isEnabled = enabledOverride !== undefined ? enabledOverride : !!branchId;
     return useQuery({
         queryKey: budgetKeys.summary(branchId || '', year, versionId),
-        queryFn: () => getBudgetSummary(branchId!, year, versionId),
-        enabled: !!branchId,
+        queryFn: () => getBudgetSummary(branchId, year, versionId),
+        enabled: isEnabled,
     });
 }
 
 export function useAnnualSummary(
     branchId: string | undefined,
     year: number,
-    versionId?: string | null
+    versionId?: string | null,
+    enabledOverride?: boolean
 ) {
+    const isEnabled = enabledOverride !== undefined ? enabledOverride : !!branchId;
     return useQuery({
         queryKey: budgetKeys.annualSummary(branchId || '', year, versionId),
-        queryFn: () => getAnnualSummary(branchId!, year, versionId),
-        enabled: !!branchId,
+        queryFn: () => getAnnualSummary(branchId, year, versionId),
+        enabled: isEnabled,
     });
 }
 

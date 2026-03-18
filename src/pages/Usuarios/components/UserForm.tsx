@@ -32,24 +32,24 @@ export function UserForm({
 
     return (
         <form className="space-y-4 mt-4" onSubmit={onSubmit}>
+            <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                    Nome
+                    {' '}
+                    <span className="text-expense">*</span>
+                </label>
+                <input
+                    type="text"
+                    className="input-financial"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="Nome completo"
+                    required
+                />
+            </div>
+
             {isCreating && (
                 <>
-                    <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                            Nome
-                            {' '}
-                            <span className="text-expense">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            className="input-financial"
-                            value={form.name}
-                            onChange={(e) => setForm({ ...form, name: e.target.value })}
-                            placeholder="Nome completo"
-                            required
-                        />
-                    </div>
-
                     <div>
                         <label className="block text-sm font-medium text-foreground mb-2">
                             Email

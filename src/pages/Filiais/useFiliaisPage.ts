@@ -95,7 +95,11 @@ export function useFiliaisPage() {
         }
     }, [branchForm, editingBranchId, createBranch, updateBranch, resetBranchForm]);
 
-    const handleDeleteBranch = useCallback((id: string, name: string) => {
+    const handleDeleteBranch = useCallback((id: string, name: string, code?: string) => {
+        if (code === 'ADM') {
+            toast.error('A filial ADM não pode ser desativada');
+            return;
+        }
         confirm(async () => {
             setIsDeleting(true);
             try {

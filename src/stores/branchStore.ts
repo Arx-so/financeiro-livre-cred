@@ -54,7 +54,7 @@ const fetchUserBranches = async (userId: string, role: UserRole): Promise<Unidad
 
             branches = (data || [])
                 .map((item: any) => item.branches)
-                .filter((b: Branch) => b.is_active);
+                .filter((b: Branch) => b.is_active && b.code !== 'ADM');
         }
 
         return branches.map((b) => ({
@@ -127,3 +127,7 @@ export const useBranchStore = create<BranchState>()(
 // Selectors for optimized re-renders
 export const useUnidadeAtual = () => useBranchStore((state) => state.unidadeAtual);
 export const useUnidades = () => useBranchStore((state) => state.unidades);
+export const useIsAdmBranch = () => useBranchStore((state) => state.unidadeAtual?.code === 'ADM');
+export const useBranchIdForFilter = () => useBranchStore((state) =>
+    state.unidadeAtual?.code === 'ADM' ? undefined : state.unidadeAtual?.id
+);

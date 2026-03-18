@@ -25,7 +25,7 @@ import {
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
 import jsPDF from 'jspdf';
-import { useBranchStore } from '@/stores';
+import { useBranchStore, useIsAdmBranch } from '@/stores';
 import {
     Tabs, TabsContent, TabsList, TabsTrigger
 } from '@/components/ui/tabs';
@@ -45,6 +45,8 @@ import { formatCurrency, MONTHS_SHORT } from '@/lib/utils';
 
 export default function Relatorios() {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
+    const isAdm = unidadeAtual?.code === 'ADM';
+    const branchIdForFilter = isAdm ? undefined : unidadeAtual?.id;
     const currentYear = new Date().getFullYear();
 
     const [activeTab, setActiveTab] = useState('dre');
@@ -56,54 +58,54 @@ export default function Relatorios() {
     // Fetch DRE data
     const { data: dreData, isLoading: dreLoading } = useQuery({
         queryKey: ['dre', unidadeAtual?.id, dateRange],
-        queryFn: () => getDREData(unidadeAtual!.id, dateRange.start, dateRange.end),
-        enabled: !!unidadeAtual?.id,
+        queryFn: () => getDREData(branchIdForFilter, dateRange.start, dateRange.end),
+        enabled: !!unidadeAtual?.id || isAdm,
     });
 
     // Fetch category breakdown
     const { data: categoryBreakdownReceitas } = useQuery({
         queryKey: ['category-breakdown-receitas', unidadeAtual?.id, dateRange],
-        queryFn: () => getCategoryBreakdown(unidadeAtual!.id, 'receita', dateRange.start, dateRange.end),
-        enabled: !!unidadeAtual?.id,
+        queryFn: () => getCategoryBreakdown(branchIdForFilter, 'receita', dateRange.start, dateRange.end),
+        enabled: !!unidadeAtual?.id || isAdm,
     });
 
     const { data: categoryBreakdownDespesas } = useQuery({
         queryKey: ['category-breakdown-despesas', unidadeAtual?.id, dateRange],
-        queryFn: () => getCategoryBreakdown(unidadeAtual!.id, 'despesa', dateRange.start, dateRange.end),
-        enabled: !!unidadeAtual?.id,
+        queryFn: () => getCategoryBreakdown(branchIdForFilter, 'despesa', dateRange.start, dateRange.end),
+        enabled: !!unidadeAtual?.id || isAdm,
     });
 
     // Fetch monthly comparison
     const { data: monthlyData, isLoading: monthlyLoading } = useQuery({
         queryKey: ['monthly-comparison', unidadeAtual?.id, currentYear],
-        queryFn: () => getMonthlyComparison(unidadeAtual!.id, currentYear),
-        enabled: !!unidadeAtual?.id,
+        queryFn: () => getMonthlyComparison(branchIdForFilter, currentYear),
+        enabled: !!unidadeAtual?.id || isAdm,
     });
 
     // Fetch aging report
     const { data: agingReceitas } = useQuery({
         queryKey: ['aging-receitas', unidadeAtual?.id],
-        queryFn: () => getAgingReport(unidadeAtual!.id, 'receita'),
-        enabled: !!unidadeAtual?.id,
+        queryFn: () => getAgingReport(branchIdForFilter, 'receita'),
+        enabled: !!unidadeAtual?.id || isAdm,
     });
 
     const { data: agingDespesas } = useQuery({
         queryKey: ['aging-despesas', unidadeAtual?.id],
-        queryFn: () => getAgingReport(unidadeAtual!.id, 'despesa'),
-        enabled: !!unidadeAtual?.id,
+        queryFn: () => getAgingReport(branchIdForFilter, 'despesa'),
+        enabled: !!unidadeAtual?.id || isAdm,
     });
 
     // Fetch top favorecidos
     const { data: topClientes, isLoading: topClientesLoading } = useQuery({
         queryKey: ['top-clientes', unidadeAtual?.id],
-        queryFn: () => getTopFavorecidos(unidadeAtual!.id, 'receita', 10),
-        enabled: !!unidadeAtual?.id,
+        queryFn: () => getTopFavorecidos(branchIdForFilter, 'receita', 10),
+        enabled: !!unidadeAtual?.id || isAdm,
     });
 
     const { data: topFornecedores, isLoading: topFornecedoresLoading } = useQuery({
         queryKey: ['top-fornecedores', unidadeAtual?.id],
-        queryFn: () => getTopFavorecidos(unidadeAtual!.id, 'despesa', 10),
-        enabled: !!unidadeAtual?.id,
+        queryFn: () => getTopFavorecidos(branchIdForFilter, 'despesa', 10),
+        enabled: !!unidadeAtual?.id || isAdm,
     });
 
     // Chart data

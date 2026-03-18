@@ -82,6 +82,12 @@ export async function updateBranch(id: string, branch: BranchUpdate): Promise<Br
 
 // Soft delete branch (set is_active = false)
 export async function deleteBranch(id: string): Promise<void> {
+    // Prevent deactivating the ADM branch
+    const branch = await getBranch(id);
+    if (branch?.code === 'ADM') {
+        throw new Error('A filial ADM não pode ser desativada');
+    }
+
     const { error } = await supabase
         .from('branches')
         .update({ is_active: false })

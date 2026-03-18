@@ -28,6 +28,7 @@ export function FavorecidosView(props: FavorecidosViewProps) {
         setSearchTerm,
         filterType,
         setFilterType,
+        lockedType,
         // Pagination
         currentPage,
         setCurrentPage,
@@ -77,8 +78,10 @@ export function FavorecidosView(props: FavorecidosViewProps) {
         <AppLayout>
             <div className="space-y-6">
                 <PageHeader
-                    title="Favorecidos"
-                    description="Gerencie clientes, fornecedores e funcionários"
+                    title={lockedType === 'funcionario' ? 'Funcionários' : 'Favorecidos'}
+                    description={lockedType === 'funcionario'
+                        ? 'Gerencie os funcionários da empresa'
+                        : 'Gerencie clientes, fornecedores e funcionários'}
                 />
 
                 <div className="flex flex-col md:flex-row gap-4">
@@ -88,16 +91,18 @@ export function FavorecidosView(props: FavorecidosViewProps) {
                         placeholder="Buscar por nome, email, telefone..."
                     />
                     <div className="flex gap-2">
-                        <select
-                            className="input-financial"
-                            value={filterType}
-                            onChange={(e) => setFilterType(e.target.value as FavorecidoTipo | 'todos')}
-                        >
-                            <option value="todos">Todos</option>
-                            <option value="cliente">Clientes</option>
-                            <option value="fornecedor">Fornecedores</option>
-                            <option value="funcionario">Funcionários</option>
-                        </select>
+                        {!lockedType && (
+                            <select
+                                className="input-financial"
+                                value={filterType}
+                                onChange={(e) => setFilterType(e.target.value as FavorecidoTipo | 'todos')}
+                            >
+                                <option value="todos">Todos</option>
+                                <option value="cliente">Clientes</option>
+                                <option value="fornecedor">Fornecedores</option>
+                                <option value="funcionario">Funcionários</option>
+                            </select>
+                        )}
                         <Dialog open={isModalOpen} onOpenChange={(open) => { setIsModalOpen(open); if (!open) resetForm(); }}>
                             <DialogTrigger asChild>
                                 <button className="btn-primary min-w-40">

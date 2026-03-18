@@ -258,11 +258,14 @@ export async function markAsPaid(id: string, paymentDate?: string): Promise<Fina
 }
 
 // Get financial summary for branch
-export async function getFinancialSummary(branchId: string, startDate?: string, endDate?: string): Promise<FinancialSummary> {
+export async function getFinancialSummary(branchId: string | undefined, startDate?: string, endDate?: string): Promise<FinancialSummary> {
     let query = supabase
         .from('financial_entries')
-        .select('type, status, value')
-        .eq('branch_id', branchId);
+        .select('type, status, value');
+
+    if (branchId) {
+        query = query.eq('branch_id', branchId);
+    }
 
     if (startDate) {
         query = query.gte('due_date', startDate);
@@ -306,13 +309,18 @@ export async function getFinancialSummary(branchId: string, startDate?: string, 
 }
 
 // Get monthly data for charts
-export async function getMonthlyData(branchId: string, year: number): Promise<{ month: string; receitas: number; despesas: number }[]> {
-    const { data, error } = await supabase
+export async function getMonthlyData(branchId: string | undefined, year: number): Promise<{ month: string; receitas: number; despesas: number }[]> {
+    let monthlyQuery = supabase
         .from('financial_entries')
         .select('type, value, due_date')
-        .eq('branch_id', branchId)
         .gte('due_date', `${year}-01-01`)
         .lte('due_date', `${year}-12-31`);
+
+    if (branchId) {
+        monthlyQuery = monthlyQuery.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await monthlyQuery;
 
     if (error) {
         console.error('Error fetching monthly data:', error);
@@ -339,24 +347,29 @@ export async function getMonthlyData(branchId: string, year: number): Promise<{ 
 }
 
 // Get upcoming payments
-export async function getUpcomingPayments(branchId: string, days: number = 30): Promise<FinancialEntryWithRelations[]> {
+export async function getUpcomingPayments(branchId: string | undefined, days: number = 30): Promise<FinancialEntryWithRelations[]> {
     const today = new Date().toISOString().split('T')[0];
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + days);
     const futureDateStr = futureDate.toISOString().split('T')[0];
 
-    const { data, error } = await supabase
+    let upcomingQuery = supabase
         .from('financial_entries')
         .select(`
       *,
       category:categories(id, name, color),
       favorecido:favorecidos(id, name)
     `)
-        .eq('branch_id', branchId)
         .eq('status', 'pendente')
         .gte('due_date', today)
         .lte('due_date', futureDateStr)
         .order('due_date', { ascending: true });
+
+    if (branchId) {
+        upcomingQuery = upcomingQuery.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await upcomingQuery;
 
     if (error) {
         console.error('Error fetching upcoming payments:', error);
@@ -367,15 +380,18 @@ export async function getUpcomingPayments(branchId: string, days: number = 30): 
 }
 
 // Get recent transactions
-export async function getRecentTransactions(branchId: string, limit: number = 10, year?: number): Promise<FinancialEntryWithRelations[]> {
+export async function getRecentTransactions(branchId: string | undefined, limit: number = 10, year?: number): Promise<FinancialEntryWithRelations[]> {
     let query = supabase
         .from('financial_entries')
         .select(`
       *,
       category:categories(id, name, color),
       favorecido:favorecidos(id, name)
-    `)
-        .eq('branch_id', branchId);
+    `);
+
+    if (branchId) {
+        query = query.eq('branch_id', branchId);
+    }
 
     // Filter by year if provided
     if (year) {
@@ -397,16 +413,20 @@ export async function getRecentTransactions(branchId: string, limit: number = 10
 }
 
 // Update overdue entries
-export async function updateOverdueEntries(branchId: string): Promise<number> {
+export async function updateOverdueEntries(branchId: string | undefined): Promise<number> {
     const today = new Date().toISOString().split('T')[0];
 
-    const { data, error } = await supabase
+    let overdueQuery = supabase
         .from('financial_entries')
         .update({ status: 'atrasado' })
-        .eq('branch_id', branchId)
         .eq('status', 'pendente')
-        .lt('due_date', today)
-        .select();
+        .lt('due_date', today);
+
+    if (branchId) {
+        overdueQuery = overdueQuery.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await overdueQuery.select();
 
     if (error) {
         console.error('Error updating overdue entries:', error);

@@ -1,3 +1,55 @@
+/** Tipos de produto disponíveis */
+export const PRODUCT_TYPES = [
+    {
+        value: 'generico',
+        label: 'Produto Genérico',
+        description: 'Empréstimos, consignados e outros produtos personalizáveis',
+        available: true,
+    },
+    {
+        value: 'cartao_credito',
+        label: 'Cartão de Crédito',
+        description: 'Empréstimo via cartão de crédito na maquineta',
+        available: true,
+    },
+    {
+        value: 'fgts',
+        label: 'FGTS',
+        description: 'Antecipação do saldo FGTS',
+        available: false,
+    },
+    {
+        value: 'consignado',
+        label: 'Consignado',
+        description: 'Empréstimo consignado em folha de pagamento',
+        available: false,
+    },
+] as const;
+
+/** Bandeiras de cartão de crédito */
+export const CARD_BRANDS = [
+    { value: 'visa', label: 'Visa' },
+    { value: 'mastercard', label: 'Mastercard' },
+    { value: 'elo', label: 'Elo' },
+    { value: 'hipercard', label: 'Hipercard' },
+    { value: 'amex', label: 'American Express' },
+    { value: 'cabal', label: 'Cabal' },
+    { value: 'outra', label: 'Outra' },
+] as const;
+
+/** Máquinas/Adquirentes de cartão */
+export const CARD_MACHINES = [
+    { value: 'cielo', label: 'Cielo' },
+    { value: 'getnet', label: 'Getnet' },
+    { value: 'rede', label: 'Rede' },
+    { value: 'stone', label: 'Stone' },
+    { value: 'pagseguro', label: 'PagSeguro' },
+    { value: 'mercadopago', label: 'Mercado Pago' },
+    { value: 'sumup', label: 'SumUp' },
+    { value: 'safra', label: 'Safra' },
+    { value: 'outra', label: 'Outra' },
+] as const;
+
 /** Tipo de Cliente Elegível (caixa de seleção) */
 export const ELIGIBLE_CLIENT_TYPES = [
     { value: 'servidor_publico', label: 'Servidor público' },

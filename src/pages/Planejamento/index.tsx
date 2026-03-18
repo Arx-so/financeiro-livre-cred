@@ -68,6 +68,8 @@ type BudgetViewMode = 'planejamento' | 'comparativo';
 
 export default function Planejamento() {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
+    const isAdm = unidadeAtual?.code === 'ADM';
+    const branchIdForFilter = isAdm ? undefined : unidadeAtual?.id;
     const user = useAuthStore((state) => state.user);
     const queryClient = useQueryClient();
     const currentYear = new Date().getFullYear();
@@ -107,35 +109,40 @@ export default function Planejamento() {
     // Check if user can approve
     const canApprove = user?.role === 'admin' || user?.role === 'gerente';
 
+    const budgetEnabled = !!unidadeAtual?.id || isAdm;
+
     // Fetch hierarchical budget data
     const { data: budgetHierarchical, isLoading: budgetLoading } = useBudgetHierarchical(
-        unidadeAtual?.id,
+        branchIdForFilter,
         selectedYear,
-        selectedVersionId
+        selectedVersionId,
+        budgetEnabled
     );
 
     const { data: budgetSummary } = useBudgetSummary(
-        unidadeAtual?.id,
+        branchIdForFilter,
         selectedYear,
-        selectedVersionId
+        selectedVersionId,
+        budgetEnabled
     );
 
     const { data: annualSummary, isLoading: annualSummaryLoading } = useAnnualSummary(
-        unidadeAtual?.id,
+        branchIdForFilter,
         selectedYear,
-        selectedVersionId
+        selectedVersionId,
+        budgetEnabled
     );
 
     const { data: salesTargets, isLoading: targetsLoading } = useQuery({
         queryKey: ['sales-targets', unidadeAtual?.id, selectedYear, selectedMonth],
-        queryFn: () => getSalesTargets(unidadeAtual!.id, selectedYear, selectedMonth),
-        enabled: !!unidadeAtual?.id,
+        queryFn: () => getSalesTargets(branchIdForFilter, selectedYear, selectedMonth),
+        enabled: !!unidadeAtual?.id || isAdm,
     });
 
     const { data: targetSummary } = useQuery({
         queryKey: ['sales-target-summary', unidadeAtual?.id, selectedYear, selectedMonth],
-        queryFn: () => getSalesTargetSummary(unidadeAtual!.id, selectedYear, selectedMonth),
-        enabled: !!unidadeAtual?.id,
+        queryFn: () => getSalesTargetSummary(branchIdForFilter, selectedYear, selectedMonth),
+        enabled: !!unidadeAtual?.id || isAdm,
     });
 
     const { data: categories } = useCategories();
@@ -144,8 +151,8 @@ export default function Planejamento() {
     // Fetch budget versions
     const { data: budgetVersions } = useQuery({
         queryKey: ['budget-versions', unidadeAtual?.id, selectedYear],
-        queryFn: () => getBudgetVersions(unidadeAtual!.id, selectedYear),
-        enabled: !!unidadeAtual?.id,
+        queryFn: () => getBudgetVersions(branchIdForFilter, selectedYear),
+        enabled: !!unidadeAtual?.id || isAdm,
     });
 
     // Get selected version details

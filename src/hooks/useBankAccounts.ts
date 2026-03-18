@@ -6,7 +6,6 @@ import {
     updateBankAccount,
     deleteBankAccount,
     reactivateBankAccount,
-    getBranchBankAccounts,
     BankAccountFilters,
 } from '@/services/bankAccounts';
 import type { BankAccountInsert, BankAccountUpdate } from '@/types/database';
@@ -25,11 +24,12 @@ export const bankAccountKeys = {
 // Hooks
 export function useBankAccounts(filters: BankAccountFilters = {}) {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
+    const isAdm = unidadeAtual?.code === 'ADM';
 
-    // Use branch from filters or current branch
-    const effectiveFilters = {
+    // Use branch from filters or current branch; ADM sees all branches
+    const effectiveFilters: BankAccountFilters = {
         ...filters,
-        branchId: filters.branchId || unidadeAtual?.id,
+        branchId: isAdm ? undefined : (filters.branchId || unidadeAtual?.id),
     };
 
     return useQuery({
@@ -55,12 +55,13 @@ export function useBankAccount(id: string) {
 
 export function useBranchBankAccounts(branchId?: string) {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
-    const effectiveBranchId = branchId || unidadeAtual?.id;
+    const isAdm = unidadeAtual?.code === 'ADM';
+    const effectiveBranchId = isAdm ? undefined : (branchId || unidadeAtual?.id);
 
     return useQuery({
-        queryKey: bankAccountKeys.branch(effectiveBranchId || ''),
-        queryFn: () => getBranchBankAccounts(effectiveBranchId!),
-        enabled: !!effectiveBranchId,
+        queryKey: bankAccountKeys.branch(effectiveBranchId || 'adm'),
+        queryFn: () => getBankAccounts({ branchId: effectiveBranchId, isActive: true }),
+        enabled: !!effectiveBranchId || isAdm,
     });
 }
 

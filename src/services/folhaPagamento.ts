@@ -242,7 +242,7 @@ export function calculateNetSalary(data: {
 /**
  * Obtém o resumo das folhas de pagamento
  */
-export async function getPayrollSummary(branchId: string, month?: number, year?: number): Promise<{
+export async function getPayrollSummary(branchId: string | undefined, month?: number, year?: number): Promise<{
     total: number;
     pending: number;
     paid: number;
@@ -250,8 +250,11 @@ export async function getPayrollSummary(branchId: string, month?: number, year?:
 }> {
     let query = supabase
         .from('payroll')
-        .select('status, net_salary')
-        .eq('branch_id', branchId);
+        .select('status, net_salary');
+
+    if (branchId) {
+        query = query.eq('branch_id', branchId);
+    }
 
     if (month) {
         query = query.eq('reference_month', month);
