@@ -9,11 +9,14 @@ import {
     useFinancialSummary,
     useCreateFinancialEntry,
     useCreateFinancialEntries,
+    useCreateRecurringFinancialEntries,
     useUpdateFinancialEntry,
+    useUpdateFinancialEntries,
     useDeleteFinancialEntries,
     useMarkAsPaid,
     useUpdateOverdueEntries,
     calculateRecurringDates,
+    getRecurringGroup,
 } from '@/hooks/useFinanceiro';
 import { useCategories, useSubcategories } from '@/hooks/useCategorias';
 import { useFavorecidos, useCreateFavorecido, useUploadFavorecidoPhoto } from '@/hooks/useCadastros';
@@ -23,8 +26,9 @@ import {
 } from '@/services/importExport';
 import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import type {
-    EntryType, EntryStatus, FinancialEntryInsert, RecurrenceType
+    EntryType, EntryStatus, FinancialEntry, FinancialEntryInsert, RecurrenceType
 } from '@/types/database';
+import type { RecurringEditScope } from './RecurringEditDialog';
 
 export interface FinanceiroFormData {
     type: EntryType;
@@ -95,6 +99,13 @@ export function useFinanceiroPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
 
+    // Recurring edit state
+    const [recurringEditDialogOpen, setRecurringEditDialogOpen] = useState(false);
+    const [recurringEditEntry, setRecurringEditEntry] = useState<FinancialEntry | null>(null);
+    const [recurringGroup, setRecurringGroup] = useState<FinancialEntry[]>([]);
+    const [recurringEditScope, setRecurringEditScope] = useState<RecurringEditScope>('single');
+    const [recurringNewCount, setRecurringNewCount] = useState<number | undefined>(undefined);
+
     // Favorecido modal state
     const [isFavorecidoModalOpen, setIsFavorecidoModalOpen] = useState(false);
     const [favorecidoFormData, setFavorecidoFormData] = useState<any>({
@@ -156,8 +167,10 @@ export function useFinanceiroPage() {
 
     // Mutations
     const createEntry = useCreateFinancialEntry();
-    const createEntries = useCreateFinancialEntries();
+    const createEntries = useCreateFinancialEntries(); // used for batch import
+    const createRecurringEntries = useCreateRecurringFinancialEntries();
     const updateEntry = useUpdateFinancialEntry();
+    const updateEntries = useUpdateFinancialEntries();
     const deleteEntries = useDeleteFinancialEntries();
     const markPaid = useMarkAsPaid();
     const updateOverdue = useUpdateOverdueEntries();
@@ -192,6 +205,9 @@ export function useFinanceiroPage() {
     const resetForm = useCallback(() => {
         setFormData(initialFormData);
         setEditingId(null);
+        setRecurringEditScope('single');
+        setRecurringGroup([]);
+        setRecurringNewCount(undefined);
     }, []);
 
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
@@ -225,8 +241,49 @@ export function useFinanceiroPage() {
 
         try {
             if (editingId) {
-                await updateEntry.mutateAsync({ id: editingId, entry: entryData });
-                toast.success('Lançamento atualizado!');
+                const isGroupEdit = recurringEditScope !== 'single' && recurringGroup.length > 1;
+
+                if (!isGroupEdit) {
+                    await updateEntry.mutateAsync({ id: editingId, entry: entryData });
+                    toast.success('Lançamento atualizado!');
+                } else {
+                    const currentIndex = recurringGroup.findIndex((e) => e.id === editingId);
+                    let idsToUpdate: string[];
+
+                    switch (recurringEditScope) {
+                        case 'following':
+                            idsToUpdate = recurringGroup.slice(currentIndex).map((e) => e.id);
+                            break;
+                        case 'previous':
+                            idsToUpdate = recurringGroup.slice(0, currentIndex + 1).map((e) => e.id);
+                            break;
+                        case 'all':
+                            idsToUpdate = recurringGroup.map((e) => e.id);
+                            break;
+                        default:
+                            idsToUpdate = [editingId];
+                    }
+
+                    // Exclude due_date from bulk update so each entry keeps its own date
+                    const { due_date: _due, ...bulkUpdate } = entryData;
+                    await updateEntries.mutateAsync({ ids: idsToUpdate, entry: bulkUpdate });
+
+                    // Handle count reduction: delete future entries beyond the new limit
+                    if (recurringNewCount !== undefined) {
+                        const futureEntries = recurringGroup.slice(currentIndex);
+                        if (recurringNewCount < futureEntries.length) {
+                            const idsToDelete = futureEntries.slice(recurringNewCount).map((e) => e.id);
+                            await deleteEntries.mutateAsync(idsToDelete);
+                            toast.success(
+                                `${idsToUpdate.length} lançamento(s) atualizado(s) e ${idsToDelete.length} removido(s).`,
+                            );
+                        } else {
+                            toast.success(`${idsToUpdate.length} lançamento(s) atualizado(s)!`);
+                        }
+                    } else {
+                        toast.success(`${idsToUpdate.length} lançamento(s) atualizado(s)!`);
+                    }
+                }
             } else if (formData.is_recurring && formData.recurrence_type) {
                 // Use end date if provided, otherwise use count
                 const endDateOrCount = formData.recurrence_end_date
@@ -246,7 +303,7 @@ export function useFinanceiroPage() {
                     description: `${formData.description} (${index + 1}/${dates.length})`,
                 }));
 
-                await createEntries.mutateAsync(entriesToCreate);
+                await createRecurringEntries.mutateAsync(entriesToCreate);
                 toast.success(`${dates.length} lançamentos recorrentes criados!`);
             } else {
                 await createEntry.mutateAsync(entryData);
@@ -258,7 +315,10 @@ export function useFinanceiroPage() {
         } catch (error) {
             toast.error('Erro ao salvar lançamento');
         }
-    }, [unidadeAtual?.id, formData, editingId, createEntry, createEntries, updateEntry, resetForm]);
+    }, [
+        unidadeAtual?.id, formData, editingId, recurringEditScope, recurringGroup, recurringNewCount,
+        createEntry, createRecurringEntries, updateEntry, updateEntries, deleteEntries, resetForm,
+    ]);
 
     const handleDelete = useCallback((ids: string[]) => {
         const count = ids.length;
@@ -307,10 +367,15 @@ export function useFinanceiroPage() {
         });
     }, [confirm, updateEntry]);
 
-    const openEditModal = useCallback((entry: NonNullable<typeof entries>[0]) => {
+    const populateEditForm = useCallback((entry: NonNullable<typeof entries>[0]) => {
+        // Strip the "(N/M)" installment suffix from the description when editing a recurring series
+        const baseDescription = entry.is_recurring
+            ? entry.description.replace(/\s*\(\d+\/\d+\)\s*$/, '')
+            : entry.description;
+
         setFormData({
             type: entry.type,
-            description: entry.description,
+            description: baseDescription,
             value: entry.value.toString(),
             due_date: entry.due_date,
             payment_date: entry.payment_date || '',
@@ -328,6 +393,42 @@ export function useFinanceiroPage() {
         });
         setEditingId(entry.id);
         setIsModalOpen(true);
+    }, []);
+
+    const openEditModal = useCallback(async (entry: NonNullable<typeof entries>[0]) => {
+        // For recurring entries, check if they belong to a linked group
+        if (entry.is_recurring) {
+            try {
+                const group = await getRecurringGroup({
+                    id: entry.id,
+                    recurring_parent_id: entry.recurring_parent_id,
+                });
+                if (group.length > 1) {
+                    setRecurringEditEntry(entry);
+                    setRecurringGroup(group);
+                    setRecurringEditDialogOpen(true);
+                    return; // Show scope dialog first; form opens after confirmation
+                }
+            } catch {
+                // If group fetch fails, fall through to normal edit
+            }
+        }
+        populateEditForm(entry);
+    }, [populateEditForm]);
+
+    const handleRecurringEditConfirm = useCallback((scope: RecurringEditScope, newCount?: number) => {
+        setRecurringEditScope(scope);
+        setRecurringNewCount(newCount);
+        setRecurringEditDialogOpen(false);
+        if (recurringEditEntry) {
+            populateEditForm(recurringEditEntry);
+        }
+    }, [recurringEditEntry, populateEditForm]);
+
+    const handleRecurringEditCancel = useCallback(() => {
+        setRecurringEditDialogOpen(false);
+        setRecurringEditEntry(null);
+        setRecurringGroup([]);
     }, []);
 
     const handleExport = useCallback((format: 'excel' | 'csv') => {
@@ -571,7 +672,7 @@ export function useFinanceiroPage() {
         bankAccounts: bankAccounts || [],
 
         // Mutation states
-        isSaving: createEntry.isPending || createEntries.isPending || updateEntry.isPending,
+        isSaving: createEntry.isPending || createEntries.isPending || createRecurringEntries.isPending || updateEntry.isPending || updateEntries.isPending,
         isMarkingPaid: markPaid.isPending,
 
         // Handlers
@@ -583,6 +684,14 @@ export function useFinanceiroPage() {
         handleExport,
         handleImport,
         handleImportNFE,
+
+        // Recurring edit
+        recurringEditDialogOpen,
+        recurringEditEntry,
+        recurringGroup,
+        recurringEditScope,
+        handleRecurringEditConfirm,
+        handleRecurringEditCancel,
 
         // Favorecido modal
         isFavorecidoModalOpen,

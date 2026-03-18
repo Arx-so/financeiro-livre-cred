@@ -4,7 +4,9 @@ import {
     getFinancialEntry,
     createFinancialEntry,
     createFinancialEntries,
+    createRecurringFinancialEntries,
     updateFinancialEntry,
+    updateFinancialEntries,
     deleteFinancialEntry,
     deleteFinancialEntries,
     markAsPaid,
@@ -19,7 +21,7 @@ import type { FinancialEntryInsert, FinancialEntryUpdate } from '@/types/databas
 import { useBranchStore } from '@/stores';
 
 // Re-export helper functions for use in components
-export { calculateRecurringDates } from '@/services/financeiro';
+export { calculateRecurringDates, getRecurringGroup, createRecurringFinancialEntries } from '@/services/financeiro';
 
 // Query keys
 export const financialKeys = {
@@ -119,6 +121,28 @@ export function useCreateFinancialEntries() {
 
     return useMutation({
         mutationFn: (entries: FinancialEntryInsert[]) => createFinancialEntries(entries),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: financialKeys.all });
+        },
+    });
+}
+
+export function useCreateRecurringFinancialEntries() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (entries: FinancialEntryInsert[]) => createRecurringFinancialEntries(entries),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: financialKeys.all });
+        },
+    });
+}
+
+export function useUpdateFinancialEntries() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ ids, entry }: { ids: string[]; entry: FinancialEntryUpdate }) => updateFinancialEntries(ids, entry),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: financialKeys.all });
         },

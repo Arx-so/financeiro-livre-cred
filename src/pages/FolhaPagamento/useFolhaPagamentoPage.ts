@@ -64,6 +64,7 @@ export function useFolhaPagamentoPage() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState<FormData>(initialFormData);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isBatchGenerationOpen, setIsBatchGenerationOpen] = useState(false);
     const [isBatchMode, setIsBatchMode] = useState(false);
     const [batchConfig, setBatchConfig] = useState({
         filterType: 'all' as 'all' | 'category',
@@ -301,7 +302,7 @@ export function useFolhaPagamentoPage() {
         payrolls: payrolls || [],
         payrollsLoading,
         summary,
-        funcionarios: funcionariosPage?.data || [],
+        funcionarios: funcionariosPage || [],
         hiringCategories,
         calculatedNetSalary,
 
@@ -316,6 +317,10 @@ export function useFolhaPagamentoPage() {
         setBatchConfig,
         toggleBatchMode,
         handleBatchSubmit,
+
+        // Batch financial generation
+        isBatchGenerationOpen,
+        setIsBatchGenerationOpen,
 
         // Handlers
         openModal,
