@@ -163,7 +163,7 @@ export default function Contratos() {
     const autoTitle = useMemo(() => {
         const client = selectedFavorecido?.name || '';
         const product = selectedProduct?.name || '';
-        if (client && product) return `${client} - ${product}`;
+        if (client && product) return `${product} - ${client}`;
         return client || product || 'Nova venda';
     }, [selectedFavorecido, selectedProduct]);
 

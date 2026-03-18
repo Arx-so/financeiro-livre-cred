@@ -3,8 +3,9 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/stores';
 import { useBranches } from '@/hooks/useBranches';
 import {
-    useUsers, useUpdateUserRole, useSetUserBranchAccess, useCreateUser
+    useUsers, useUpdateUser, useSetUserBranchAccess, useCreateUser
 } from '@/hooks/useUsers';
+import { getUserBranchAccess } from '@/services/users';
 import type { UserRole, Profile } from '@/types/database';
 
 export interface UserFormData {
@@ -46,7 +47,7 @@ export function useUsuariosPage() {
     });
 
     // Mutations
-    const updateUserRole = useUpdateUserRole();
+    const updateUser = useUpdateUser();
     const setUserBranchAccess = useSetUserBranchAccess();
     const createUser = useCreateUser();
 
@@ -101,7 +102,7 @@ export function useUsuariosPage() {
 
         // Editing existing user
         try {
-            await updateUserRole.mutateAsync({ userId: editingUserId, role: userForm.role });
+            await updateUser.mutateAsync({ userId: editingUserId, data: { role: userForm.role, name: userForm.name } });
 
             if (userForm.role !== 'admin') {
                 await setUserBranchAccess.mutateAsync({
@@ -116,7 +117,7 @@ export function useUsuariosPage() {
         } catch {
             toast.error('Erro ao atualizar usuário');
         }
-    }, [editingUserId, userForm, updateUserRole, setUserBranchAccess, createUser, resetUserForm]);
+    }, [editingUserId, userForm, updateUser, setUserBranchAccess, createUser, resetUserForm]);
 
     const openCreateUserModal = useCallback(() => {
         setUserForm(initialUserForm);
@@ -124,13 +125,21 @@ export function useUsuariosPage() {
         setIsUserModalOpen(true);
     }, []);
 
-    const openEditUserModal = useCallback((userProfile: Profile) => {
+    const openEditUserModal = useCallback(async (userProfile: Profile) => {
+        let selectedBranches: string[] = [];
+        try {
+            const branchAccess = await getUserBranchAccess(userProfile.id);
+            selectedBranches = branchAccess.map((a) => a.branch_id);
+        } catch {
+            // proceed with empty branches
+        }
+
         setUserForm({
             name: userProfile.name || '',
             email: userProfile.email || '',
             password: '',
             role: userProfile.role,
-            selectedBranches: [],
+            selectedBranches,
         });
         setEditingUserId(userProfile.id);
         setIsUserModalOpen(true);
@@ -172,7 +181,7 @@ export function useUsuariosPage() {
         usersLoading,
 
         // Mutations loading states
-        isSavingUser: updateUserRole.isPending || setUserBranchAccess.isPending || createUser.isPending,
+        isSavingUser: updateUser.isPending || setUserBranchAccess.isPending || createUser.isPending,
         isCreating: !editingUserId,
 
         // Handlers

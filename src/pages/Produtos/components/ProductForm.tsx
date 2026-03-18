@@ -1,5 +1,8 @@
 import { useMemo } from 'react';
-import { Loader2, CreditCard, Plus, Trash2 } from 'lucide-react';
+import {
+    Loader2, CreditCard, Plus, Trash2,
+    Tag, Users, TrendingUp, Settings2, PieChart, Percent, FileCheck,
+} from 'lucide-react';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { formatCurrency } from '@/lib/utils';
@@ -372,10 +375,15 @@ export function ProductForm({
             )}
 
             {/* Identificação */}
-            <div className="space-y-4">
-                <h4 className="text-sm font-semibold text-foreground border-b border-border pb-1">
-                    Identificação
-                </h4>
+            <div className="rounded-xl border-2 border-slate-400/40 bg-slate-500/5 p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-slate-500/15 text-slate-600 dark:text-slate-400">
+                        <Tag className="w-4 h-4" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        Identificação
+                    </h4>
+                </div>
                 <div>
                     <label className="block text-sm font-medium text-foreground mb-2">Nome *</label>
                     <input
@@ -441,10 +449,15 @@ export function ProductForm({
             </div>
 
             {/* Tipo de Cliente Elegível + Público-alvo */}
-            <div className="border-t border-border pt-4 space-y-4">
-                <h4 className="text-sm font-semibold text-foreground border-b border-border pb-1">
-                    Cliente e Público-alvo
-                </h4>
+            <div className="rounded-xl border-2 border-teal-500/40 bg-teal-500/5 p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-teal-500/15 text-teal-600 dark:text-teal-400">
+                        <Users className="w-4 h-4" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-teal-700 dark:text-teal-300">
+                        Cliente e Público-alvo
+                    </h4>
+                </div>
                 <div>
                     <label className="block text-sm font-medium text-foreground mb-2">
                         Tipo de Cliente Elegível
@@ -507,10 +520,15 @@ export function ProductForm({
             </div>
 
             {/* Parâmetros Financeiros */}
-            <div className="border-t border-border pt-4 space-y-4">
-                <h4 className="text-sm font-semibold text-foreground border-b border-border pb-1">
-                    Parâmetros Financeiros do Produto
-                </h4>
+            <div className="rounded-xl border-2 border-emerald-500/40 bg-emerald-500/5 p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                        <TrendingUp className="w-4 h-4" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                        Parâmetros Financeiros do Produto
+                    </h4>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-muted-foreground mb-2">
@@ -684,11 +702,16 @@ export function ProductForm({
             </div>
 
             {/* Regras Específicas */}
-            <div className="border-t border-border pt-4">
-                <h4 className="text-sm font-semibold text-foreground border-b border-border pb-1 mb-2">
-                    Regras Específicas por Produto
-                </h4>
-                <p className="text-xs text-muted-foreground mb-2">
+            <div className="rounded-xl border-2 border-amber-500/40 bg-amber-500/5 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                        <Settings2 className="w-4 h-4" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-amber-700 dark:text-amber-300">
+                        Regras Específicas por Produto
+                    </h4>
+                </div>
+                <p className="text-xs text-muted-foreground">
                     Ex.: Consignado (margem mínima, órgãos); FGTS (% antecipação); Veículo (ano
                     mínimo, % FIPE); Cartão (limite, % liberado); Energia (concessionárias).
                 </p>
@@ -701,11 +724,16 @@ export function ProductForm({
             </div>
 
             {/* Repartição do valor */}
-            <div className="border-t border-border pt-4">
-                <h4 className="text-sm font-semibold text-foreground border-b border-border pb-1 mb-3">
-                    Repartição do valor
-                </h4>
-                <p className="text-xs text-muted-foreground mb-3">
+            <div className="rounded-xl border-2 border-violet-500/40 bg-violet-500/5 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-violet-500/15 text-violet-600 dark:text-violet-400">
+                        <PieChart className="w-4 h-4" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-violet-700 dark:text-violet-300">
+                        Repartição do valor
+                    </h4>
+                </div>
+                <p className="text-xs text-muted-foreground">
                     Valor de referência e percentuais (banco + empresa = 100%). Ao alterar um, o outro
                     é preenchido automaticamente. Valores em R$ são calculados a partir do valor de referência.
                 </p>
@@ -772,10 +800,15 @@ export function ProductForm({
             </div>
 
             {/* Comissionamento */}
-            <div className="border-t border-border pt-4 space-y-4">
-                <h4 className="text-sm font-semibold text-foreground border-b border-border pb-1">
-                    Comissionamento
-                </h4>
+            <div className="rounded-xl border-2 border-yellow-500/40 bg-yellow-500/5 p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-yellow-500/15 text-yellow-600 dark:text-yellow-400">
+                        <Percent className="w-4 h-4" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-yellow-700 dark:text-yellow-300">
+                        Comissionamento
+                    </h4>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-foreground mb-2">
@@ -898,10 +931,15 @@ export function ProductForm({
             </div>
 
             {/* Documentação Exigida */}
-            <div className="border-t border-border pt-4">
-                <h4 className="text-sm font-semibold text-foreground border-b border-border pb-1 mb-2">
-                    Documentação Exigida
-                </h4>
+            <div className="rounded-xl border-2 border-indigo-500/40 bg-indigo-500/5 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+                        <FileCheck className="w-4 h-4" />
+                    </div>
+                    <h4 className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+                        Documentação Exigida
+                    </h4>
+                </div>
                 <div className="flex flex-wrap gap-4 mb-3">
                     {REQUIRED_DOCS_OPTIONS.map((opt) => (
                         <label
@@ -939,7 +977,7 @@ export function ProductForm({
             </div>
 
             {/* Ativo */}
-            <div className="border-t border-border pt-4">
+            <div>
                 <label className="flex items-center gap-3 cursor-pointer">
                     <input
                         type="checkbox"
