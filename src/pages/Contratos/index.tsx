@@ -75,6 +75,7 @@ import type {
 } from '@/types/database';
 import { FavorecidoForm } from '@/pages/Favorecidos/components/FavorecidoForm';
 import { ProductForm, type ProductFormData } from '@/pages/Produtos/components/ProductForm';
+import { ProductTypeModal } from '@/pages/Produtos/components/ProductTypeModal';
 import { ProductRulesPanel } from './components/ProductRulesPanel';
 import { KanbanView } from './KanbanView';
 
@@ -109,19 +110,17 @@ export default function Contratos() {
 
     // Form state
     const [formData, setFormData] = useState({
-        title: '',
         favorecido_id: '',
         type: '',
         value: '',
-        start_date: '',
-        end_date: '',
+        installments: '1',
         notes: '',
         category_id: '',
         product_id: '',
-        recurrence_type: 'unico' as ContractRecurrenceType,
         seller_id: '',
         payment_due_day: '',
         interest_rate: '',
+        cc_amount_released: '',
     });
 
     const isAdm = unidadeAtual?.code === 'ADM';
@@ -145,7 +144,7 @@ export default function Contratos() {
         enabled: !!unidadeAtual?.id || isAdm,
     });
 
-    const { refetch: refetchFavorecidos } = useFavorecidos({ isActive: true });
+    const { data: favorecidos, refetch: refetchFavorecidos } = useFavorecidos({ isActive: true });
     const { data: categories } = useCategories();
     const { refetch: refetchVendedores } = useVendedores();
     const { data: products, refetch: refetchProducts } = useProducts({ isActive: true });
@@ -155,6 +154,36 @@ export default function Contratos() {
         () => (formData.product_id ? products?.find((p) => p.id === formData.product_id) : null),
         [products, formData.product_id]
     );
+
+    const selectedFavorecido = useMemo(
+        () => (formData.favorecido_id ? favorecidos?.data?.find((f) => f.id === formData.favorecido_id) : null),
+        [favorecidos, formData.favorecido_id]
+    );
+
+    const autoTitle = useMemo(() => {
+        const client = selectedFavorecido?.name || '';
+        const product = selectedProduct?.name || '';
+        if (client && product) return `${client} - ${product}`;
+        return client || product || 'Nova venda';
+    }, [selectedFavorecido, selectedProduct]);
+
+    // Credit card: compute total interest rate from amounts
+    const ccRate = useMemo(() => {
+        if (selectedProduct?.product_type !== 'cartao_credito') return null;
+        const total = parseFloat(formData.value) || 0;
+        const released = parseFloat(formData.cc_amount_released) || 0;
+        if (!total || !released || released <= 0) return null;
+        return Math.round(((total / released) - 1) * 10000) / 100;
+    }, [selectedProduct, formData.value, formData.cc_amount_released]);
+
+    const ccRateStatus = useMemo(() => {
+        if (ccRate === null) return null;
+        const min = selectedProduct?.interest_rate_min;
+        const max = selectedProduct?.interest_rate_max;
+        if (min != null && ccRate < min) return 'below' as const;
+        if (max != null && ccRate > max) return 'above' as const;
+        return 'ok' as const;
+    }, [ccRate, selectedProduct]);
 
     // Find "Vendas" category
     const vendasCategory = useMemo(
@@ -269,7 +298,9 @@ export default function Contratos() {
     }, [favorecidoFormData, selectedPhoto, createFavorecido, uploadPhoto, refetchFavorecidos, resetFavorecidoForm]);
 
     // --- Inline Product creation ---
+    const [inlineProductType, setInlineProductType] = useState('generico');
     const initialProductForm: ProductFormData = {
+        product_type: 'generico',
         name: '',
         code: '',
         description: '',
@@ -279,6 +310,10 @@ export default function Contratos() {
         bank_percentage: '0',
         company_percentage: '0',
         is_active: true,
+        card_brand: '',
+        card_machine: '',
+        card_machine_fee: '',
+        card_machine_fee_tiers: [],
         eligible_client_type: '',
         target_audience: [],
         value_min: '',
@@ -289,6 +324,7 @@ export default function Contratos() {
         interest_rate_max: '',
         billing_type: [],
         iof_applicable: false,
+        iof_percentage: '',
         other_fees_cadastro: '',
         other_fees_operacao: '',
         other_fees_seguro: '',
@@ -305,6 +341,7 @@ export default function Contratos() {
         required_docs_other: '',
         recurrence_type: 'unico',
     };
+    const [isInlineTypeModalOpen, setIsInlineTypeModalOpen] = useState(false);
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
     const [productFormData, setProductFormData] = useState<ProductFormData>(initialProductForm);
     const createProductMutation = useCreateProduct();
@@ -344,6 +381,37 @@ export default function Contratos() {
             ? Math.min(31, Math.max(1, parseInt(cpd, 10)))
             : null;
 
+        // Merge card fields into specific_rules for cartao_credito
+        let inlineSpecificRules: Record<string, unknown> | null = null;
+        const trimmedRules = productFormData.specific_rules?.trim();
+        if (trimmedRules) {
+            try { inlineSpecificRules = JSON.parse(trimmedRules); } catch { /* ignore */ }
+        }
+        if (productFormData.product_type === 'cartao_credito') {
+            const inlineMachineFee = parseFloat(productFormData.card_machine_fee);
+            const inlineValidTiers = productFormData.card_machine_fee_tiers
+                .map((t) => ({
+                    from: parseInt(t.from, 10),
+                    to: parseInt(t.to, 10),
+                    fee: parseFloat(t.fee),
+                }))
+                .filter((t) => Number.isFinite(t.from) && Number.isFinite(t.to) && Number.isFinite(t.fee));
+            inlineSpecificRules = {
+                ...(inlineSpecificRules || {}),
+                ...(productFormData.card_brand ? { card_brand: productFormData.card_brand } : {}),
+                ...(productFormData.card_machine ? { card_machine: productFormData.card_machine } : {}),
+                ...(Number.isFinite(inlineMachineFee) && inlineMachineFee > 0
+                    ? { card_machine_fee: inlineMachineFee } : {}),
+                ...(inlineValidTiers.length > 0 ? { card_machine_fee_tiers: inlineValidTiers } : {}),
+            };
+            if (Object.keys(inlineSpecificRules).length === 0) inlineSpecificRules = null;
+        }
+
+        const validProdTypes = ['generico', 'cartao_credito', 'fgts', 'consignado'] as const;
+        type ValidProdType = typeof validProdTypes[number];
+        const prodType: ValidProdType = validProdTypes.includes(productFormData.product_type as ValidProdType)
+            ? productFormData.product_type as ValidProdType : 'generico';
+
         const productData: ProductInsert = {
             name: productFormData.name.trim(),
             code: productFormData.code.trim() || null,
@@ -366,6 +434,7 @@ export default function Contratos() {
             billing_type: productFormData.billing_type.length > 0 ? productFormData.billing_type : null,
             iof_applicable: productFormData.iof_applicable,
             other_fees: Object.keys(otherFees).length > 0 ? otherFees : null,
+            specific_rules: inlineSpecificRules,
             commission_type: (productFormData.commission_type === 'fixa' || productFormData.commission_type === 'percentual'
                 ? productFormData.commission_type : null) as 'fixa' | 'percentual' | null,
             commission_pct: productFormData.commission_pct !== '' ? parseFloat(productFormData.commission_pct) || null : null,
@@ -377,6 +446,7 @@ export default function Contratos() {
             required_docs_other: productFormData.required_docs_other.trim() || null,
             recurrence_type: ['unico', 'mensal', 'anual'].includes(productFormData.recurrence_type)
                 ? productFormData.recurrence_type as 'unico' | 'mensal' | 'anual' : 'unico',
+            product_type: prodType,
         };
 
         try {
@@ -544,19 +614,17 @@ export default function Contratos() {
     // Handlers
     const resetForm = useCallback(() => {
         setFormData({
-            title: '',
             favorecido_id: '',
             type: '',
             value: '',
-            start_date: '',
-            end_date: '',
+            installments: '1',
             notes: '',
             category_id: '',
             product_id: '',
-            recurrence_type: 'unico',
             seller_id: '',
             payment_due_day: '',
             interest_rate: '',
+            cc_amount_released: '',
         });
         setEditingId(null);
     }, []);
@@ -574,56 +642,71 @@ export default function Contratos() {
         }
 
         const value = parseFloat(formData.value) || 0;
+        const installments = Math.max(1, parseInt(formData.installments, 10) || 1);
         const product = products?.find((p) => p.id === formData.product_id) ?? null;
+        const isCartao = product?.product_type === 'cartao_credito';
+
+        // Compute start/end dates from installments
+        const todayDate = new Date();
+        const startDate = todayDate.toISOString().split('T')[0];
+        const endD = new Date(todayDate);
+        endD.setMonth(endD.getMonth() + installments - 1);
+        const endDate = endD.toISOString().split('T')[0];
+        const recurrenceType: ContractRecurrenceType = installments === 1 ? 'unico' : 'mensal';
+
+        // Compute interest rate: for credit card, derived from values; else from field
+        let interestRate: number | null = null;
+        if (isCartao && ccRate !== null) {
+            interestRate = ccRate;
+        } else if (formData.interest_rate) {
+            interestRate = parseFloat(formData.interest_rate) || null;
+        }
 
         if (product) {
             if (product.value_min != null && value < product.value_min) {
-                toast.error(`O valor da venda deve ser no mínimo ${formatCurrency(product.value_min)} (regra do produto).`);
+                toast.error(`O valor deve ser no mínimo ${formatCurrency(product.value_min)} (regra do produto).`);
                 return;
             }
             if (product.value_max != null && value > product.value_max) {
-                toast.error(`O valor da venda deve ser no máximo ${formatCurrency(product.value_max)} (regra do produto).`);
+                toast.error(`O valor deve ser no máximo ${formatCurrency(product.value_max)} (regra do produto).`);
                 return;
             }
-            if (formData.start_date && formData.end_date) {
-                const start = new Date(formData.start_date);
-                const end = new Date(formData.end_date);
-                const months = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
-                if (product.term_months_min != null && months < product.term_months_min) {
-                    toast.error(`O prazo deve ser no mínimo ${product.term_months_min} meses (regra do produto).`);
+            if (product.term_months_min != null && installments < product.term_months_min) {
+                toast.error(`O número de parcelas deve ser no mínimo ${product.term_months_min} (regra do produto).`);
+                return;
+            }
+            if (product.term_months_max != null && installments > product.term_months_max) {
+                toast.error(`O número de parcelas deve ser no máximo ${product.term_months_max} (regra do produto).`);
+                return;
+            }
+            if (interestRate != null) {
+                if (product.interest_rate_min != null && interestRate < product.interest_rate_min) {
+                    toast.error(`A taxa de juros deve ser no mínimo ${product.interest_rate_min}% (regra do produto).`);
                     return;
                 }
-                if (product.term_months_max != null && months > product.term_months_max) {
-                    toast.error(`O prazo deve ser no máximo ${product.term_months_max} meses (regra do produto).`);
+                if (product.interest_rate_max != null && interestRate > product.interest_rate_max) {
+                    toast.error(`A taxa de juros deve ser no máximo ${product.interest_rate_max}% (regra do produto).`);
                     return;
                 }
-            }
-            const rate = parseFloat(formData.interest_rate) || 0;
-            if (product.interest_rate_min != null && rate < product.interest_rate_min) {
-                toast.error(`A taxa de juros deve ser no mínimo ${product.interest_rate_min}% a.m. (regra do produto).`);
-                return;
-            }
-            if (product.interest_rate_max != null && rate > product.interest_rate_max) {
-                toast.error(`A taxa de juros deve ser no máximo ${product.interest_rate_max}% a.m. (regra do produto).`);
-                return;
             }
         }
 
         const contractData: ContractInsert = {
             branch_id: unidadeAtual.id,
-            title: formData.title,
+            title: autoTitle,
             favorecido_id: formData.favorecido_id || null,
             type: formData.type || null,
             value,
-            start_date: formData.start_date,
-            end_date: formData.end_date || null,
+            start_date: startDate,
+            end_date: installments > 1 ? endDate : null,
             notes: formData.notes || null,
             category_id: formData.category_id || null,
             product_id: formData.product_id || null,
-            recurrence_type: formData.recurrence_type,
+            recurrence_type: recurrenceType,
             seller_id: formData.seller_id || null,
             payment_due_day: formData.payment_due_day ? parseInt(formData.payment_due_day, 10) : null,
-            interest_rate: formData.interest_rate ? parseFloat(formData.interest_rate) : null,
+            interest_rate: interestRate,
+            cc_amount_released: formData.cc_amount_released ? parseFloat(formData.cc_amount_released) : null,
             status: editingId ? undefined : 'criado',
         };
 
@@ -632,7 +715,7 @@ export default function Contratos() {
         } else {
             createMutation.mutate(contractData);
         }
-    }, [formData, editingId, unidadeAtual?.id, products, createMutation, updateMutation]);
+    }, [formData, editingId, unidadeAtual?.id, products, ccRate, autoTitle, createMutation, updateMutation]);
 
     const handleDelete = useCallback((id: string, title: string, status: string) => {
         if (status === 'aprovado') {
@@ -667,20 +750,27 @@ export default function Contratos() {
             )
             : null;
         const categoryIdFromProduct = categoryByProductName?.id ?? (vendasCategory?.id || '');
+        // Derive installments from start/end dates
+        let derivedInstallments = '1';
+        if (contract.end_date && contract.start_date) {
+            const s = new Date(contract.start_date);
+            const e = new Date(contract.end_date);
+            const months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth()) + 1;
+            derivedInstallments = String(Math.max(1, months));
+        }
+
         setFormData({
-            title: contract.title,
             favorecido_id: contract.favorecido_id || '',
             type: product ? (product.commercial_description || product.name) : (contract.type || ''),
             value: contract.value?.toString() || '',
-            start_date: contract.start_date,
-            end_date: contract.end_date || '',
+            installments: derivedInstallments,
             notes: contract.notes || '',
             category_id: product ? categoryIdFromProduct : (contract.category_id || ''),
             product_id: contract.product_id || '',
-            recurrence_type: product?.recurrence_type ?? contract.recurrence_type ?? 'unico',
             seller_id: contract.seller_id || '',
             payment_due_day: contract.payment_due_day?.toString() || '',
             interest_rate: contract.interest_rate?.toString() || '',
+            cc_amount_released: contract.cc_amount_released?.toString() || '',
         });
         setEditingId(contract.id);
         setIsModalOpen(true);
@@ -867,136 +957,194 @@ export default function Contratos() {
                                 </DialogDescription>
                             </DialogHeader>
                             <form className="space-y-4 mt-4" onSubmit={handleSubmit}>
+                                {/* Produto — primeiro campo */}
                                 <div>
-                                    <label className="block text-sm font-medium text-foreground mb-2">Título</label>
-                                    <input
-                                        type="text"
-                                        className="input-financial"
-                                        value={formData.title}
-                                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                        required
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-foreground mb-2">Cliente</label>
-                                        <div className="flex gap-2">
-                                            <FavorecidoSelect
-                                                value={formData.favorecido_id}
-                                                onChange={(id) => setFormData({ ...formData, favorecido_id: id })}
-                                                className="flex-1"
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => setIsFavorecidoModalOpen(true)}
-                                                className="inline-flex items-center px-3 py-2.5 rounded-lg font-medium text-primary border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-colors shrink-0"
-                                                title="Adicionar novo cliente"
-                                            >
-                                                <Plus className="w-4 h-4" />
-                                            </button>
-                                        </div>
+                                    <label className="block text-sm font-medium text-foreground mb-2">
+                                        Produto
+                                        <span className="text-destructive ml-1">*</span>
+                                    </label>
+                                    <div className="flex gap-2">
+                                        <ProductSelect
+                                            value={formData.product_id}
+                                            className="flex-1"
+                                            placeholder="Selecione um produto (obrigatório)"
+                                            onChange={(id, product) => {
+                                                const categoryByProductName = product?.product_category?.name
+                                                    ? categories?.find(
+                                                        (c) => c.name.toLowerCase() === product.product_category!.name.toLowerCase()
+                                                    )
+                                                    : null;
+                                                const categoryId = categoryByProductName?.id ?? (vendasCategory?.id || '');
+                                                setFormData({
+                                                    ...formData,
+                                                    product_id: id,
+                                                    type: product ? (product.commercial_description || product.name) : formData.type,
+                                                    category_id: product ? categoryId : formData.category_id,
+                                                });
+                                            }}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsInlineTypeModalOpen(true)}
+                                            className="inline-flex items-center px-3 py-2.5 rounded-lg font-medium text-primary border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-colors shrink-0"
+                                            title="Cadastrar novo produto"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                        </button>
                                     </div>
+                                </div>
+
+                                {/* Título gerado automaticamente */}
+                                {autoTitle && autoTitle !== 'Nova venda' && (
+                                    <div className="px-3 py-2 rounded-lg bg-muted/50 text-sm text-muted-foreground">
+                                        <span className="font-medium text-foreground">Título: </span>
+                                        {autoTitle}
+                                    </div>
+                                )}
+
+                                {/* Cliente */}
+                                <div>
+                                    <label className="block text-sm font-medium text-foreground mb-2">Cliente</label>
+                                    <div className="flex gap-2">
+                                        <FavorecidoSelect
+                                            value={formData.favorecido_id}
+                                            onChange={(id) => setFormData({ ...formData, favorecido_id: id })}
+                                            className="flex-1"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsFavorecidoModalOpen(true)}
+                                            className="inline-flex items-center px-3 py-2.5 rounded-lg font-medium text-primary border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-colors shrink-0"
+                                            title="Adicionar novo cliente"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Bloco cartão de crédito */}
+                                {selectedProduct?.product_type === 'cartao_credito' && (
+                                    <div className="rounded-xl border-2 border-blue-500/40 bg-blue-500/5 p-4 space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <DollarSign className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                            <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                                                Operação de Cartão de Crédito
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-foreground mb-2">
+                                                    Valor total pago na maquineta (R$)
+                                                </label>
+                                                <CurrencyInput
+                                                    value={formData.value}
+                                                    onChange={(numValue) => setFormData({ ...formData, value: String(numValue) })}
+                                                />
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                    Parcelas × valor da parcela (receita total)
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-foreground mb-2">
+                                                    Valor liberado ao cliente (R$)
+                                                </label>
+                                                <CurrencyInput
+                                                    value={formData.cc_amount_released}
+                                                    onChange={(numValue) => setFormData({ ...formData, cc_amount_released: String(numValue) })}
+                                                />
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                    Dinheiro entregue ao cliente (despesa)
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {/* Taxa calculada */}
+                                        {ccRate !== null && (
+                                            <div className={[
+                                                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium',
+                                                ccRateStatus === 'ok'
+                                                    ? 'bg-green-500/10 text-green-700 dark:text-green-400'
+                                                    : 'bg-red-500/10 text-red-700 dark:text-red-400',
+                                            ].join(' ')}>
+                                                <span>
+                                                    Taxa total calculada:
+                                                    {' '}
+                                                    <span className="font-bold">
+                                                        {ccRate.toFixed(2)}
+                                                        %
+                                                    </span>
+                                                </span>
+                                                {ccRateStatus === 'ok' && (
+                                                    <span className="text-xs opacity-80">✓ dentro da faixa do produto</span>
+                                                )}
+                                                {ccRateStatus === 'below' && (
+                                                    <span className="text-xs opacity-80">
+                                                        ✗ abaixo do mínimo (
+                                                        {selectedProduct.interest_rate_min}
+                                                        %)
+                                                    </span>
+                                                )}
+                                                {ccRateStatus === 'above' && (
+                                                    <span className="text-xs opacity-80">
+                                                        ✗ acima do máximo (
+                                                        {selectedProduct.interest_rate_max}
+                                                        %)
+                                                    </span>
+                                                )}
+                                                {ccRateStatus === null && selectedProduct && (
+                                                    selectedProduct.interest_rate_min == null
+                                                    && selectedProduct.interest_rate_max == null
+                                                ) && (
+                                                    <span className="text-xs opacity-80">sem restrição de taxa no produto</span>
+                                                )}
+                                            </div>
+                                        )}
+                                        <p className="text-xs text-blue-600/80 dark:text-blue-400/80">
+                                            Ao gerar lançamentos: 1 saída (valor ao cliente) + N entradas (parcelas da maquininha).
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Valor — produtos não-cartão */}
+                                {selectedProduct?.product_type !== 'cartao_credito' && (
                                     <div>
-                                        <label className="block text-sm font-medium text-foreground mb-2">Valor</label>
+                                        <label className="block text-sm font-medium text-foreground mb-2">Valor (R$)</label>
                                         <CurrencyInput
                                             value={formData.value}
                                             onChange={(numValue) => setFormData({ ...formData, value: String(numValue) })}
                                         />
                                     </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-foreground mb-2">Data Início</label>
-                                        <input
-                                            type="date"
-                                            className="input-financial"
-                                            value={formData.start_date}
-                                            onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-foreground mb-2">Data Fim</label>
-                                        <input
-                                            type="date"
-                                            className="input-financial"
-                                            value={formData.end_date}
-                                            onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-foreground mb-2">Produto (cadastro)</label>
-                                        <div className="flex gap-2">
-                                            <ProductSelect
-                                                value={formData.product_id}
-                                                className="flex-1"
-                                                placeholder="Selecione um produto (obrigatório)"
-                                                onChange={(id, product) => {
-                                                    const categoryByProductName = product?.product_category?.name
-                                                        ? categories?.find(
-                                                            (c) => c.name.toLowerCase() === product.product_category!.name.toLowerCase()
-                                                        )
-                                                        : null;
-                                                    const categoryId = categoryByProductName?.id ?? (vendasCategory?.id || '');
-                                                    setFormData({
-                                                        ...formData,
-                                                        product_id: id,
-                                                        type: product ? (product.commercial_description || product.name) : formData.type,
-                                                        category_id: product ? categoryId : formData.category_id,
-                                                        recurrence_type: product?.recurrence_type ?? formData.recurrence_type,
-                                                    });
-                                                }}
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => setIsProductModalOpen(true)}
-                                                className="inline-flex items-center px-3 py-2.5 rounded-lg font-medium text-primary border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-colors shrink-0"
-                                                title="Adicionar novo produto"
-                                            >
-                                                <Plus className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-foreground mb-2">Tipo / descrição</label>
-                                        <input
-                                            type="text"
-                                            className="input-financial"
-                                            placeholder="Ex: Empréstimo Consignado"
-                                            value={formData.type}
-                                            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                                            readOnly={!!selectedProduct}
-                                            title={selectedProduct ? 'Definido pelo produto vinculado' : ''}
-                                        />
-                                        {selectedProduct && (
-                                            <p className="text-xs text-muted-foreground mt-1">Definido pelo produto</p>
-                                        )}
-                                    </div>
-                                </div>
+                                )}
+
                                 {selectedProduct && (
                                     <ProductRulesPanel
                                         product={selectedProduct}
                                         saleValue={typeof formData.value === 'string' ? parseFloat(formData.value) || 0 : Number(formData.value)}
                                     />
                                 )}
+
+                                {/* Parcelas + Dia de vencimento */}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-foreground mb-2">Recorrência</label>
-                                        <select
+                                        <label className="block text-sm font-medium text-foreground mb-2">
+                                            Número de parcelas
+                                        </label>
+                                        <input
+                                            type="number"
+                                            min="1"
                                             className="input-financial"
-                                            value={formData.recurrence_type}
-                                            onChange={(e) => setFormData({ ...formData, recurrence_type: e.target.value as ContractRecurrenceType })}
-                                            disabled={!!selectedProduct}
-                                            title={selectedProduct ? 'Definida pelo produto vinculado' : ''}
-                                        >
-                                            <option value="unico">Único</option>
-                                            <option value="mensal">Mensal</option>
-                                            <option value="anual">Anual</option>
-                                        </select>
-                                        {selectedProduct && (
-                                            <p className="text-xs text-muted-foreground mt-1">Definida pelo produto</p>
+                                            placeholder="Ex: 12"
+                                            value={formData.installments}
+                                            onChange={(e) => setFormData({ ...formData, installments: e.target.value })}
+                                        />
+                                        {selectedProduct && (selectedProduct.term_months_min != null || selectedProduct.term_months_max != null) && (
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Faixa do produto:
+                                                {' '}
+                                                {selectedProduct.term_months_min ?? 1}
+                                                {' – '}
+                                                {selectedProduct.term_months_max ?? '∞'}
+                                                {' parcelas'}
+                                            </p>
                                         )}
                                     </div>
                                     <div>
@@ -1015,34 +1163,38 @@ export default function Contratos() {
                                         </p>
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-foreground mb-2">
-                                        Taxa de juros (% a.m.)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        className="input-financial"
-                                        placeholder={
-                                            selectedProduct
-                                                ? `${selectedProduct.interest_rate_min ?? 0} - ${selectedProduct.interest_rate_max ?? '∞'}%`
-                                                : '0.00'
-                                        }
-                                        step="0.01"
-                                        min={0}
-                                        value={formData.interest_rate}
-                                        onChange={(e) => setFormData({ ...formData, interest_rate: e.target.value })}
-                                    />
-                                    {selectedProduct && (selectedProduct.interest_rate_min != null || selectedProduct.interest_rate_max != null) && (
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                            Faixa do produto:
-                                            {' '}
-                                            {selectedProduct.interest_rate_min ?? 0}
-                                            {'% - '}
-                                            {selectedProduct.interest_rate_max ?? '∞'}
-                                            % a.m.
-                                        </p>
-                                    )}
-                                </div>
+
+                                {/* Taxa de juros — apenas produtos não-cartão */}
+                                {selectedProduct?.product_type !== 'cartao_credito' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-2">
+                                            Taxa de juros (% a.m.)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            className="input-financial"
+                                            placeholder={
+                                                selectedProduct
+                                                    ? `${selectedProduct.interest_rate_min ?? 0} – ${selectedProduct.interest_rate_max ?? '∞'}%`
+                                                    : '0.00'
+                                            }
+                                            step="0.01"
+                                            min={0}
+                                            value={formData.interest_rate}
+                                            onChange={(e) => setFormData({ ...formData, interest_rate: e.target.value })}
+                                        />
+                                        {selectedProduct && (selectedProduct.interest_rate_min != null || selectedProduct.interest_rate_max != null) && (
+                                            <p className="text-xs text-muted-foreground mt-1">
+                                                Faixa do produto:
+                                                {' '}
+                                                {selectedProduct.interest_rate_min ?? 0}
+                                                {'% – '}
+                                                {selectedProduct.interest_rate_max ?? '∞'}
+                                                % a.m.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-foreground mb-2">Categoria</label>
@@ -1486,6 +1638,17 @@ export default function Contratos() {
                 </DialogContent>
             </Dialog>
 
+            {/* Inline Product Type Selection Modal */}
+            <ProductTypeModal
+                open={isInlineTypeModalOpen}
+                onSelect={(type) => {
+                    setProductFormData((prev) => ({ ...prev, product_type: type }));
+                    setIsInlineTypeModalOpen(false);
+                    setIsProductModalOpen(true);
+                }}
+                onClose={() => setIsInlineTypeModalOpen(false)}
+            />
+
             {/* Inline Product Creation Modal */}
             <Dialog
                 open={isProductModalOpen}
@@ -1584,25 +1747,51 @@ export default function Contratos() {
                     {generatePreview && (
                         <div className="space-y-4 mt-4">
                             <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
-                                <h4 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 mb-1">
-                                    Receitas (parcelas)
+                                <h4 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 mb-2">
+                                    Receita
                                 </h4>
-                                <p className="text-sm text-emerald-600 dark:text-emerald-300">
-                                    {generatePreview.revenueCount}
-                                    {' '}
-                                    parcela(s) de
-                                    {' '}
-                                    {formatCurrency(generatePreview.revenueInstallmentValue)}
-                                </p>
-                                {generatePreview.interestRate > 0 && (
-                                    <p className="text-xs text-emerald-500 dark:text-emerald-400 mt-1">
-                                        Juros:
-                                        {' '}
-                                        {generatePreview.interestRate}
-                                        % a.m. (Tabela Price) — Total:
-                                        {' '}
-                                        {formatCurrency(generatePreview.totalWithInterest)}
-                                    </p>
+                                {generatePreview.isCartaoCredito ? (
+                                    <div className="space-y-1 text-sm text-emerald-600 dark:text-emerald-300">
+                                        <div className="flex justify-between">
+                                            <span>Valor cobrado na maquineta</span>
+                                            <span className="font-mono">{formatCurrency(generatePreview.ccGrossValue ?? 0)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-emerald-500 dark:text-emerald-400">
+                                            <span>
+                                                Taxa da maquineta (
+                                                {generatePreview.ccMachineFee ?? 0}
+                                                %)
+                                            </span>
+                                            <span className="font-mono">
+                                                −
+                                                {formatCurrency(generatePreview.ccMachineFeeValue ?? 0)}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between font-semibold border-t border-emerald-200 dark:border-emerald-700 pt-1 mt-1">
+                                            <span>Receita líquida</span>
+                                            <span className="font-mono">{formatCurrency(generatePreview.revenueInstallmentValue)}</span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <p className="text-sm text-emerald-600 dark:text-emerald-300">
+                                            {generatePreview.revenueCount}
+                                            {' '}
+                                            parcela(s) de
+                                            {' '}
+                                            {formatCurrency(generatePreview.revenueInstallmentValue)}
+                                        </p>
+                                        {generatePreview.interestRate > 0 && (
+                                            <p className="text-xs text-emerald-500 dark:text-emerald-400 mt-1">
+                                                Juros:
+                                                {' '}
+                                                {generatePreview.interestRate}
+                                                % a.m. (Tabela Price) — Total:
+                                                {' '}
+                                                {formatCurrency(generatePreview.totalWithInterest)}
+                                            </p>
+                                        )}
+                                    </>
                                 )}
                             </div>
                             {generatePreview.expenses.length > 0 && (

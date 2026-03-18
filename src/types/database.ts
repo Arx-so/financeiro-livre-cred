@@ -1,4 +1,5 @@
 export type UserRole = 'admin' | 'gerente' | 'usuario' | 'financeiro' | 'vendas' | 'leitura';
+export type ProductType = 'generico' | 'cartao_credito' | 'fgts' | 'consignado';
 export type FavorecidoTipo = 'cliente' | 'fornecedor' | 'funcionario' | 'ambos';
 export type EntryType = 'receita' | 'despesa';
 export type EntryStatus = 'pendente' | 'pago' | 'atrasado' | 'cancelado';
@@ -486,6 +487,7 @@ export interface Database {
           signed_at: string | null;
           payment_due_day: number | null;
           interest_rate: number | null;
+          cc_amount_released: number | null;
           created_at: string;
           updated_at: string;
         };
@@ -511,6 +513,7 @@ export interface Database {
           signed_at?: string | null;
           payment_due_day?: number | null;
           interest_rate?: number | null;
+          cc_amount_released?: number | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -534,6 +537,7 @@ export interface Database {
           signed_at?: string | null;
           payment_due_day?: number | null;
           interest_rate?: number | null;
+          cc_amount_released?: number | null;
           updated_at?: string;
         };
       };
@@ -853,6 +857,7 @@ export interface Database {
           operation_channel: string | null;
           requires_internal_approval: boolean;
           recurrence_type: ContractRecurrenceType | null;
+          product_type: ProductType;
           created_at: string;
           updated_at: string;
         };
@@ -892,6 +897,7 @@ export interface Database {
           operation_channel?: string | null;
           requires_internal_approval?: boolean;
           recurrence_type?: ContractRecurrenceType | null;
+          product_type?: ProductType;
           created_at?: string;
           updated_at?: string;
         };
@@ -930,6 +936,7 @@ export interface Database {
           operation_channel?: string | null;
           requires_internal_approval?: boolean;
           recurrence_type?: ContractRecurrenceType | null;
+          product_type?: ProductType;
           updated_at?: string;
         };
       };

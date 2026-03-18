@@ -419,6 +419,25 @@ function calculatePriceTableInstallment(
     return Math.round(pmt * 100) / 100;
 }
 
+function resolveMachineFee(product: Product | null, installments: number): number {
+    if (!product) return 0;
+    const rules = product.specific_rules as Record<string, unknown> | null;
+    if (!rules) return 0;
+    const tiers = rules.card_machine_fee_tiers as Array<{ from: number; to: number; fee: number }> | undefined;
+    if (Array.isArray(tiers) && tiers.length > 0) {
+        const tier = tiers.find((t) => installments >= t.from && installments <= t.to);
+        if (tier != null) return tier.fee;
+    }
+    return (rules.card_machine_fee as number) ?? 0;
+}
+
+function installmentsFromContract(startDate: string, endDate: string | null | undefined): number {
+    if (!endDate) return 1;
+    const s = new Date(startDate);
+    const e = new Date(endDate);
+    return Math.max(1, (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth()) + 1);
+}
+
 export interface GeneratedEntriesSummary {
     revenueCount: number;
     revenueInstallmentValue: number;
@@ -426,6 +445,11 @@ export interface GeneratedEntriesSummary {
     interestRate: number;
     expenses: { description: string; value: number }[];
     totalExpenses: number;
+    // Credit card specific
+    isCartaoCredito: boolean;
+    ccGrossValue: number | null;       // valor bruto cobrado na maquineta
+    ccMachineFee: number | null;       // taxa da maquineta (%)
+    ccMachineFeeValue: number | null;  // valor da taxa em R$
 }
 
 /**
@@ -433,41 +457,71 @@ export interface GeneratedEntriesSummary {
  * Does NOT create entries — used for the confirmation dialog.
  */
 export function previewContractEntries(
-    contract: ContractWithRelations & { payment_due_day?: number | null; interest_rate?: number | null },
+    contract: ContractWithRelations & {
+        payment_due_day?: number | null;
+        interest_rate?: number | null;
+        cc_amount_released?: number | null;
+    },
     product: Product | null
 ): GeneratedEntriesSummary {
-    const dates = calculateInstallmentDates(
-        contract.start_date,
-        contract.end_date,
-        contract.recurrence_type,
-        contract.payment_due_day ?? null
-    );
+    const isCartaoCredito = product?.product_type === 'cartao_credito';
 
-    const revenueCount = dates.length;
+    let revenueCount: number;
+    let revenueInstallmentValue: number;
+    let totalWithInterest: number;
+
     const interestRate = contract.interest_rate ?? 0;
-    const monthlyRate = interestRate / 100;
+    const ccInstallments = isCartaoCredito
+        ? installmentsFromContract(contract.start_date, contract.end_date)
+        : 0;
+    const machineFee = isCartaoCredito ? resolveMachineFee(product, ccInstallments) : 0;
 
-    const revenueInstallmentValue = monthlyRate > 0 && revenueCount > 1
-        ? calculatePriceTableInstallment(contract.value, monthlyRate, revenueCount)
-        : (revenueCount > 0 ? Math.round((contract.value / revenueCount) * 100) / 100 : contract.value);
-
-    const totalWithInterest = Math.round(revenueInstallmentValue * revenueCount * 100) / 100;
+    if (isCartaoCredito) {
+        revenueCount = 1;
+        const netValue = Math.round(contract.value * (1 - machineFee / 100) * 100) / 100;
+        revenueInstallmentValue = netValue;
+        totalWithInterest = netValue;
+    } else {
+        const dates = calculateInstallmentDates(
+            contract.start_date,
+            contract.end_date,
+            contract.recurrence_type,
+            contract.payment_due_day ?? null
+        );
+        revenueCount = dates.length;
+        const monthlyRate = interestRate / 100;
+        revenueInstallmentValue = monthlyRate > 0 && revenueCount > 1
+            ? calculatePriceTableInstallment(contract.value, monthlyRate, revenueCount)
+            : (revenueCount > 0 ? Math.round((contract.value / revenueCount) * 100) / 100 : contract.value);
+        totalWithInterest = Math.round(revenueInstallmentValue * revenueCount * 100) / 100;
+    }
 
     const expenses: { description: string; value: number }[] = [];
 
-    // Product fees
-    if (product?.other_fees) {
-        Object.entries(product.other_fees).forEach(([key, val]) => {
-            if (val && val > 0) {
-                expenses.push({
-                    description: `Taxa de ${FEE_LABELS[key] || key}`,
-                    value: val,
-                });
-            }
-        });
+    if (isCartaoCredito) {
+        // Credit card: expense = amount released to client
+        const amountReleased = contract.cc_amount_released ?? 0;
+        if (amountReleased > 0) {
+            expenses.push({
+                description: 'Valor liberado ao cliente (maquininha)',
+                value: amountReleased,
+            });
+        }
+    } else {
+        // Product fees
+        if (product?.other_fees) {
+            Object.entries(product.other_fees).forEach(([key, val]) => {
+                if (val && val > 0) {
+                    expenses.push({
+                        description: `Taxa de ${FEE_LABELS[key] || key}`,
+                        value: val,
+                    });
+                }
+            });
+        }
     }
 
-    // Seller commission
+    // Seller commission — all product types
     if (contract.seller_id && product?.commission_pct != null && product.commission_pct > 0) {
         const isPercentual = !product.commission_type || product.commission_type === 'percentual';
         const commissionValue = isPercentual
@@ -488,6 +542,10 @@ export function previewContractEntries(
         interestRate,
         expenses,
         totalExpenses: expenses.reduce((sum, e) => sum + e.value, 0),
+        isCartaoCredito,
+        ccGrossValue: isCartaoCredito ? contract.value : null,
+        ccMachineFee: isCartaoCredito ? machineFee : null,
+        ccMachineFeeValue: isCartaoCredito ? Math.round(contract.value * (machineFee / 100) * 100) / 100 : null,
     };
 }
 
@@ -495,73 +553,117 @@ export function previewContractEntries(
  * Generate financial entries (receita + despesa) for an approved contract.
  */
 export async function generateFinancialEntriesFromContract(
-    contract: ContractWithRelations & { payment_due_day?: number | null; interest_rate?: number | null },
+    contract: ContractWithRelations & {
+        payment_due_day?: number | null;
+        interest_rate?: number | null;
+        cc_amount_released?: number | null;
+    },
     product: Product | null
 ): Promise<number> {
     const entries: FinancialEntryInsert[] = [];
+    const isCartaoCredito = product?.product_type === 'cartao_credito';
 
-    // --- Revenue installments ---
-    const dates = calculateInstallmentDates(
-        contract.start_date,
-        contract.end_date,
-        contract.recurrence_type,
-        contract.payment_due_day ?? null
-    );
+    // --- Revenue entry/entries ---
+    const ccInstallments = isCartaoCredito
+        ? installmentsFromContract(contract.start_date, contract.end_date)
+        : 0;
+    const machineFee = isCartaoCredito ? resolveMachineFee(product, ccInstallments) : 0;
 
-    const totalInstallments = dates.length;
-    const interestRate = contract.interest_rate ?? 0;
-    const monthlyRate = interestRate / 100;
-
-    const installmentValue = monthlyRate > 0 && totalInstallments > 1
-        ? calculatePriceTableInstallment(contract.value, monthlyRate, totalInstallments)
-        : (totalInstallments > 0
-            ? Math.round((contract.value / totalInstallments) * 100) / 100
-            : contract.value);
-
-    const totalWithInterest = Math.round(installmentValue * totalInstallments * 100) / 100;
-
-    // Adjust last installment for rounding difference
-    const roundingDiff = Math.round(
-        (totalWithInterest - installmentValue * totalInstallments) * 100
-    ) / 100;
-
-    dates.forEach((dueDate, index) => {
-        const isLast = index === totalInstallments - 1;
-        const value = isLast ? installmentValue + roundingDiff : installmentValue;
-        const suffix = totalInstallments > 1 ? ` (${index + 1}/${totalInstallments})` : '';
-
+    if (isCartaoCredito) {
+        // Credit card: single receipt = machine total minus machine fee
+        const netValue = Math.round(contract.value * (1 - machineFee / 100) * 100) / 100;
         entries.push({
             branch_id: contract.branch_id,
             type: 'receita',
-            description: `Venda: ${contract.title}${suffix}`,
-            value,
-            due_date: dueDate,
+            description: `Cartão: ${contract.title}`,
+            value: netValue,
+            due_date: contract.start_date,
             status: 'pendente',
             category_id: contract.category_id ?? undefined,
             favorecido_id: contract.favorecido_id ?? undefined,
             contract_id: contract.id,
         });
-    });
+    } else {
+        const dates = calculateInstallmentDates(
+            contract.start_date,
+            contract.end_date,
+            contract.recurrence_type,
+            contract.payment_due_day ?? null
+        );
 
-    // --- Expense entries (fees) ---
-    if (product?.other_fees) {
-        Object.entries(product.other_fees).forEach(([key, val]) => {
-            if (val && val > 0) {
-                entries.push({
-                    branch_id: contract.branch_id,
-                    type: 'despesa',
-                    description: `Custo venda: ${contract.title} - Taxa de ${FEE_LABELS[key] || key}`,
-                    value: val,
-                    due_date: contract.start_date,
-                    status: 'pendente',
-                    category_id: contract.category_id ?? undefined,
-                    contract_id: contract.id,
-                });
-            }
+        const totalInstallments = dates.length;
+        const interestRate = contract.interest_rate ?? 0;
+        const monthlyRate = interestRate / 100;
+
+        const installmentValue = monthlyRate > 0 && totalInstallments > 1
+            ? calculatePriceTableInstallment(contract.value, monthlyRate, totalInstallments)
+            : (totalInstallments > 0
+                ? Math.round((contract.value / totalInstallments) * 100) / 100
+                : contract.value);
+
+        const totalWithInterest = Math.round(installmentValue * totalInstallments * 100) / 100;
+
+        // Adjust last installment for rounding difference
+        const roundingDiff = Math.round(
+            (totalWithInterest - installmentValue * totalInstallments) * 100
+        ) / 100;
+
+        dates.forEach((dueDate, index) => {
+            const isLast = index === totalInstallments - 1;
+            const value = isLast ? installmentValue + roundingDiff : installmentValue;
+            const suffix = totalInstallments > 1 ? ` (${index + 1}/${totalInstallments})` : '';
+
+            entries.push({
+                branch_id: contract.branch_id,
+                type: 'receita',
+                description: `Venda: ${contract.title}${suffix}`,
+                value,
+                due_date: dueDate,
+                status: 'pendente',
+                category_id: contract.category_id ?? undefined,
+                favorecido_id: contract.favorecido_id ?? undefined,
+                contract_id: contract.id,
+            });
         });
     }
 
-    // --- Expense entry (commission) ---
+    if (isCartaoCredito) {
+        // --- Cartão de crédito: expense = amount released to client ---
+        const amountReleased = contract.cc_amount_released ?? 0;
+        if (amountReleased > 0) {
+            entries.push({
+                branch_id: contract.branch_id,
+                type: 'despesa',
+                description: `Cartão (valor ao cliente): ${contract.title}`,
+                value: amountReleased,
+                due_date: contract.start_date,
+                status: 'pendente',
+                category_id: contract.category_id ?? undefined,
+                favorecido_id: contract.favorecido_id ?? undefined,
+                contract_id: contract.id,
+            });
+        }
+    } else {
+        // --- Generic: expense entries (fees) ---
+        if (product?.other_fees) {
+            Object.entries(product.other_fees).forEach(([key, val]) => {
+                if (val && val > 0) {
+                    entries.push({
+                        branch_id: contract.branch_id,
+                        type: 'despesa',
+                        description: `Custo venda: ${contract.title} - Taxa de ${FEE_LABELS[key] || key}`,
+                        value: val,
+                        due_date: contract.start_date,
+                        status: 'pendente',
+                        category_id: contract.category_id ?? undefined,
+                        contract_id: contract.id,
+                    });
+                }
+            });
+        }
+    }
+
+    // --- Expense entry (commission) — applies to all product types ---
     if (contract.seller_id && product?.commission_pct != null && product.commission_pct > 0) {
         const isPercentual = !product.commission_type || product.commission_type === 'percentual';
         const commissionValue = isPercentual

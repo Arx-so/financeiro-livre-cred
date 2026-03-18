@@ -38,6 +38,9 @@ const routeNames: Record<string, string> = {
     '/relatorios/marketing-canais': 'Marketing e Canais',
     '/relatorios/estrategicos': 'Relatórios Estratégicos',
     '/docs': 'Documentação',
+    '/funcionarios': 'Funcionários',
+    '/folha-pagamento': 'Folha de Pagamento',
+    '/usuarios': 'Usuários',
 };
 
 export function AppLayout({ children }: AppLayoutProps) {

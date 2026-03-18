@@ -67,9 +67,11 @@ const initialFavorecidoForm: FavorecidoFormData = {
     birth_date: '',
 };
 
-export function useFavorecidosPage() {
+export function useFavorecidosPage(options?: { lockedType?: FavorecidoTipo }) {
     const user = useAuthStore((state) => state.user);
     const branchId = useBranchIdForFilter();
+
+    const lockedType = options?.lockedType ?? null;
 
     // Confirmation dialog
     const { confirm, dialogProps } = useConfirmDialog();
@@ -77,7 +79,7 @@ export function useFavorecidosPage() {
 
     // Search and filters
     const [searchTerm, setSearchTerm] = useState('');
-    const [filterType, setFilterType] = useState<FavorecidoTipo | 'todos'>('todos');
+    const [filterType, setFilterType] = useState<FavorecidoTipo | 'todos'>(lockedType ?? 'todos');
 
     // Pagination
     const PAGE_SIZE = 24;
@@ -319,6 +321,7 @@ export function useFavorecidosPage() {
         setSearchTerm: handleSetSearchTerm,
         filterType,
         setFilterType: handleSetFilterType,
+        lockedType,
 
         // Pagination
         currentPage,

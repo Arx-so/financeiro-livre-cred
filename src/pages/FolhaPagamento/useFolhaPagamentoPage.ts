@@ -22,6 +22,7 @@ interface FormData {
     employee_id: string;
     reference_month: string;
     reference_year: string;
+    recurring_months: string;
     base_salary: string;
     overtime_hours: string;
     overtime_value: string;
@@ -39,6 +40,7 @@ const initialFormData: FormData = {
     employee_id: '',
     reference_month: String(currentDate.getMonth() + 1),
     reference_year: String(currentDate.getFullYear()),
+    recurring_months: '1',
     base_salary: '0',
     overtime_hours: '0',
     overtime_value: '0',
@@ -81,7 +83,7 @@ export function useFolhaPagamentoPage() {
         categoriaContratacao: filterCategory || undefined,
     });
     const { data: summary } = usePayrollSummary(filterMonth, filterYear);
-    const { data: funcionarios } = useFuncionarios();
+    const { data: funcionariosPage } = useFuncionarios();
     const { data: hiringCategories = [] } = useHiringCategories();
 
     // Mutations
@@ -160,11 +162,9 @@ export function useFolhaPagamentoPage() {
             return;
         }
 
-        const payrollData: PayrollInsert = {
+        const basePayrollData = {
             branch_id: unidadeAtual.id,
             employee_id: formData.employee_id,
-            reference_month: parseInt(formData.reference_month, 10),
-            reference_year: parseInt(formData.reference_year, 10),
             base_salary: parseFloat(formData.base_salary) || 0,
             overtime_hours: parseFloat(formData.overtime_hours) || 0,
             overtime_value: parseFloat(formData.overtime_value) || 0,
@@ -178,21 +178,48 @@ export function useFolhaPagamentoPage() {
             notes: formData.notes || null,
         };
 
+        const startMonth = parseInt(formData.reference_month, 10);
+        const startYear = parseInt(formData.reference_year, 10);
+        const months = Math.max(1, parseInt(formData.recurring_months, 10) || 1);
+
         try {
             if (editingId) {
-                await updateMutation.mutateAsync({ id: editingId, data: payrollData as PayrollUpdate });
+                const payrollData: PayrollUpdate = {
+                    ...basePayrollData,
+                    reference_month: startMonth,
+                    reference_year: startYear,
+                };
+                await updateMutation.mutateAsync({ id: editingId, data: payrollData });
                 toast.success('Folha de pagamento atualizada!');
             } else {
-                await createMutation.mutateAsync(payrollData);
-                toast.success('Folha de pagamento criada!');
+                let created = 0;
+                let skipped = 0;
+                for (let i = 0; i < months; i++) {
+                    const totalMonths = startMonth - 1 + i;
+                    const month = (totalMonths % 12) + 1;
+                    const year = startYear + Math.floor(totalMonths / 12);
+                    const payrollData: PayrollInsert = {
+                        ...basePayrollData,
+                        reference_month: month,
+                        reference_year: year,
+                    };
+                    try {
+                        await createMutation.mutateAsync(payrollData);
+                        created++;
+                    } catch (err: any) {
+                        if (err?.code === '23505') skipped++;
+                        else throw err;
+                    }
+                }
+                if (skipped > 0) {
+                    toast.warning(`${created} criada(s), ${skipped} já existente(s) ignorada(s).`);
+                } else {
+                    toast.success(created === 1 ? 'Folha de pagamento criada!' : `${created} folhas criadas!`);
+                }
             }
             closeModal();
         } catch (error: any) {
-            if (error?.code === '23505') {
-                toast.error('Já existe uma folha para este funcionário neste mês/ano');
-            } else {
-                toast.error(editingId ? 'Erro ao atualizar folha' : 'Erro ao criar folha');
-            }
+            toast.error(editingId ? 'Erro ao atualizar folha' : 'Erro ao criar folha');
         }
     }, [formData, editingId, unidadeAtual?.id, calculatedNetSalary, createMutation, updateMutation, closeModal]);
 
@@ -274,7 +301,7 @@ export function useFolhaPagamentoPage() {
         payrolls: payrolls || [],
         payrollsLoading,
         summary,
-        funcionarios: funcionarios || [],
+        funcionarios: funcionariosPage?.data || [],
         hiringCategories,
         calculatedNetSalary,
 
