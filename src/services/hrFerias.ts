@@ -5,6 +5,7 @@ import type {
     EmployeeVacationUpdate,
     Favorecido,
 } from '@/types/database';
+import { VACATION_STATUSES } from '@/constants/hr';
 
 export interface VacationWithEmployee extends EmployeeVacation {
     employee?: Pick<Favorecido, 'id' | 'name' | 'document'> | null;
@@ -43,12 +44,12 @@ export async function getEmployeeVacations(
     }
 
     if (filters.month) {
+        const y = filters.year ?? new Date().getFullYear();
+        const monthStr = String(filters.month).padStart(2, '0');
+        const lastDay = new Date(y, filters.month, 0).toISOString().split('T')[0];
         query = query
-            .gte('vacation_start_date', `${filters.year ?? new Date().getFullYear()}-${String(filters.month).padStart(2, '0')}-01`)
-            .lte(
-                'vacation_start_date',
-                `${filters.year ?? new Date().getFullYear()}-${String(filters.month).padStart(2, '0')}-31`,
-            );
+            .gte('vacation_start_date', `${y}-${monthStr}-01`)
+            .lte('vacation_start_date', lastDay);
     }
 
     const { data, error } = await query;
@@ -125,7 +126,6 @@ export async function getExpiringVacations(
     branchId: string,
     days = 30,
 ): Promise<VacationWithEmployee[]> {
-    const today = new Date().toISOString().split('T')[0];
     const future = new Date();
     future.setDate(future.getDate() + days);
     const futureStr = future.toISOString().split('T')[0];
@@ -137,15 +137,10 @@ export async function getExpiringVacations(
             employee:favorecidos(id, name, document)
         `)
         .eq('branch_id', branchId)
-        .in('status', ['pendente', 'programada'])
+        .in('status', [VACATION_STATUSES.PENDENTE, VACATION_STATUSES.PROGRAMADA])
         .lte('vacation_expiry_date', futureStr)
         .order('vacation_expiry_date', { ascending: true });
 
     if (error) throw error;
-
-    const results = (data ?? []) as VacationWithEmployee[];
-    return results.map((v) => ({
-        ...v,
-        _isExpired: v.vacation_expiry_date < today,
-    } as VacationWithEmployee));
+    return (data ?? []) as VacationWithEmployee[];
 }

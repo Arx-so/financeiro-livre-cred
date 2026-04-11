@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { uploadFile } from '@/services/storage';
 import type {
     SalesCreditCard,
     SalesCreditCardInsert,
@@ -128,16 +129,7 @@ export async function uploadSaleDocument(
 ): Promise<string> {
     const ext = file.name.split('.').pop() ?? 'bin';
     const path = `sales/${branchId}/${saleId}/${Date.now()}.${ext}`;
-
-    const { error } = await supabase.storage.from('documents').upload(path, file, {
-        cacheControl: '3600',
-        upsert: false,
-    });
-
-    if (error) throw error;
-
-    const { data: publicData } = supabase.storage.from('documents').getPublicUrl(path);
-    return publicData.publicUrl;
+    return uploadFile('documents', path, file);
 }
 
 export async function getCreditCardSalesReport(

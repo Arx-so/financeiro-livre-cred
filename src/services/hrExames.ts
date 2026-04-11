@@ -1,10 +1,12 @@
 import { supabase } from '@/lib/supabase';
+import { uploadFile } from '@/services/storage';
 import type {
     OccupationalExam,
     OccupationalExamInsert,
     OccupationalExamUpdate,
     Favorecido,
 } from '@/types/database';
+import { EXAM_TYPES } from '@/constants/hr';
 
 export interface ExamWithEmployee extends OccupationalExam {
     employee?: Pick<Favorecido, 'id' | 'name' | 'document'> | null;
@@ -62,7 +64,7 @@ export async function getOccupationalExams(
         const futureStr = future.toISOString().split('T')[0];
 
         results = results.filter((e) => {
-            if (e.exam_type !== 'periodico' || !e.exam_expiry_date) return false;
+            if (e.exam_type !== EXAM_TYPES.PERIODICO || !e.exam_expiry_date) return false;
             if (filters.expiryStatus === 'expired') return e.exam_expiry_date < today;
             if (filters.expiryStatus === 'expiring') {
                 return e.exam_expiry_date >= today && e.exam_expiry_date <= futureStr;
@@ -120,8 +122,8 @@ export async function deleteExam(id: string): Promise<void> {
 }
 
 /**
- * Uploads an exam document to Supabase Storage.
- * Returns the public URL of the uploaded file.
+ * Uploads an exam document to Supabase Storage and returns its metadata.
+ * Delegates upload/URL logic to the shared storage service.
  */
 export async function uploadExamDocument(
     file: File,
@@ -130,21 +132,8 @@ export async function uploadExamDocument(
 ): Promise<{ url: string; name: string; type: string }> {
     const ext = file.name.split('.').pop() ?? 'bin';
     const path = `exames/${branchId}/${employeeId}/${Date.now()}.${ext}`;
-
-    const { error } = await supabase.storage.from('documents').upload(path, file, {
-        cacheControl: '3600',
-        upsert: false,
-    });
-
-    if (error) throw error;
-
-    const { data: publicData } = supabase.storage.from('documents').getPublicUrl(path);
-
-    return {
-        url: publicData.publicUrl,
-        name: file.name,
-        type: ext,
-    };
+    const url = await uploadFile('documents', path, file);
+    return { url, name: file.name, type: ext };
 }
 
 /**
@@ -154,7 +143,6 @@ export async function getExpiringExams(
     branchId: string,
     days = 30,
 ): Promise<ExamWithEmployee[]> {
-    const today = new Date().toISOString().split('T')[0];
     const future = new Date();
     future.setDate(future.getDate() + days);
     const futureStr = future.toISOString().split('T')[0];
@@ -166,16 +154,11 @@ export async function getExpiringExams(
             employee:favorecidos(id, name, document)
         `)
         .eq('branch_id', branchId)
-        .eq('exam_type', 'periodico')
+        .eq('exam_type', EXAM_TYPES.PERIODICO)
         .not('exam_expiry_date', 'is', null)
         .lte('exam_expiry_date', futureStr)
         .order('exam_expiry_date', { ascending: true });
 
     if (error) throw error;
-
-    const results = (data ?? []) as ExamWithEmployee[];
-    return results.map((e) => ({
-        ...e,
-        _isExpired: (e.exam_expiry_date ?? '') < today,
-    } as ExamWithEmployee));
+    return (data ?? []) as ExamWithEmployee[];
 }

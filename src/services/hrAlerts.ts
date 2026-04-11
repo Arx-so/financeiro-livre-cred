@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import type { HrAlert, HrAlertInsert, Favorecido } from '@/types/database';
-import { ALERT_TYPES, ALERT_ADVANCE_DAYS } from '@/constants/hr';
+import {
+    ALERT_TYPES, ALERT_ADVANCE_DAYS, VACATION_STATUSES, EXAM_TYPES,
+} from '@/constants/hr';
 import { getExpiringVacations } from '@/services/hrFerias';
 import { getExpiringExams } from '@/services/hrExames';
 
@@ -70,11 +72,14 @@ export async function generateHrAlerts(branchId: string): Promise<HrAlertWithEmp
     const today = new Date().toISOString().split('T')[0];
     const inserts: HrAlertInsert[] = [];
 
-    // --- Vacation alerts ---
-    const expiringVacations = await getExpiringVacations(branchId, ALERT_ADVANCE_DAYS);
+    const [expiringVacations, expiringExams] = await Promise.all([
+        getExpiringVacations(branchId, ALERT_ADVANCE_DAYS),
+        getExpiringExams(branchId, ALERT_ADVANCE_DAYS),
+    ]);
+
     for (const v of expiringVacations) {
         const isExpired = v.vacation_expiry_date < today;
-        const isUnscheduled = v.status === 'pendente';
+        const isUnscheduled = v.status === VACATION_STATUSES.PENDENTE;
 
         if (isExpired && isUnscheduled) {
             inserts.push({
@@ -103,8 +108,6 @@ export async function generateHrAlerts(branchId: string): Promise<HrAlertWithEmp
         }
     }
 
-    // --- Exam alerts ---
-    const expiringExams = await getExpiringExams(branchId, ALERT_ADVANCE_DAYS);
     for (const e of expiringExams) {
         const isExpired = (e.exam_expiry_date ?? '') < today;
         inserts.push({
@@ -120,7 +123,6 @@ export async function generateHrAlerts(branchId: string): Promise<HrAlertWithEmp
         });
     }
 
-    // --- Birthday alerts ---
     const { data: birthdayEmployees } = await supabase
         .from('favorecidos')
         .select('id, name, birth_date')
@@ -154,14 +156,12 @@ export async function generateHrAlerts(branchId: string): Promise<HrAlertWithEmp
         }
     }
 
-    // Upsert all generated alerts in batch
     if (inserts.length > 0) {
         await supabase
             .from('hr_alerts')
             .upsert(inserts, { ignoreDuplicates: true });
     }
 
-    // Return active alerts for this branch
     return getHrAlerts({ branchId, dismissed: false });
 }
 
@@ -184,31 +184,27 @@ export async function getHrDashboardSummary(branchId: string): Promise<HrDashboa
     const todayStr = today.toISOString().split('T')[0];
 
     const [vacExpiring, vacInProgress, examsExp, birthdays, certs] = await Promise.all([
-        // Vacations expiring in 30 days
         supabase
             .from('employee_vacations')
             .select('id', { count: 'exact', head: true })
             .eq('branch_id', branchId)
-            .in('status', ['pendente', 'programada'])
+            .in('status', [VACATION_STATUSES.PENDENTE, VACATION_STATUSES.PROGRAMADA])
             .lte('vacation_expiry_date', futureStr),
 
-        // Vacations currently in progress
         supabase
             .from('employee_vacations')
             .select('id', { count: 'exact', head: true })
             .eq('branch_id', branchId)
-            .eq('status', 'em_andamento'),
+            .eq('status', VACATION_STATUSES.EM_ANDAMENTO),
 
-        // Periodic exams expiring in 30 days
         supabase
             .from('occupational_exams')
             .select('id', { count: 'exact', head: true })
             .eq('branch_id', branchId)
-            .eq('exam_type', 'periodico')
+            .eq('exam_type', EXAM_TYPES.PERIODICO)
             .not('exam_expiry_date', 'is', null)
             .lte('exam_expiry_date', futureStr),
 
-        // Birthdays this month among employees
         supabase
             .from('favorecidos')
             .select('id, birth_date')
@@ -216,7 +212,6 @@ export async function getHrDashboardSummary(branchId: string): Promise<HrDashboa
             .eq('branch_id', branchId)
             .not('birth_date', 'is', null),
 
-        // Medical certificates this month
         supabase
             .from('medical_certificates')
             .select('absence_days')
