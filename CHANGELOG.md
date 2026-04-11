@@ -4,6 +4,29 @@ All notable changes to the LivreCred financial management system are documented 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-04-11
+
+### Added
+
+#### Sales Module — Gerar Lançamentos Financeiros
+
+- **Migration** (`supabase/migrations/037_sales_financial_entries.sql`):
+  - Added `credit_card_sale_id` (FK → `sales_credit_card`) and `dplus_sale_id` (FK → `sales_d_plus_products`) columns to `financial_entries` with indexed lookups.
+  - Added `financial_entries_generated BOOLEAN DEFAULT FALSE` to both `sales_credit_card` and `sales_d_plus_products` to prevent duplicate generation.
+
+- **Services**:
+  - `salesCreditCard.ts` — `previewCreditCardSaleEntries()` returns a typed preview of the receita (net value after terminal fee) and despesa (terminal fee amount) that will be created. `generateFinancialEntriesFromCreditCardSale()` creates both financial entries via the shared `createFinancialEntries()` helper and marks the sale as generated.
+  - `salesDPlus.ts` — `previewDPlusSaleEntries()` returns a preview of the single receita (commission/contract value). `generateFinancialEntriesFromDPlusSale()` creates the entry and marks the sale as generated.
+
+- **Hooks**:
+  - `useSalesCreditCard.ts` — `useGenerateCreditCardSaleEntries()` mutation with `toast.success` / `toast.error` feedback and automatic invalidation of `financial-entries` and `sales-credit-card` cache keys.
+  - `useSalesDPlus.ts` — `useGenerateDPlusSaleEntries()` mutation with same cache invalidation pattern.
+
+- **UI** (`src/pages/Vendas/index.tsx`):
+  - Added a "Lançamentos" column to both the Cartão de Crédito and Produtos D+ tables.
+  - Each row shows a "Gerar" button (with `TrendingUp` icon) when entries have not yet been generated, or a `CheckCircle2` "Gerados" badge once created — matching the Contratos module pattern.
+  - Clicking "Gerar" opens a confirmation modal (Dialog) previewing the entries (emerald card for receita, red card for despesa) before committing. Includes loading spinner during mutation and Cancelar / Confirmar buttons.
+
 ## [1.1.0] - 2026-04-11
 
 ### Added
