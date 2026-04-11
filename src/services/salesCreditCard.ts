@@ -199,13 +199,12 @@ export interface CreditCardSaleEntriesPreview {
 export function previewCreditCardSaleEntries(
     sale: SalesCreditCardWithRelations,
 ): CreditCardSaleEntriesPreview {
-    const netValue = sale.sale_value - sale.terminal_amount;
     const feeValue = sale.terminal_amount - sale.sale_value;
 
     return {
         receita: {
             description: `Cartão: ${sale.terminal} - ${sale.card_brand}`,
-            value: netValue,
+            value: sale.sale_value,
         },
         despesa: {
             description: `Taxa maquininha: ${sale.terminal}`,
@@ -222,7 +221,6 @@ export async function generateFinancialEntriesFromCreditCardSale(
     sale: SalesCreditCardWithRelations,
 ): Promise<number> {
     const saleDate = sale.created_at.split('T')[0];
-    const netValue = sale.sale_value - sale.terminal_amount;
     const feeValue = sale.terminal_amount - sale.sale_value;
 
     await createFinancialEntries([
@@ -230,7 +228,7 @@ export async function generateFinancialEntriesFromCreditCardSale(
             branch_id: sale.branch_id,
             type: 'receita',
             description: `Cartão: ${sale.terminal} - ${sale.card_brand}`,
-            value: netValue,
+            value: sale.sale_value,
             due_date: saleDate,
             status: 'pendente',
             favorecido_id: sale.client_id ?? undefined,
