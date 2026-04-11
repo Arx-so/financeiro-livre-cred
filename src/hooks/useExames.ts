@@ -90,8 +90,9 @@ export function useDeleteExame() {
 
 export function useUploadExameDocument() {
     return useMutation({
-        mutationFn: ({ file, branchId, employeeId }: { file: File; branchId: string; employeeId: string }) =>
-            uploadExamDocument(file, branchId, employeeId),
+        mutationFn: ({ file, branchId, employeeId }: { file: File; branchId: string; employeeId: string }) => (
+            uploadExamDocument(file, branchId, employeeId)
+        ),
     });
 }
 

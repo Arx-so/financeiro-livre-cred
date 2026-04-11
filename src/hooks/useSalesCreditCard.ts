@@ -72,11 +72,12 @@ export function useUpdateCreditCardSaleStatus() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ id, status, paymentDate }: { id: string; status: string; paymentDate?: string }) =>
+        mutationFn: ({ id, status, paymentDate }: { id: string; status: string; paymentDate?: string }) => (
             updateCreditCardSaleStatus(id, {
                 status: status as 'pendente' | 'pago' | 'cancelado',
                 payment_date: paymentDate,
-            }),
+            })
+        ),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: creditCardSalesKeys.all });
         },
@@ -85,8 +86,9 @@ export function useUpdateCreditCardSaleStatus() {
 
 export function useUploadSaleDocument() {
     return useMutation({
-        mutationFn: ({ file, branchId, saleId }: { file: File; branchId: string; saleId: string }) =>
-            uploadSaleDocument(file, branchId, saleId),
+        mutationFn: ({ file, branchId, saleId }: { file: File; branchId: string; saleId: string }) => (
+            uploadSaleDocument(file, branchId, saleId)
+        ),
     });
 }
 

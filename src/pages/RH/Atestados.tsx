@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus } from 'lucide-react';
+import { Plus, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -11,10 +11,16 @@ import { FavorecidoSelect } from '@/components/shared/FavorecidoSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+    Tabs, TabsContent, TabsList, TabsTrigger,
+} from '@/components/ui/tabs';
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -36,7 +42,7 @@ const MONTHS = [
 function formatDate(date: string | null | undefined): string {
     if (!date) return '—';
     try {
-        return format(new Date(date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
+        return format(new Date(`${date}T12:00:00`), 'dd/MM/yyyy', { locale: ptBR });
     } catch {
         return date;
     }
@@ -161,7 +167,10 @@ export default function Atestados() {
                         </div>
                         <div>
                             <span className="text-muted-foreground">Total de dias de ausência: </span>
-                            <span className="font-semibold">{report.total_days} dias</span>
+                            <span className="font-semibold">
+                                {report.total_days}
+                                {' dias'}
+                            </span>
                         </div>
                     </div>
                 )}
@@ -176,7 +185,7 @@ export default function Atestados() {
                         {isLoading ? (
                             <LoadingState message="Carregando atestados..." />
                         ) : !certificates || certificates.length === 0 ? (
-                            <EmptyState message="Nenhum atestado encontrado no período." />
+                            <EmptyState icon={FileText} message="Nenhum atestado encontrado no período." />
                         ) : (
                             <div className="border rounded-lg overflow-x-auto">
                                 <Table>
@@ -219,7 +228,7 @@ export default function Atestados() {
 
                     <TabsContent value="relatorio" className="mt-4">
                         {!report || report.rows.length === 0 ? (
-                            <EmptyState message="Nenhum registro no período." />
+                            <EmptyState icon={FileText} message="Nenhum registro no período." />
                         ) : (
                             <div className="border rounded-lg overflow-x-auto">
                                 <Table>
@@ -236,7 +245,8 @@ export default function Atestados() {
                                                 <TableCell className="font-medium">{row.employee_name}</TableCell>
                                                 <TableCell className="text-right text-sm">{row.record_count}</TableCell>
                                                 <TableCell className="text-right font-mono-numbers">
-                                                    {row.total_days} dias
+                                                    {row.total_days}
+                                                    {' dias'}
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -244,7 +254,8 @@ export default function Atestados() {
                                             <TableCell>Total</TableCell>
                                             <TableCell className="text-right">{report.total_records}</TableCell>
                                             <TableCell className="text-right font-mono-numbers">
-                                                {report.total_days} dias
+                                                {report.total_days}
+                                                {' dias'}
                                             </TableCell>
                                         </TableRow>
                                     </TableBody>

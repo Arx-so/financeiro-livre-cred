@@ -2,7 +2,9 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+    Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
 import {
     TERMINAL_LABELS, CARD_BRAND_LABELS, PAYMENT_METHOD_LABELS, TRANSFER_SOURCE_LABELS,
 } from '@/constants/sales';
@@ -27,7 +29,9 @@ function formatDate(date: string): string {
     }
 }
 
-export function SaleReceipt({ sale, branchName, open, onClose }: SaleReceiptProps) {
+export function SaleReceipt({
+    sale, branchName, open, onClose,
+}: SaleReceiptProps) {
     const fee = sale.terminal_amount - sale.sale_value;
     const feePercent = sale.sale_value > 0 ? ((fee / sale.sale_value) * 100).toFixed(1) : '0';
 
@@ -74,7 +78,10 @@ export function SaleReceipt({ sale, branchName, open, onClose }: SaleReceiptProp
                         </div>
                         <div className="flex justify-between">
                             <span className="text-muted-foreground">Cartão:</span>
-                            <span>**** {sale.card_last_four}</span>
+                            <span>
+                                {'**** '}
+                                {sale.card_last_four}
+                            </span>
                         </div>
                         {sale.card_holder_name && (
                             <div className="flex justify-between">
@@ -90,7 +97,11 @@ export function SaleReceipt({ sale, branchName, open, onClose }: SaleReceiptProp
                             <span className="font-semibold">{formatCurrency(sale.sale_value)}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-muted-foreground">Taxa ({feePercent}%):</span>
+                            <span className="text-muted-foreground">
+                                Taxa (
+                                {feePercent}
+                                %):
+                            </span>
                             <span>{formatCurrency(fee)}</span>
                         </div>
                         <div className="flex justify-between font-semibold">
@@ -113,7 +124,10 @@ export function SaleReceipt({ sale, branchName, open, onClose }: SaleReceiptProp
                     </div>
 
                     <div className="border-t pt-3 text-center text-xs text-muted-foreground">
-                        <p>Nº {sale.id.slice(0, 8).toUpperCase()}</p>
+                        <p>
+                            {'Nº '}
+                            {sale.id.slice(0, 8).toUpperCase()}
+                        </p>
                         <p className="mt-2">________________________</p>
                         <p>Assinatura do Cliente</p>
                     </div>

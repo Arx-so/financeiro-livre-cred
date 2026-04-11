@@ -14,8 +14,9 @@ export const vtKeys = {
     all: ['vt-recharges'] as const,
     lists: () => [...vtKeys.all, 'list'] as const,
     list: (filters: VtFilters) => [...vtKeys.lists(), filters] as const,
-    report: (branchId: string, month: number, year: number) =>
-        [...vtKeys.all, 'report', branchId, month, year] as const,
+    report: (branchId: string, month: number, year: number) => (
+        [...vtKeys.all, 'report', branchId, month, year] as const
+    ),
 };
 
 export function useVtRecharges(filters: Omit<VtFilters, 'branchId'> = {}) {

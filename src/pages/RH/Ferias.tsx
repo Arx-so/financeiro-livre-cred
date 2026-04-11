@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, AlertTriangle } from 'lucide-react';
+import { Plus, AlertTriangle, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -12,13 +12,19 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { useFerias, useCreateFerias, useUpdateFerias, useDeleteFerias } from '@/hooks/useFerias';
+import {
+    useFerias, useCreateFerias, useUpdateFerias, useDeleteFerias,
+} from '@/hooks/useFerias';
 import { useBranchStore } from '@/stores';
 import type { EmployeeVacationInsert, EmployeeVacationUpdate } from '@/types/database';
 import { VACATION_STATUSES, VACATION_STATUS_LABELS } from '@/constants/hr';
@@ -34,7 +40,7 @@ const STATUS_BADGE_VARIANTS: Record<string, string> = {
 function formatDate(date: string | null | undefined): string {
     if (!date) return '—';
     try {
-        return format(new Date(date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
+        return format(new Date(`${date}T12:00:00`), 'dd/MM/yyyy', { locale: ptBR });
     } catch {
         return date;
     }
@@ -197,7 +203,7 @@ export default function Ferias() {
                 {isLoading ? (
                     <LoadingState message="Carregando férias..." />
                 ) : !vacations || vacations.length === 0 ? (
-                    <EmptyState message="Nenhum registro de férias encontrado." />
+                    <EmptyState icon={Calendar} message="Nenhum registro de férias encontrado." />
                 ) : (
                     <div className="border rounded-lg overflow-x-auto">
                         <Table>

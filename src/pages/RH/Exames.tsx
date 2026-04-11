@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Upload, ExternalLink, AlertTriangle } from 'lucide-react';
+import {
+    Plus, Upload, ExternalLink, AlertTriangle, Stethoscope,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -11,13 +13,19 @@ import { FavorecidoSelect } from '@/components/shared/FavorecidoSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { useExames, useCreateExame, useUpdateExame, useDeleteExame, useUploadExameDocument } from '@/hooks/useExames';
+import {
+    useExames, useCreateExame, useUpdateExame, useDeleteExame, useUploadExameDocument,
+} from '@/hooks/useExames';
 import { useBranchStore } from '@/stores';
 import type { OccupationalExamInsert, OccupationalExamUpdate } from '@/types/database';
 import { EXAM_TYPES, EXAM_TYPE_LABELS } from '@/constants/hr';
@@ -26,7 +34,7 @@ import type { ExamWithEmployee } from '@/services/hrExames';
 function formatDate(date: string | null | undefined): string {
     if (!date) return '—';
     try {
-        return format(new Date(date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
+        return format(new Date(`${date}T12:00:00`), 'dd/MM/yyyy', { locale: ptBR });
     } catch {
         return date;
     }
@@ -209,7 +217,7 @@ export default function Exames() {
                 {isLoading ? (
                     <LoadingState message="Carregando exames..." />
                 ) : !exams || exams.length === 0 ? (
-                    <EmptyState message="Nenhum exame encontrado." />
+                    <EmptyState icon={Stethoscope} message="Nenhum exame encontrado." />
                 ) : (
                     <div className="border rounded-lg overflow-x-auto">
                         <Table>
@@ -363,7 +371,8 @@ export default function Exames() {
                             </div>
                             {formData.document_name && !selectedFile && (
                                 <p className="text-xs text-muted-foreground mt-1">
-                                    Arquivo atual: {formData.document_name}
+                                    {'Arquivo atual: '}
+                                    {formData.document_name}
                                 </p>
                             )}
                         </div>

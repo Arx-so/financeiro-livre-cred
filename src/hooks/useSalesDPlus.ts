@@ -71,8 +71,9 @@ export function useUpdateDPlusSaleStatus() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ id, status }: { id: string; status: string }) =>
-            updateDPlusSaleStatus(id, { status: status as 'pendente' | 'ativo' | 'cancelado' }),
+        mutationFn: ({ id, status }: { id: string; status: string }) => (
+            updateDPlusSaleStatus(id, { status: status as 'pendente' | 'ativo' | 'cancelado' })
+        ),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: dPlusSalesKeys.all });
         },

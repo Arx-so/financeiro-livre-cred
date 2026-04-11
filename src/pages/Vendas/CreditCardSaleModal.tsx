@@ -4,8 +4,12 @@ import { FavorecidoSelect } from '@/components/shared/FavorecidoSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateCreditCardSale } from '@/hooks/useSalesCreditCard';
 import { useBranchStore, useAuthStore } from '@/stores';
@@ -174,7 +178,10 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
                             <div>
                                 <Label>Taxa / Taxa Aplicada</Label>
                                 <div className="input-financial flex items-center justify-between bg-muted/50 cursor-default">
-                                    <span className="font-mono-numbers">{feeRate.toFixed(1)}%</span>
+                                    <span className="font-mono-numbers">
+                                        {feeRate.toFixed(1)}
+                                        %
+                                    </span>
                                     <span className="text-muted-foreground text-sm">
                                         {fee > 0 ? `+${formatCurrency(fee)}` : '—'}
                                     </span>

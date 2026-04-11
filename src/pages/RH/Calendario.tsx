@@ -1,7 +1,11 @@
 import { useState } from 'react';
-import { format, getDaysInMonth, startOfMonth, getDay, isSameDay } from 'date-fns';
+import {
+    format, getDaysInMonth, startOfMonth, getDay, isSameDay,
+} from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+    Plus, ChevronLeft, ChevronRight, Calendar,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -10,10 +14,15 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
+import {
+    Tabs, TabsContent, TabsList, TabsTrigger,
+} from '@/components/ui/tabs';
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -37,7 +46,7 @@ const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 function formatDate(date: string): string {
     try {
-        return format(new Date(date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
+        return format(new Date(`${date}T12:00:00`), 'dd/MM/yyyy', { locale: ptBR });
     } catch {
         return date;
     }
@@ -194,9 +203,11 @@ export default function Calendario() {
                                 </div>
                                 <div className="grid grid-cols-7">
                                     {calendarCells.map((day, idx) => {
-                                        const holiday = day ? holidays?.find((h) => isSameDay(
-                                            new Date(h.holiday_date + 'T12:00:00'), day,
-                                        )) : undefined;
+                                        const holiday = day
+                                            ? holidays?.find(
+                                                (h) => isSameDay(new Date(`${h.holiday_date}T12:00:00`), day),
+                                            )
+                                            : undefined;
 
                                         return (
                                             <div
@@ -224,7 +235,7 @@ export default function Calendario() {
 
                         <TabsContent value="lista" className="mt-4">
                             {!holidays || holidays.length === 0 ? (
-                                <EmptyState message="Nenhum feriado cadastrado neste mês." />
+                                <EmptyState icon={Calendar} message="Nenhum feriado cadastrado neste mês." />
                             ) : (
                                 <div className="border rounded-lg overflow-x-auto">
                                     <Table>

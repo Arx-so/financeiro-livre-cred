@@ -9,8 +9,12 @@ import { StatCard } from '@/components/shared/StatCard';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useHrDashboardSummary, useActiveHrAlerts, useDismissHrAlert, useGenerateHrAlerts } from '@/hooks/useHrAlerts';
+import {
+    Card, CardContent, CardHeader, CardTitle,
+} from '@/components/ui/card';
+import {
+    useHrDashboardSummary, useActiveHrAlerts, useDismissHrAlert, useGenerateHrAlerts,
+} from '@/hooks/useHrAlerts';
 import { ALERT_TYPE_LABELS, ALERT_PRIORITY } from '@/constants/hr';
 
 function getPriorityColor(alertType: string): string {
@@ -46,11 +50,36 @@ export default function RhDashboard() {
     );
 
     const quickLinks = [
-        { label: 'Férias', href: '/rh/ferias', icon: Calendar, description: 'Controle de férias dos funcionários' },
-        { label: 'Exames', href: '/rh/exames', icon: Stethoscope, description: 'Exames ocupacionais' },
-        { label: 'Vale Transporte', href: '/rh/vale-transporte', icon: Bus, description: 'Recargas e relatórios de VT' },
-        { label: 'Calendário', href: '/rh/calendario', icon: Calendar, description: 'Feriados corporativos' },
-        { label: 'Atestados', href: '/rh/atestados', icon: ClipboardList, description: 'Atestados médicos e declarações' },
+        {
+            label: 'Férias',
+            href: '/rh/ferias',
+            icon: Calendar,
+            description: 'Controle de férias dos funcionários',
+        },
+        {
+            label: 'Exames',
+            href: '/rh/exames',
+            icon: Stethoscope,
+            description: 'Exames ocupacionais',
+        },
+        {
+            label: 'Vale Transporte',
+            href: '/rh/vale-transporte',
+            icon: Bus,
+            description: 'Recargas e relatórios de VT',
+        },
+        {
+            label: 'Calendário',
+            href: '/rh/calendario',
+            icon: Calendar,
+            description: 'Feriados corporativos',
+        },
+        {
+            label: 'Atestados',
+            href: '/rh/atestados',
+            icon: ClipboardList,
+            description: 'Atestados médicos e declarações',
+        },
     ];
 
     return (

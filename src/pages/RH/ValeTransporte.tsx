@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus } from 'lucide-react';
+import { Plus, Bus } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -11,10 +11,16 @@ import { FavorecidoSelect } from '@/components/shared/FavorecidoSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+    Tabs, TabsContent, TabsList, TabsTrigger,
+} from '@/components/ui/tabs';
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -35,7 +41,7 @@ const MONTHS = [
 function formatDate(date: string | null | undefined): string {
     if (!date) return '—';
     try {
-        return format(new Date(date + 'T12:00:00'), 'dd/MM/yyyy', { locale: ptBR });
+        return format(new Date(`${date}T12:00:00`), 'dd/MM/yyyy', { locale: ptBR });
     } catch {
         return date;
     }
@@ -156,7 +162,7 @@ export default function ValeTransporte() {
                         {reportLoading ? (
                             <LoadingState message="Gerando relatório..." />
                         ) : !monthlyReport || monthlyReport.rows.length === 0 ? (
-                            <EmptyState message="Nenhuma recarga registrada no período." />
+                            <EmptyState icon={Bus} message="Nenhuma recarga registrada no período." />
                         ) : (
                             <div className="border rounded-lg overflow-x-auto">
                                 <Table>
@@ -196,7 +202,7 @@ export default function ValeTransporte() {
                         {rechargesLoading ? (
                             <LoadingState message="Carregando recargas..." />
                         ) : !recharges || recharges.length === 0 ? (
-                            <EmptyState message="Nenhuma recarga encontrada no período." />
+                            <EmptyState icon={Bus} message="Nenhuma recarga encontrada no período." />
                         ) : (
                             <div className="border rounded-lg overflow-x-auto">
                                 <Table>
@@ -296,8 +302,11 @@ export default function ValeTransporte() {
                                 className="font-mono-numbers"
                             />
                             <p className="text-xs text-muted-foreground mt-1">
-                                {formatCurrency(formData.daily_rate)} × {formData.working_days} dias
-                                = {formatCurrency(formData.daily_rate * formData.working_days)}
+                                {formatCurrency(formData.daily_rate)}
+                                {' × '}
+                                {formData.working_days}
+                                {' dias = '}
+                                {formatCurrency(formData.daily_rate * formData.working_days)}
                             </p>
                         </div>
 

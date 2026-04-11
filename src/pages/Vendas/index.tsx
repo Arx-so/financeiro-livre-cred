@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Download, CreditCard, Banknote, Search } from 'lucide-react';
+import {
+    Plus, Download, CreditCard, Banknote, Search,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -10,11 +12,18 @@ import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useCreditCardSales, useUpdateCreditCardSaleStatus } from '@/hooks/useSalesCreditCard';
+import {
+    Tabs, TabsContent, TabsList, TabsTrigger,
+} from '@/components/ui/tabs';
+import {
+    Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import {
+    Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
+import {
+    useCreditCardSales, useUpdateCreditCardSaleStatus,
+} from '@/hooks/useSalesCreditCard';
 import { useDPlusSales, useUpdateDPlusSaleStatus } from '@/hooks/useSalesDPlus';
 import { CreditCardSaleModal } from './CreditCardSaleModal';
 import { DPlusSaleModal } from './DPlusSaleModal';
@@ -224,7 +233,8 @@ function CreditCardTab() {
                     <LoadingState message="Carregando vendas..." />
                 ) : sales.length === 0 ? (
                     <EmptyState
-                        title="Nenhuma venda encontrada"
+                        icon={CreditCard}
+                        message="Nenhuma venda encontrada"
                         description="Registre a primeira venda de cartão de crédito."
                     />
                 ) : (
@@ -413,7 +423,8 @@ function DPlusTab() {
                     <LoadingState message="Carregando propostas..." />
                 ) : sales.length === 0 ? (
                     <EmptyState
-                        title="Nenhuma proposta encontrada"
+                        icon={Banknote}
+                        message="Nenhuma proposta encontrada"
                         description="Registre a primeira proposta de produto D+."
                     />
                 ) : (
