@@ -348,6 +348,8 @@ export interface Database {
           recurring_parent_id: string | null;
           is_recurring_template: boolean;
           contract_id: string | null;
+          credit_card_sale_id: string | null;
+          dplus_sale_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -374,6 +376,8 @@ export interface Database {
           recurring_parent_id?: string | null;
           is_recurring_template?: boolean;
           contract_id?: string | null;
+          credit_card_sale_id?: string | null;
+          dplus_sale_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -398,6 +402,8 @@ export interface Database {
           recurring_parent_id?: string | null;
           is_recurring_template?: boolean;
           contract_id?: string | null;
+          credit_card_sale_id?: string | null;
+          dplus_sale_id?: string | null;
           updated_at?: string;
         };
       };
@@ -1033,6 +1039,358 @@ export interface Database {
           updated_at?: string;
         };
       };
+      employee_vacations: {
+        Row: {
+          id: string;
+          branch_id: string;
+          employee_id: string;
+          admission_date: string;
+          last_vacation_period_end: string | null;
+          vacation_expiry_date: string;
+          max_grant_deadline: string | null;
+          vacation_start_date: string | null;
+          vacation_end_date: string | null;
+          status: 'pendente' | 'programada' | 'em_andamento' | 'concluida';
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          branch_id: string;
+          employee_id: string;
+          admission_date: string;
+          last_vacation_period_end?: string | null;
+          vacation_expiry_date: string;
+          max_grant_deadline?: string | null;
+          vacation_start_date?: string | null;
+          vacation_end_date?: string | null;
+          status?: 'pendente' | 'programada' | 'em_andamento' | 'concluida';
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          branch_id?: string;
+          employee_id?: string;
+          admission_date?: string;
+          last_vacation_period_end?: string | null;
+          vacation_expiry_date?: string;
+          max_grant_deadline?: string | null;
+          vacation_start_date?: string | null;
+          vacation_end_date?: string | null;
+          status?: 'pendente' | 'programada' | 'em_andamento' | 'concluida';
+          notes?: string | null;
+          updated_at?: string;
+        };
+      };
+      occupational_exams: {
+        Row: {
+          id: string;
+          branch_id: string;
+          employee_id: string;
+          exam_type: 'admissional' | 'periodico' | 'demissional';
+          exam_date: string;
+          exam_expiry_date: string | null;
+          document_url: string | null;
+          document_name: string | null;
+          document_type: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          branch_id: string;
+          employee_id: string;
+          exam_type: 'admissional' | 'periodico' | 'demissional';
+          exam_date: string;
+          exam_expiry_date?: string | null;
+          document_url?: string | null;
+          document_name?: string | null;
+          document_type?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          branch_id?: string;
+          employee_id?: string;
+          exam_type?: 'admissional' | 'periodico' | 'demissional';
+          exam_date?: string;
+          exam_expiry_date?: string | null;
+          document_url?: string | null;
+          document_name?: string | null;
+          document_type?: string | null;
+          notes?: string | null;
+          updated_at?: string;
+        };
+      };
+      vt_recharges: {
+        Row: {
+          id: string;
+          branch_id: string;
+          employee_id: string;
+          recharge_amount: number;
+          recharge_date: string;
+          payroll_id: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          branch_id: string;
+          employee_id: string;
+          recharge_amount: number;
+          recharge_date: string;
+          payroll_id?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          branch_id?: string;
+          employee_id?: string;
+          recharge_amount?: number;
+          recharge_date?: string;
+          payroll_id?: string | null;
+          notes?: string | null;
+          updated_at?: string;
+        };
+      };
+      corporate_holidays: {
+        Row: {
+          id: string;
+          branch_id: string;
+          holiday_date: string;
+          description: string;
+          holiday_type: 'nacional' | 'estadual' | 'municipal';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          branch_id: string;
+          holiday_date: string;
+          description: string;
+          holiday_type: 'nacional' | 'estadual' | 'municipal';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          branch_id?: string;
+          holiday_date?: string;
+          description?: string;
+          holiday_type?: 'nacional' | 'estadual' | 'municipal';
+          updated_at?: string;
+        };
+      };
+      medical_certificates: {
+        Row: {
+          id: string;
+          branch_id: string;
+          employee_id: string;
+          certificate_date: string;
+          absence_days: number;
+          certificate_type: 'atestado' | 'declaracao';
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          branch_id: string;
+          employee_id: string;
+          certificate_date: string;
+          absence_days: number;
+          certificate_type: 'atestado' | 'declaracao';
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          branch_id?: string;
+          employee_id?: string;
+          certificate_date?: string;
+          absence_days?: number;
+          certificate_type?: 'atestado' | 'declaracao';
+          notes?: string | null;
+          updated_at?: string;
+        };
+      };
+      hr_alerts: {
+        Row: {
+          id: string;
+          branch_id: string;
+          alert_type: string;
+          employee_id: string;
+          related_entity_type: string | null;
+          related_entity_id: string | null;
+          alert_title: string;
+          alert_message: string | null;
+          alert_date: string;
+          dismissed: boolean;
+          dismissed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          branch_id: string;
+          alert_type: string;
+          employee_id: string;
+          related_entity_type?: string | null;
+          related_entity_id?: string | null;
+          alert_title: string;
+          alert_message?: string | null;
+          alert_date: string;
+          dismissed?: boolean;
+          dismissed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          branch_id?: string;
+          alert_type?: string;
+          employee_id?: string;
+          related_entity_type?: string | null;
+          related_entity_id?: string | null;
+          alert_title?: string;
+          alert_message?: string | null;
+          alert_date?: string;
+          dismissed?: boolean;
+          dismissed_at?: string | null;
+          updated_at?: string;
+        };
+      };
+      sales_credit_card: {
+        Row: {
+          id: string;
+          branch_id: string;
+          client_id: string;
+          sale_value: number;
+          terminal_amount: number;
+          fee_rate: number;
+          terminal: 'sumup_w' | 'sumup_r' | 'sumup_h' | 'laranjinha_h' | 'c6_r' | 'pague_veloz' | 'mercado_pago_r' | 'pagbank_h';
+          card_brand: 'master' | 'visa' | 'elo' | 'amex' | 'hiper';
+          card_last_four: string;
+          card_holder_name: string | null;
+          seller_id: string;
+          sale_type: 'venda_nova' | 'casa';
+          payment_method: 'especie' | 'pix' | 'tec' | 'pix_especie';
+          payment_account: string | null;
+          receipt_url: string | null;
+          document_urls: string[] | null;
+          status: 'pendente' | 'pago' | 'cancelado';
+          payment_date: string | null;
+          commission_calculated: boolean;
+          commission_amount: number | null;
+          financial_entries_generated: boolean;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          branch_id: string;
+          client_id: string;
+          sale_value: number;
+          terminal_amount: number;
+          fee_rate?: number;
+          terminal: 'sumup_w' | 'sumup_r' | 'sumup_h' | 'laranjinha_h' | 'c6_r' | 'pague_veloz' | 'mercado_pago_r' | 'pagbank_h';
+          card_brand: 'master' | 'visa' | 'elo' | 'amex' | 'hiper';
+          card_last_four: string;
+          card_holder_name?: string | null;
+          seller_id: string;
+          sale_type?: 'venda_nova' | 'casa';
+          payment_method: 'especie' | 'pix' | 'tec' | 'pix_especie';
+          payment_account?: string | null;
+          receipt_url?: string | null;
+          document_urls?: string[] | null;
+          status?: 'pendente' | 'pago' | 'cancelado';
+          payment_date?: string | null;
+          commission_calculated?: boolean;
+          commission_amount?: number | null;
+          financial_entries_generated?: boolean;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          branch_id?: string;
+          client_id?: string;
+          sale_value?: number;
+          terminal_amount?: number;
+          fee_rate?: number;
+          terminal?: 'sumup_w' | 'sumup_r' | 'sumup_h' | 'laranjinha_h' | 'c6_r' | 'pague_veloz' | 'mercado_pago_r' | 'pagbank_h';
+          card_brand?: 'master' | 'visa' | 'elo' | 'amex' | 'hiper';
+          card_last_four?: string;
+          card_holder_name?: string | null;
+          seller_id?: string;
+          sale_type?: 'venda_nova' | 'casa';
+          payment_method?: 'especie' | 'pix' | 'tec' | 'pix_especie';
+          payment_account?: string | null;
+          receipt_url?: string | null;
+          document_urls?: string[] | null;
+          status?: 'pendente' | 'pago' | 'cancelado';
+          payment_date?: string | null;
+          commission_calculated?: boolean;
+          commission_amount?: number | null;
+          financial_entries_generated?: boolean;
+          notes?: string | null;
+          updated_at?: string;
+        };
+      };
+      sales_d_plus_products: {
+        Row: {
+          id: string;
+          branch_id: string;
+          client_id: string;
+          proposal_number: string;
+          contract_value: number;
+          table_info: string | null;
+          bank_info: string | null;
+          seller_id: string;
+          status: 'pendente' | 'ativo' | 'cancelado';
+          financial_entries_generated: boolean;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          branch_id: string;
+          client_id: string;
+          proposal_number: string;
+          contract_value: number;
+          table_info?: string | null;
+          bank_info?: string | null;
+          seller_id: string;
+          status?: 'pendente' | 'ativo' | 'cancelado';
+          financial_entries_generated?: boolean;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          branch_id?: string;
+          client_id?: string;
+          proposal_number?: string;
+          contract_value?: number;
+          table_info?: string | null;
+          bank_info?: string | null;
+          seller_id?: string;
+          status?: 'pendente' | 'ativo' | 'cancelado';
+          financial_entries_generated?: boolean;
+          notes?: string | null;
+          updated_at?: string;
+        };
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -1075,6 +1433,14 @@ export type Notification = Database['public']['Tables']['notifications']['Row'];
 export type ProductCategory = Database['public']['Tables']['product_categories']['Row'];
 export type Product = Database['public']['Tables']['products']['Row'];
 export type Payroll = Database['public']['Tables']['payroll']['Row'];
+export type EmployeeVacation = Database['public']['Tables']['employee_vacations']['Row'];
+export type OccupationalExam = Database['public']['Tables']['occupational_exams']['Row'];
+export type VtRecharge = Database['public']['Tables']['vt_recharges']['Row'];
+export type CorporateHoliday = Database['public']['Tables']['corporate_holidays']['Row'];
+export type MedicalCertificate = Database['public']['Tables']['medical_certificates']['Row'];
+export type HrAlert = Database['public']['Tables']['hr_alerts']['Row'];
+export type SalesCreditCard = Database['public']['Tables']['sales_credit_card']['Row'];
+export type SalesDPlusProduct = Database['public']['Tables']['sales_d_plus_products']['Row'];
 
 // Insert types
 export type ProfileInsert = Database['public']['Tables']['profiles']['Insert'];
@@ -1097,6 +1463,14 @@ export type NotificationInsert = Database['public']['Tables']['notifications']['
 export type ProductCategoryInsert = Database['public']['Tables']['product_categories']['Insert'];
 export type ProductInsert = Database['public']['Tables']['products']['Insert'];
 export type PayrollInsert = Database['public']['Tables']['payroll']['Insert'];
+export type EmployeeVacationInsert = Database['public']['Tables']['employee_vacations']['Insert'];
+export type OccupationalExamInsert = Database['public']['Tables']['occupational_exams']['Insert'];
+export type VtRechargeInsert = Database['public']['Tables']['vt_recharges']['Insert'];
+export type CorporateHolidayInsert = Database['public']['Tables']['corporate_holidays']['Insert'];
+export type MedicalCertificateInsert = Database['public']['Tables']['medical_certificates']['Insert'];
+export type HrAlertInsert = Database['public']['Tables']['hr_alerts']['Insert'];
+export type SalesCreditCardInsert = Database['public']['Tables']['sales_credit_card']['Insert'];
+export type SalesDPlusProductInsert = Database['public']['Tables']['sales_d_plus_products']['Insert'];
 
 // Update types
 export type ProfileUpdate = Database['public']['Tables']['profiles']['Update'];
@@ -1116,3 +1490,11 @@ export type NotificationUpdate = Database['public']['Tables']['notifications']['
 export type ProductCategoryUpdate = Database['public']['Tables']['product_categories']['Update'];
 export type ProductUpdate = Database['public']['Tables']['products']['Update'];
 export type PayrollUpdate = Database['public']['Tables']['payroll']['Update'];
+export type EmployeeVacationUpdate = Database['public']['Tables']['employee_vacations']['Update'];
+export type OccupationalExamUpdate = Database['public']['Tables']['occupational_exams']['Update'];
+export type VtRechargeUpdate = Database['public']['Tables']['vt_recharges']['Update'];
+export type CorporateHolidayUpdate = Database['public']['Tables']['corporate_holidays']['Update'];
+export type MedicalCertificateUpdate = Database['public']['Tables']['medical_certificates']['Update'];
+export type HrAlertUpdate = Database['public']['Tables']['hr_alerts']['Update'];
+export type SalesCreditCardUpdate = Database['public']['Tables']['sales_credit_card']['Update'];
+export type SalesDPlusProductUpdate = Database['public']['Tables']['sales_d_plus_products']['Update'];

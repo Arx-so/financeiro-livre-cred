@@ -1,0 +1,2 @@
+- [LivreCred Architecture Overview](codebase-overview.md) — Multi-tenant by branch, React+TS+Vite+Supabase stack
+- [Request 1 Analysis](request-1-hr-and-sales.md) — HR module (Férias, Exames, VT) and Sales/Contratos refactor

@@ -39,6 +39,13 @@ import Agenda from "./pages/Agenda";
 import Docs from "./pages/Docs";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
+import RhDashboard from "./pages/RH";
+import RhFerias from "./pages/RH/Ferias";
+import RhExames from "./pages/RH/Exames";
+import RhValeTransporte from "./pages/RH/ValeTransporte";
+import RhCalendario from "./pages/RH/Calendario";
+import RhAtestados from "./pages/RH/Atestados";
+import VendasNovo from "./pages/Vendas";
 
 const queryClient = new QueryClient();
 
@@ -143,6 +150,17 @@ function AppRoutes() {
             <Route path="/funcionarios" element={<ProtectedRoute><Funcionarios /></ProtectedRoute>} />
             <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
             <Route path="/docs" element={<ProtectedRoute><Docs /></ProtectedRoute>} />
+
+            {/* RH module */}
+            <Route path="/rh" element={<ProtectedRoute><RhDashboard /></ProtectedRoute>} />
+            <Route path="/rh/ferias" element={<ProtectedRoute><RhFerias /></ProtectedRoute>} />
+            <Route path="/rh/exames" element={<ProtectedRoute><RhExames /></ProtectedRoute>} />
+            <Route path="/rh/vale-transporte" element={<ProtectedRoute><RhValeTransporte /></ProtectedRoute>} />
+            <Route path="/rh/calendario" element={<ProtectedRoute><RhCalendario /></ProtectedRoute>} />
+            <Route path="/rh/atestados" element={<ProtectedRoute><RhAtestados /></ProtectedRoute>} />
+
+            {/* Vendas — new sales dashboard */}
+            <Route path="/vendas/novo" element={<ProtectedRoute><VendasNovo /></ProtectedRoute>} />
 
             {/* 404 - Protected to prevent information leak */}
             <Route path="*" element={<ProtectedRoute><NotFound /></ProtectedRoute>} />

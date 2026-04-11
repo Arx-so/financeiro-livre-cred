@@ -27,6 +27,10 @@ import {
     Brain,
     UserCheck,
     HardHat,
+    Bus,
+    Stethoscope,
+    ClipboardList,
+    Banknote,
 } from 'lucide-react';
 import { useAuthStore, useBranchStore } from '@/stores';
 import { ProfileModal } from './ProfileModal';
@@ -138,6 +142,12 @@ const navigationGroups: NavGroup[] = [
                 roles: ['admin', 'gerente', 'usuario', 'vendas'],
             },
             {
+                name: 'Cartão / D+',
+                href: '/vendas/novo',
+                icon: Banknote,
+                roles: ['admin', 'gerente', 'usuario', 'vendas'],
+            },
+            {
                 name: 'Produtos',
                 href: '/produtos',
                 icon: Package,
@@ -178,6 +188,12 @@ const navigationGroups: NavGroup[] = [
         label: 'Recursos Humanos',
         items: [
             {
+                name: 'Dashboard RH',
+                href: '/rh',
+                icon: LayoutDashboard,
+                roles: ['admin', 'gerente', 'financeiro'],
+            },
+            {
                 name: 'Funcionários',
                 href: '/funcionarios',
                 icon: HardHat,
@@ -187,6 +203,36 @@ const navigationGroups: NavGroup[] = [
                 name: 'Folha de Pagamento',
                 href: '/folha-pagamento',
                 icon: Receipt,
+                roles: ['admin', 'gerente', 'financeiro'],
+            },
+            {
+                name: 'Férias',
+                href: '/rh/ferias',
+                icon: Calendar,
+                roles: ['admin', 'gerente', 'financeiro'],
+            },
+            {
+                name: 'Exames Ocupacionais',
+                href: '/rh/exames',
+                icon: Stethoscope,
+                roles: ['admin', 'gerente', 'financeiro'],
+            },
+            {
+                name: 'Vale Transporte',
+                href: '/rh/vale-transporte',
+                icon: Bus,
+                roles: ['admin', 'gerente', 'financeiro'],
+            },
+            {
+                name: 'Calendário',
+                href: '/rh/calendario',
+                icon: Calendar,
+                roles: ['admin', 'gerente', 'financeiro'],
+            },
+            {
+                name: 'Atestados',
+                href: '/rh/atestados',
+                icon: ClipboardList,
                 roles: ['admin', 'gerente', 'financeiro'],
             },
             {
