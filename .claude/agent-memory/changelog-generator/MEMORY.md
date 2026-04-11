@@ -1,0 +1,1 @@
+- [Project context](project_context.md) — LivreCred domain vocabulary, architecture, and data flow

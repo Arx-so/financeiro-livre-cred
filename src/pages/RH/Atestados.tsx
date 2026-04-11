@@ -73,14 +73,14 @@ export default function Atestados() {
     const branchId = useBranchStore((state) => state.unidadeAtual?.id) ?? '';
     const [selectedMonth, setSelectedMonth] = useState(CURRENT_MONTH);
     const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
-    const [filterType, setFilterType] = useState('');
+    const [filterType, setFilterType] = useState('all');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [formData, setFormData] = useState<AtestadoFormData>(DEFAULT_FORM);
 
     const { data: certificates, isLoading } = useAtestados({
         month: selectedMonth,
         year: selectedYear,
-        certificateType: filterType || undefined,
+        certificateType: filterType === 'all' ? undefined : filterType,
     });
 
     const { data: report } = useAtestadosReport({
@@ -150,7 +150,7 @@ export default function Atestados() {
                             <SelectValue placeholder="Tipo" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="">Todos os tipos</SelectItem>
+                            <SelectItem value="all">Todos os tipos</SelectItem>
                             {Object.entries(CERTIFICATE_TYPE_LABELS).map(([val, label]) => (
                                 <SelectItem key={val} value={val}>{label}</SelectItem>
                             ))}

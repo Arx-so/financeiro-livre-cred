@@ -135,14 +135,14 @@ function CreditCardTab() {
     const [ccModalOpen, setCcModalOpen] = useState(false);
     const [receiptSale, setReceiptSale] = useState<SalesCreditCardWithRelations | null>(null);
     const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
     const updateStatus = useUpdateCreditCardSaleStatus();
 
     const { data: sales = [], isLoading } = useCreditCardSales({
         search: search || undefined,
-        status: statusFilter || undefined,
+        status: statusFilter === 'all' ? undefined : statusFilter,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
     });
@@ -192,7 +192,7 @@ function CreditCardTab() {
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">Todos</SelectItem>
+                                <SelectItem value="all">Todos</SelectItem>
                                 {Object.entries(CC_STATUS_LABELS).map(([val, label]) => (
                                     <SelectItem key={val} value={val}>{label}</SelectItem>
                                 ))}
@@ -327,14 +327,14 @@ function CreditCardTab() {
 function DPlusTab() {
     const [dPlusModalOpen, setDPlusModalOpen] = useState(false);
     const [search, setSearch] = useState('');
-    const [statusFilter, setStatusFilter] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
     const updateStatus = useUpdateDPlusSaleStatus();
 
     const { data: sales = [], isLoading } = useDPlusSales({
         search: search || undefined,
-        status: statusFilter || undefined,
+        status: statusFilter === 'all' ? undefined : statusFilter,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
     });
@@ -382,7 +382,7 @@ function DPlusTab() {
                                 <SelectValue placeholder="Status" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="">Todos</SelectItem>
+                                <SelectItem value="all">Todos</SelectItem>
                                 {Object.entries(DPLUS_STATUS_LABELS).map(([val, label]) => (
                                     <SelectItem key={val} value={val}>{label}</SelectItem>
                                 ))}

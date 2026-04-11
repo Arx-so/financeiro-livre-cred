@@ -72,16 +72,16 @@ const DEFAULT_FORM: ExameFormData = {
 
 export default function Exames() {
     const branchId = useBranchStore((state) => state.unidadeAtual?.id) ?? '';
-    const [filterType, setFilterType] = useState('');
-    const [filterExpiry, setFilterExpiry] = useState<'' | 'expiring' | 'expired'>('');
+    const [filterType, setFilterType] = useState('all');
+    const [filterExpiry, setFilterExpiry] = useState<'all' | 'expiring' | 'expired'>('all');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState<ExameFormData>(DEFAULT_FORM);
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
     const { data: exams, isLoading } = useExames({
-        examType: filterType || undefined,
-        expiryStatus: filterExpiry || undefined,
+        examType: filterType === 'all' ? undefined : filterType,
+        expiryStatus: filterExpiry === 'all' ? undefined : filterExpiry,
     });
 
     const createMutation = useCreateExame();
@@ -196,18 +196,18 @@ export default function Exames() {
                             <SelectValue placeholder="Tipo de exame" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="">Todos os tipos</SelectItem>
+                            <SelectItem value="all">Todos os tipos</SelectItem>
                             {Object.entries(EXAM_TYPE_LABELS).map(([val, label]) => (
                                 <SelectItem key={val} value={val}>{label}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
-                    <Select value={filterExpiry} onValueChange={(v) => setFilterExpiry(v as '' | 'expiring' | 'expired')}>
+                    <Select value={filterExpiry} onValueChange={(v) => setFilterExpiry(v as 'all' | 'expiring' | 'expired')}>
                         <SelectTrigger className="sm:w-48">
                             <SelectValue placeholder="Validade" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="">Qualquer validade</SelectItem>
+                            <SelectItem value="all">Qualquer validade</SelectItem>
                             <SelectItem value="expiring">Vencendo em 30 dias</SelectItem>
                             <SelectItem value="expired">Vencidos</SelectItem>
                         </SelectContent>

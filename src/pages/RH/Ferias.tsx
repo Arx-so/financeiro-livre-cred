@@ -81,13 +81,13 @@ const DEFAULT_FORM: FeriasFormData = {
 export default function Ferias() {
     const branchId = useBranchStore((state) => state.unidadeAtual?.id) ?? '';
     const [searchEmployee, setSearchEmployee] = useState('');
-    const [filterStatus, setFilterStatus] = useState('');
+    const [filterStatus, setFilterStatus] = useState('all');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState<FeriasFormData>(DEFAULT_FORM);
 
     const { data: vacations, isLoading } = useFerias({
-        status: filterStatus || undefined,
+        status: filterStatus === 'all' ? undefined : filterStatus,
         search: searchEmployee || undefined,
     });
 
@@ -191,7 +191,7 @@ export default function Ferias() {
                             <SelectValue placeholder="Todos os status" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="">Todos os status</SelectItem>
+                            <SelectItem value="all">Todos os status</SelectItem>
                             {Object.entries(VACATION_STATUS_LABELS).map(([val, label]) => (
                                 <SelectItem key={val} value={val}>{label}</SelectItem>
                             ))}
