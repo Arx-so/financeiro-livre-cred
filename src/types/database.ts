@@ -348,6 +348,8 @@ export interface Database {
           recurring_parent_id: string | null;
           is_recurring_template: boolean;
           contract_id: string | null;
+          credit_card_sale_id: string | null;
+          dplus_sale_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -374,6 +376,8 @@ export interface Database {
           recurring_parent_id?: string | null;
           is_recurring_template?: boolean;
           contract_id?: string | null;
+          credit_card_sale_id?: string | null;
+          dplus_sale_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -398,6 +402,8 @@ export interface Database {
           recurring_parent_id?: string | null;
           is_recurring_template?: boolean;
           contract_id?: string | null;
+          credit_card_sale_id?: string | null;
+          dplus_sale_id?: string | null;
           updated_at?: string;
         };
       };
@@ -1280,6 +1286,7 @@ export interface Database {
           payment_date: string | null;
           commission_calculated: boolean;
           commission_amount: number | null;
+          financial_entries_generated: boolean;
           notes: string | null;
           created_by: string | null;
           created_at: string;
@@ -1306,6 +1313,7 @@ export interface Database {
           payment_date?: string | null;
           commission_calculated?: boolean;
           commission_amount?: number | null;
+          financial_entries_generated?: boolean;
           notes?: string | null;
           created_by?: string | null;
           created_at?: string;
@@ -1331,6 +1339,7 @@ export interface Database {
           payment_date?: string | null;
           commission_calculated?: boolean;
           commission_amount?: number | null;
+          financial_entries_generated?: boolean;
           notes?: string | null;
           updated_at?: string;
         };
@@ -1346,6 +1355,7 @@ export interface Database {
           bank_info: string | null;
           seller_id: string;
           status: 'pendente' | 'ativo' | 'cancelado';
+          financial_entries_generated: boolean;
           notes: string | null;
           created_by: string | null;
           created_at: string;
@@ -1361,6 +1371,7 @@ export interface Database {
           bank_info?: string | null;
           seller_id: string;
           status?: 'pendente' | 'ativo' | 'cancelado';
+          financial_entries_generated?: boolean;
           notes?: string | null;
           created_by?: string | null;
           created_at?: string;
@@ -1375,6 +1386,7 @@ export interface Database {
           bank_info?: string | null;
           seller_id?: string;
           status?: 'pendente' | 'ativo' | 'cancelado';
+          financial_entries_generated?: boolean;
           notes?: string | null;
           updated_at?: string;
         };

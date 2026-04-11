@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { useBranchStore } from '@/stores';
 import {
     getDPlusSales,
@@ -6,6 +7,7 @@ import {
     createDPlusSale,
     updateDPlusSaleStatus,
     getDPlusSalesReport,
+    generateFinancialEntriesFromDPlusSale,
     type DPlusSaleFilters,
     type SalesDPlusWithRelations,
     type DPlusReportSummary,
@@ -77,6 +79,20 @@ export function useUpdateDPlusSaleStatus() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: dPlusSalesKeys.all });
         },
+    });
+}
+
+export function useGenerateDPlusSaleEntries() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (sale: SalesDPlusWithRelations) => generateFinancialEntriesFromDPlusSale(sale),
+        onSuccess: (count) => {
+            toast.success(`${count} lançamento financeiro criado!`);
+            queryClient.invalidateQueries({ queryKey: ['financial-entries'] });
+            queryClient.invalidateQueries({ queryKey: dPlusSalesKeys.all });
+        },
+        onError: () => toast.error('Erro ao gerar lançamentos financeiros'),
     });
 }
 

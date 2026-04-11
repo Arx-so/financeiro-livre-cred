@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { uploadFile } from '@/services/storage';
+import { createFinancialEntries } from '@/services/financeiro';
 import type {
     SalesCreditCard,
     SalesCreditCardInsert,
@@ -182,4 +183,76 @@ export async function getCreditCardSalesReport(
     }
 
     return summary;
+}
+
+// ─── Financial entries generation ────────────────────────────────────────────
+
+export interface CreditCardSaleEntriesPreview {
+    receita: { description: string; value: number };
+    despesa: { description: string; value: number };
+}
+
+/**
+ * Preview the financial entries that would be generated for a credit card sale.
+ * Does NOT create entries — used for the confirmation dialog.
+ */
+export function previewCreditCardSaleEntries(
+    sale: SalesCreditCardWithRelations,
+): CreditCardSaleEntriesPreview {
+    const netValue = sale.sale_value - sale.terminal_amount;
+    const feeValue = sale.terminal_amount - sale.sale_value;
+
+    return {
+        receita: {
+            description: `Cartão: ${sale.terminal} - ${sale.card_brand}`,
+            value: netValue,
+        },
+        despesa: {
+            description: `Taxa maquininha: ${sale.terminal}`,
+            value: feeValue,
+        },
+    };
+}
+
+/**
+ * Generate financial entries (receita + despesa) for a credit card sale and mark the sale as generated.
+ * Returns the count of entries created.
+ */
+export async function generateFinancialEntriesFromCreditCardSale(
+    sale: SalesCreditCardWithRelations,
+): Promise<number> {
+    const saleDate = sale.created_at.split('T')[0];
+    const netValue = sale.sale_value - sale.terminal_amount;
+    const feeValue = sale.terminal_amount - sale.sale_value;
+
+    await createFinancialEntries([
+        {
+            branch_id: sale.branch_id,
+            type: 'receita',
+            description: `Cartão: ${sale.terminal} - ${sale.card_brand}`,
+            value: netValue,
+            due_date: saleDate,
+            status: 'pendente',
+            favorecido_id: sale.client_id ?? undefined,
+            credit_card_sale_id: sale.id,
+        },
+        {
+            branch_id: sale.branch_id,
+            type: 'despesa',
+            description: `Taxa maquininha: ${sale.terminal}`,
+            value: feeValue,
+            due_date: saleDate,
+            status: 'pendente',
+            credit_card_sale_id: sale.id,
+        },
+    ]);
+
+    const { error } = await supabase
+        .from('sales_credit_card')
+        .update({ financial_entries_generated: true })
+        .eq('id', sale.id);
+
+    if (error) throw error;
+
+    return 2;
 }

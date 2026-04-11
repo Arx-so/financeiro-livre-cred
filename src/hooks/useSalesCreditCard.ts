@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { useBranchStore } from '@/stores';
 import {
     getCreditCardSales,
@@ -7,6 +8,7 @@ import {
     updateCreditCardSaleStatus,
     uploadSaleDocument,
     getCreditCardSalesReport,
+    generateFinancialEntriesFromCreditCardSale,
     type CreditCardSaleFilters,
     type SalesCreditCardWithRelations,
     type SalesReportSummary,
@@ -89,6 +91,20 @@ export function useUploadSaleDocument() {
         mutationFn: ({ file, branchId, saleId }: { file: File; branchId: string; saleId: string }) => (
             uploadSaleDocument(file, branchId, saleId)
         ),
+    });
+}
+
+export function useGenerateCreditCardSaleEntries() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (sale: SalesCreditCardWithRelations) => generateFinancialEntriesFromCreditCardSale(sale),
+        onSuccess: (count) => {
+            toast.success(`${count} lançamentos financeiros criados!`);
+            queryClient.invalidateQueries({ queryKey: ['financial-entries'] });
+            queryClient.invalidateQueries({ queryKey: creditCardSalesKeys.all });
+        },
+        onError: () => toast.error('Erro ao gerar lançamentos financeiros'),
     });
 }
 

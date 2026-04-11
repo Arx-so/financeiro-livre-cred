@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { createFinancialEntries } from '@/services/financeiro';
 import type {
     SalesDPlusProduct,
     SalesDPlusProductInsert,
@@ -141,4 +142,57 @@ export async function getDPlusSalesReport(
     }
 
     return summary;
+}
+
+// ─── Financial entries generation ────────────────────────────────────────────
+
+export interface DPlusSaleEntriesPreview {
+    receita: { description: string; value: number };
+}
+
+/**
+ * Preview the financial entries that would be generated for a D+ sale.
+ * Does NOT create entries — used for the confirmation dialog.
+ */
+export function previewDPlusSaleEntries(
+    sale: SalesDPlusWithRelations,
+): DPlusSaleEntriesPreview {
+    return {
+        receita: {
+            description: `Comissão D+: ${sale.bank_info ?? sale.proposal_number} - Proposta ${sale.proposal_number}`,
+            value: sale.contract_value,
+        },
+    };
+}
+
+/**
+ * Generate financial entries (receita) for a D+ sale and mark the sale as generated.
+ * Returns the count of entries created.
+ */
+export async function generateFinancialEntriesFromDPlusSale(
+    sale: SalesDPlusWithRelations,
+): Promise<number> {
+    const saleDate = sale.created_at.split('T')[0];
+
+    await createFinancialEntries([
+        {
+            branch_id: sale.branch_id,
+            type: 'receita',
+            description: `Comissão D+: ${sale.bank_info ?? sale.proposal_number} - Proposta ${sale.proposal_number}`,
+            value: sale.contract_value,
+            due_date: saleDate,
+            status: 'pendente',
+            favorecido_id: sale.client_id ?? undefined,
+            dplus_sale_id: sale.id,
+        },
+    ]);
+
+    const { error } = await supabase
+        .from('sales_d_plus_products')
+        .update({ financial_entries_generated: true })
+        .eq('id', sale.id);
+
+    if (error) throw error;
+
+    return 1;
 }

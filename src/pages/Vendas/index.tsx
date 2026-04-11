@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-    Plus, Download, CreditCard, Banknote, Search,
+    Plus, Download, CreditCard, Banknote, Search, Loader2, CheckCircle2, TrendingUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -22,16 +22,29 @@ import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-    useCreditCardSales, useUpdateCreditCardSaleStatus,
+    Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import {
+    useCreditCardSales, useUpdateCreditCardSaleStatus, useGenerateCreditCardSaleEntries,
 } from '@/hooks/useSalesCreditCard';
-import { useDPlusSales, useUpdateDPlusSaleStatus } from '@/hooks/useSalesDPlus';
+import {
+    useDPlusSales, useUpdateDPlusSaleStatus, useGenerateDPlusSaleEntries,
+} from '@/hooks/useSalesDPlus';
 import { CreditCardSaleModal } from './CreditCardSaleModal';
 import { DPlusSaleModal } from './DPlusSaleModal';
 import { SaleReceipt } from './SaleReceipt';
 import { TERMINAL_LABELS, CARD_BRAND_LABELS, PAYMENT_METHOD_LABELS } from '@/constants/sales';
 import { useBranchStore } from '@/stores';
-import type { SalesCreditCardWithRelations } from '@/services/salesCreditCard';
-import type { SalesDPlusWithRelations } from '@/services/salesDPlus';
+import {
+    previewCreditCardSaleEntries,
+    type CreditCardSaleEntriesPreview,
+    type SalesCreditCardWithRelations,
+} from '@/services/salesCreditCard';
+import {
+    previewDPlusSaleEntries,
+    type DPlusSaleEntriesPreview,
+    type SalesDPlusWithRelations,
+} from '@/services/salesDPlus';
 
 // ────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -138,7 +151,10 @@ function CreditCardTab() {
     const [statusFilter, setStatusFilter] = useState('all');
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
+    const [generateSale, setGenerateSale] = useState<SalesCreditCardWithRelations | null>(null);
+    const [generatePreview, setGeneratePreview] = useState<CreditCardSaleEntriesPreview | null>(null);
     const updateStatus = useUpdateCreditCardSaleStatus();
+    const generateEntries = useGenerateCreditCardSaleEntries();
 
     const { data: sales = [], isLoading } = useCreditCardSales({
         search: search || undefined,
@@ -154,6 +170,23 @@ function CreditCardTab() {
         updateStatus.mutate({ id, status }, {
             onSuccess: () => toast.success('Status atualizado.'),
             onError: () => toast.error('Erro ao atualizar status.'),
+        });
+    };
+
+    const openGenerateModal = (sale: SalesCreditCardWithRelations) => {
+        setGenerateSale(sale);
+        setGeneratePreview(previewCreditCardSaleEntries(sale));
+    };
+
+    const closeGenerateModal = () => {
+        setGenerateSale(null);
+        setGeneratePreview(null);
+    };
+
+    const handleGenerateEntries = () => {
+        if (!generateSale) return;
+        generateEntries.mutate(generateSale, {
+            onSuccess: () => closeGenerateModal(),
         });
     };
 
@@ -251,7 +284,7 @@ function CreditCardTab() {
                                     <TableHead className="text-right">Valor Venda</TableHead>
                                     <TableHead className="text-right">Maquineta</TableHead>
                                     <TableHead>Status</TableHead>
-                                    <TableHead className="w-8" />
+                                    <TableHead className="w-32">Lançamentos</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -298,7 +331,24 @@ function CreditCardTab() {
                                                 </SelectContent>
                                             </Select>
                                         </TableCell>
-                                        <TableCell />
+                                        <TableCell onClick={(e) => e.stopPropagation()}>
+                                            {sale.financial_entries_generated ? (
+                                                <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                                    Gerados
+                                                </span>
+                                            ) : (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-7 text-xs"
+                                                    onClick={() => openGenerateModal(sale)}
+                                                >
+                                                    <TrendingUp className="w-3 h-3 mr-1" />
+                                                    Gerar
+                                                </Button>
+                                            )}
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
@@ -316,6 +366,58 @@ function CreditCardTab() {
                     onClose={() => setReceiptSale(null)}
                 />
             )}
+
+            {/* Generate Financial Entries Modal — Credit Card */}
+            <Dialog open={!!generateSale} onOpenChange={(open) => { if (!open) closeGenerateModal(); }}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Gerar Lançamentos Financeiros</DialogTitle>
+                        <DialogDescription>
+                            Confira o resumo dos lançamentos que serão criados.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {generatePreview && (
+                        <div className="space-y-4 mt-4">
+                            <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
+                                <h4 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 mb-2">
+                                    Receita
+                                </h4>
+                                <div className="text-sm text-emerald-600 dark:text-emerald-300 flex justify-between">
+                                    <span>{generatePreview.receita.description}</span>
+                                    <span className="font-mono ml-4">{formatCurrency(generatePreview.receita.value)}</span>
+                                </div>
+                            </div>
+                            <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                                <h4 className="text-sm font-semibold text-red-700 dark:text-red-400 mb-2">
+                                    Despesa
+                                </h4>
+                                <div className="text-sm text-red-600 dark:text-red-300 flex justify-between">
+                                    <span>{generatePreview.despesa.description}</span>
+                                    <span className="font-mono ml-4">{formatCurrency(generatePreview.despesa.value)}</span>
+                                </div>
+                            </div>
+                            <div className="flex justify-end gap-3 pt-4">
+                                <button
+                                    type="button"
+                                    className="btn-secondary"
+                                    onClick={closeGenerateModal}
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn-primary"
+                                    onClick={handleGenerateEntries}
+                                    disabled={generateEntries.isPending}
+                                >
+                                    {generateEntries.isPending && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+                                    Confirmar e gerar
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </>
     );
 }
@@ -330,7 +432,10 @@ function DPlusTab() {
     const [statusFilter, setStatusFilter] = useState('all');
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
+    const [generateSale, setGenerateSale] = useState<SalesDPlusWithRelations | null>(null);
+    const [generatePreview, setGeneratePreview] = useState<DPlusSaleEntriesPreview | null>(null);
     const updateStatus = useUpdateDPlusSaleStatus();
+    const generateEntries = useGenerateDPlusSaleEntries();
 
     const { data: sales = [], isLoading } = useDPlusSales({
         search: search || undefined,
@@ -345,6 +450,23 @@ function DPlusTab() {
         updateStatus.mutate({ id, status }, {
             onSuccess: () => toast.success('Status atualizado.'),
             onError: () => toast.error('Erro ao atualizar status.'),
+        });
+    };
+
+    const openGenerateModal = (sale: SalesDPlusWithRelations) => {
+        setGenerateSale(sale);
+        setGeneratePreview(previewDPlusSaleEntries(sale));
+    };
+
+    const closeGenerateModal = () => {
+        setGenerateSale(null);
+        setGeneratePreview(null);
+    };
+
+    const handleGenerateEntries = () => {
+        if (!generateSale) return;
+        generateEntries.mutate(generateSale, {
+            onSuccess: () => closeGenerateModal(),
         });
     };
 
@@ -440,6 +562,7 @@ function DPlusTab() {
                                     <TableHead>Tabela</TableHead>
                                     <TableHead className="text-right">Valor Contrato</TableHead>
                                     <TableHead>Status</TableHead>
+                                    <TableHead className="w-32">Lançamentos</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -473,6 +596,24 @@ function DPlusTab() {
                                                 </SelectContent>
                                             </Select>
                                         </TableCell>
+                                        <TableCell>
+                                            {sale.financial_entries_generated ? (
+                                                <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                                    Gerados
+                                                </span>
+                                            ) : (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-7 text-xs"
+                                                    onClick={() => openGenerateModal(sale)}
+                                                >
+                                                    <TrendingUp className="w-3 h-3 mr-1" />
+                                                    Gerar
+                                                </Button>
+                                            )}
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
@@ -482,6 +623,49 @@ function DPlusTab() {
             </div>
 
             <DPlusSaleModal open={dPlusModalOpen} onClose={() => setDPlusModalOpen(false)} />
+
+            {/* Generate Financial Entries Modal — D+ */}
+            <Dialog open={!!generateSale} onOpenChange={(open) => { if (!open) closeGenerateModal(); }}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Gerar Lançamentos Financeiros</DialogTitle>
+                        <DialogDescription>
+                            Confira o resumo dos lançamentos que serão criados.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {generatePreview && (
+                        <div className="space-y-4 mt-4">
+                            <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
+                                <h4 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 mb-2">
+                                    Receita
+                                </h4>
+                                <div className="text-sm text-emerald-600 dark:text-emerald-300 flex justify-between">
+                                    <span>{generatePreview.receita.description}</span>
+                                    <span className="font-mono ml-4">{formatCurrency(generatePreview.receita.value)}</span>
+                                </div>
+                            </div>
+                            <div className="flex justify-end gap-3 pt-4">
+                                <button
+                                    type="button"
+                                    className="btn-secondary"
+                                    onClick={closeGenerateModal}
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn-primary"
+                                    onClick={handleGenerateEntries}
+                                    disabled={generateEntries.isPending}
+                                >
+                                    {generateEntries.isPending && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+                                    Confirmar e gerar
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </>
     );
 }
