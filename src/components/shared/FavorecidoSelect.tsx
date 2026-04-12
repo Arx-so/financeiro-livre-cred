@@ -41,7 +41,9 @@ export function FavorecidoSelect({
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [internalSelected, setInternalSelected] = useState<Favorecido | null>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
-    const branchId = useBranchStore((state) => state.unidadeAtual?.id);
+    const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
+    const isAdm = unidadeAtual?.code === 'ADM';
+    const branchId = isAdm ? undefined : unidadeAtual?.id;
 
     useEffect(() => {
         if (open) {

@@ -4,6 +4,32 @@ All notable changes to the LivreCred financial management system are documented 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.4] - 2026-04-11
+
+### Fixed
+
+#### Bug 1 — Seller listing empty in sales modals (`src/services/cadastros.ts`)
+
+- `getFavorecidos` was using `.eq('type', filters.type)` which excluded employees stored as `type = 'ambos'`.
+- Now applies `.in('type', ['funcionario', 'ambos'])` when filtering by `'funcionario'` and `.in('type', ['cliente', 'ambos'])` when filtering by `'cliente'`, so `ambos` records appear correctly in both seller and client selects.
+
+#### Bug 2 — Missing "+" button next to Vendedor and Cliente fields
+
+- `CreditCardSaleModal` and `DPlusSaleModal` now include a `<Button variant="outline" size="icon">` (Plus icon) next to each `FavorecidoSelect` for both the client and seller fields.
+- Clicking "+" opens a lightweight inline Dialog with name and document fields.
+- On save, `useCreateFavorecido().mutateAsync()` creates the favorecido and auto-selects the new id in the respective field.
+
+#### Bug 3 — Money inputs not using CurrencyInput in ValeTransporte (`src/pages/RH/ValeTransporte.tsx`)
+
+- Replaced `<Input type="number">` with `<CurrencyInput>` for the `daily_rate` (Valor Diário) and `recharge_amount` (Total VT) fields in the VT recharge dialog.
+- Both fields now use the standard BRL mask and cent-based input behaviour consistent with the rest of the app.
+
+#### Bug 4 — Birthday listing always empty (`src/services/hrAniversarios.ts`)
+
+- Added `.limit(1000)` to `fetchAllFuncionariosWithBirthday` to prevent silent row truncation on branches with large employee datasets (Supabase/PostgREST default paging can otherwise return fewer rows than expected).
+
+---
+
 ## [1.1.3] - 2026-04-12
 
 ### Added

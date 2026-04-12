@@ -210,11 +210,11 @@ export function previewCreditCardSaleEntries(
 
     return {
         receita: {
-            description: `Cartão: ${sale.terminal} - ${sale.card_brand}`,
+            description: `Cartão: ${sale.terminal ?? 'Terminal'} - ${sale.card_brand ?? 'Bandeira'}`,
             value: sale.sale_value,
         },
         despesa: {
-            description: `Taxa maquininha: ${sale.terminal}`,
+            description: `Taxa maquininha: ${sale.terminal ?? 'Terminal'}`,
             value: feeValue,
         },
     };
@@ -236,7 +236,7 @@ export async function generateFinancialEntriesFromCreditCardSale(
         {
             branch_id: sale.branch_id,
             type: 'receita',
-            description: `Cartão: ${sale.terminal} - ${sale.card_brand}${lacreNote}`,
+            description: `Cartão: ${sale.terminal ?? 'Terminal'} - ${sale.card_brand ?? 'Bandeira'}${lacreNote}`,
             value: sale.sale_value,
             due_date: saleDate,
             status: 'pendente',
@@ -246,7 +246,7 @@ export async function generateFinancialEntriesFromCreditCardSale(
         {
             branch_id: sale.branch_id,
             type: 'despesa',
-            description: `Taxa maquininha: ${sale.terminal}`,
+            description: `Taxa maquininha: ${sale.terminal ?? 'Terminal'}`,
             value: feeValue,
             due_date: saleDate,
             status: 'pendente',

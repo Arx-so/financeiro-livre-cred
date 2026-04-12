@@ -5,6 +5,7 @@ import {
     Plus, AlertTriangle, Calendar, List,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { confirmDelete } from '@/lib/confirmDelete';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { LoadingState } from '@/components/shared/LoadingState';
@@ -375,10 +376,11 @@ export default function Ferias() {
     };
 
     const handleDelete = (id: string) => {
-        if (!window.confirm('Confirma exclusão deste registro?')) return;
-        deleteMutation.mutate(id, {
-            onSuccess: () => toast.success('Registro excluído.'),
-            onError: () => toast.error('Erro ao excluir registro.'),
+        confirmDelete('Remover este registro de férias?', () => {
+            deleteMutation.mutate(id, {
+                onSuccess: () => toast.success('Registro excluído.'),
+                onError: () => toast.error('Erro ao excluir registro.'),
+            });
         });
     };
 

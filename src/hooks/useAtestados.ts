@@ -3,6 +3,7 @@ import { useBranchStore } from '@/stores';
 import {
     getMedicalCertificates,
     createMedicalCertificate,
+    deleteMedicalCertificate,
     getCertificateReport,
     type CertificateFilters,
     type CertificateWithEmployee,
@@ -50,6 +51,17 @@ export function useCreateAtestado() {
 
     return useMutation({
         mutationFn: (data: MedicalCertificateInsert) => createMedicalCertificate(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: atestadosKeys.all });
+        },
+    });
+}
+
+export function useDeleteAtestado() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (id: string) => deleteMedicalCertificate(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: atestadosKeys.all });
         },

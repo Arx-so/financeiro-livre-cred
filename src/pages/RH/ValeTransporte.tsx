@@ -1,8 +1,9 @@
 import { useState, useRef } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Bus, Download } from 'lucide-react';
+import { Plus, Bus, Download, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { confirmDelete } from '@/lib/confirmDelete';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { LoadingState } from '@/components/shared/LoadingState';
@@ -26,7 +27,7 @@ import {
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { useVtRecharges, useVtMonthlyReport, useCreateVtRecharge } from '@/hooks/useValeTransporte';
+import { useVtRecharges, useVtMonthlyReport, useCreateVtRecharge, useDeleteVtRecharge } from '@/hooks/useValeTransporte';
 import { useCreateFavorecido, useUploadFavorecidoPhoto } from '@/hooks/useCadastros';
 import { exportVTMonthlyReportToCSV } from '@/services/hrValeTransporte';
 import { useBranchStore } from '@/stores';
@@ -101,7 +102,8 @@ const EMPTY_FAVORECIDO_FORM = {
 
 export default function ValeTransporte() {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
-    const branchId = unidadeAtual?.id ?? '';
+    const isAdm = unidadeAtual?.code === 'ADM';
+    const branchId = isAdm ? '' : (unidadeAtual?.id ?? '');
     const [selectedMonth, setSelectedMonth] = useState(CURRENT_MONTH);
     const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -170,6 +172,16 @@ export default function ValeTransporte() {
     const { data: monthlyReport, isLoading: reportLoading } = useVtMonthlyReport(selectedMonth, selectedYear);
 
     const createMutation = useCreateVtRecharge();
+    const deleteMutation = useDeleteVtRecharge();
+
+    const handleDelete = (id: string) => {
+        confirmDelete('Remover esta recarga de VT?', () => {
+            deleteMutation.mutate(id, {
+                onSuccess: () => toast.success('Recarga removida.'),
+                onError: () => toast.error('Erro ao remover recarga.'),
+            });
+        });
+    };
 
     const handleFormChange = (field: keyof VtFormData, value: string | number) => {
         setFormData((prev) => {
@@ -318,6 +330,7 @@ export default function ValeTransporte() {
                                             <TableHead>Data</TableHead>
                                             <TableHead className="text-right">Valor</TableHead>
                                             <TableHead>Observações</TableHead>
+                                            <TableHead className="w-10" />
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -334,6 +347,17 @@ export default function ValeTransporte() {
                                                 </TableCell>
                                                 <TableCell className="text-sm text-muted-foreground">
                                                     {r.notes ?? '—'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-7 w-7 text-destructive hover:text-destructive"
+                                                        onClick={() => handleDelete(r.id)}
+                                                        disabled={deleteMutation.isPending}
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </Button>
                                                 </TableCell>
                                             </TableRow>
                                         ))}

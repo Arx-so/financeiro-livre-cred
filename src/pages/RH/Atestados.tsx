@@ -1,8 +1,9 @@
 import { useState, useRef } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, FileText } from 'lucide-react';
+import { Plus, FileText, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { confirmDelete } from '@/lib/confirmDelete';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { LoadingState } from '@/components/shared/LoadingState';
@@ -25,7 +26,7 @@ import {
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { useAtestados, useAtestadosReport, useCreateAtestado } from '@/hooks/useAtestados';
+import { useAtestados, useAtestadosReport, useCreateAtestado, useDeleteAtestado } from '@/hooks/useAtestados';
 import { useCreateFavorecido, useUploadFavorecidoPhoto } from '@/hooks/useCadastros';
 import { useBranchStore } from '@/stores';
 import type { MedicalCertificateInsert } from '@/types/database';
@@ -96,7 +97,8 @@ const EMPTY_FAVORECIDO_FORM = {
 
 export default function Atestados() {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
-    const branchId = unidadeAtual?.id ?? '';
+    const isAdm = unidadeAtual?.code === 'ADM';
+    const branchId = isAdm ? '' : (unidadeAtual?.id ?? '');
     const [selectedMonth, setSelectedMonth] = useState(CURRENT_MONTH);
     const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
     const [filterType, setFilterType] = useState('all');
@@ -170,6 +172,16 @@ export default function Atestados() {
     });
 
     const createMutation = useCreateAtestado();
+    const deleteMutation = useDeleteAtestado();
+
+    const handleDelete = (id: string) => {
+        confirmDelete('Remover este atestado?', () => {
+            deleteMutation.mutate(id, {
+                onSuccess: () => toast.success('Atestado removido.'),
+                onError: () => toast.error('Erro ao remover atestado.'),
+            });
+        });
+    };
 
     const handleSubmit = () => {
         if (!formData.employee_id || !formData.certificate_date || formData.absence_days <= 0) {
@@ -277,6 +289,7 @@ export default function Atestados() {
                                             <TableHead>Dias</TableHead>
                                             <TableHead>Tipo</TableHead>
                                             <TableHead>Observações</TableHead>
+                                            <TableHead className="w-10" />
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -298,6 +311,17 @@ export default function Atestados() {
                                                 </TableCell>
                                                 <TableCell className="text-sm text-muted-foreground">
                                                     {cert.notes ?? '—'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-7 w-7 text-destructive hover:text-destructive"
+                                                        onClick={() => handleDelete(cert.id)}
+                                                        disabled={deleteMutation.isPending}
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </Button>
                                                 </TableCell>
                                             </TableRow>
                                         ))}

@@ -84,6 +84,11 @@ export async function createMedicalCertificate(
     return created;
 }
 
+export async function deleteMedicalCertificate(id: string): Promise<void> {
+    const { error } = await supabase.from('medical_certificates').delete().eq('id', id);
+    if (error) throw error;
+}
+
 /**
  * Aggregates certificates by employee for reporting.
  */

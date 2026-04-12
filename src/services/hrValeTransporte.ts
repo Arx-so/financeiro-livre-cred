@@ -85,6 +85,11 @@ export async function createVtRecharge(data: VtRechargeInsert): Promise<VtRechar
     return created;
 }
 
+export async function deleteVtRecharge(id: string): Promise<void> {
+    const { error } = await supabase.from('vt_recharges').delete().eq('id', id);
+    if (error) throw error;
+}
+
 export function exportVTMonthlyReportToCSV(
     recharges: VtRechargeWithEmployee[],
     month: number,

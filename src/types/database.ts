@@ -1320,7 +1320,7 @@ export interface Database {
           commission_amount?: number | null;
           financial_entries_generated?: boolean;
           installments?: number;
-          sale_date?: string;
+          sale_date: string;
           discount_amount?: number;
           saturday_refund?: number;
           lacre?: string | null;

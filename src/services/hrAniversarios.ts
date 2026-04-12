@@ -17,21 +17,26 @@ function buildBirthdayRecord(emp: EmployeeRow): FavorecidoWithBirthday {
     return { ...emp, age, birthdayThisYear };
 }
 
-/** Single shared fetch — all three public functions filter in memory to avoid duplicate network calls. */
-async function fetchAllFuncionariosWithBirthday(branchId: string): Promise<EmployeeRow[]> {
-    const { data, error } = await supabase
+/** Single shared fetch — all three public functions filter in memory to avoid duplicate network calls.
+ *  branchId = undefined means ADM (no branch filter — sees all branches). */
+async function fetchAllFuncionariosWithBirthday(branchId: string | undefined): Promise<EmployeeRow[]> {
+    let query = supabase
         .from('favorecidos')
         .select('id, name, type, category, birth_date')
-        .eq('branch_id', branchId)
         .in('type', ['funcionario', 'ambos'])
         .not('birth_date', 'is', null)
         .limit(1000);
 
+    if (branchId) {
+        query = query.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
     return (data ?? []) as EmployeeRow[];
 }
 
-export async function getBirthdaysToday(branchId: string): Promise<FavorecidoWithBirthday[]> {
+export async function getBirthdaysToday(branchId: string | undefined): Promise<FavorecidoWithBirthday[]> {
     const today = new Date();
     const month = today.getMonth() + 1;
     const day = today.getDate();
@@ -46,7 +51,7 @@ export async function getBirthdaysToday(branchId: string): Promise<FavorecidoWit
         .map(buildBirthdayRecord);
 }
 
-export async function getUpcomingBirthdays(branchId: string, days: number): Promise<FavorecidoWithBirthday[]> {
+export async function getUpcomingBirthdays(branchId: string | undefined, days: number): Promise<FavorecidoWithBirthday[]> {
     const employees = await fetchAllFuncionariosWithBirthday(branchId);
 
     const today = new Date();
@@ -76,7 +81,7 @@ export async function getUpcomingBirthdays(branchId: string, days: number): Prom
     return candidatePairs.map(({ emp }) => buildBirthdayRecord(emp));
 }
 
-export async function getBirthdaysByMonth(branchId: string, month: number): Promise<FavorecidoWithBirthday[]> {
+export async function getBirthdaysByMonth(branchId: string | undefined, month: number): Promise<FavorecidoWithBirthday[]> {
     const employees = await fetchAllFuncionariosWithBirthday(branchId);
 
     return employees
