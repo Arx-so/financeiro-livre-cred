@@ -1814,7 +1814,7 @@ export async function getMetaRealizadoData(
         .select(`
             target_amount,
             actual_amount,
-            seller:favorecidos!seller_id(name),
+            seller:profiles!seller_id(name),
             branch:branches(name)
         `)
         .eq('branch_id', branchId)
@@ -2318,7 +2318,7 @@ export async function getRankingPerformanceData(
     const vendas = await getVendasVendedorData(branchId, startDate, endDate);
     const { data: targets } = await supabase
         .from('sales_targets')
-        .select('target_amount, actual_amount, seller:favorecidos!seller_id(name)')
+        .select('target_amount, actual_amount, seller:profiles!seller_id(name)')
         .eq('branch_id', branchId);
 
     const vendedorData = new Map<string, { vendas: number; metas: number }>();
@@ -2545,7 +2545,7 @@ export async function getScorePerformanceVendedorData(
     const vendas = await getVendasVendedorData(branchId, startDate, endDate);
     const { data: targets } = await supabase
         .from('sales_targets')
-        .select('target_amount, actual_amount, seller:favorecidos!seller_id(name)')
+        .select('target_amount, actual_amount, seller:profiles!seller_id(name)')
         .eq('branch_id', branchId);
 
     const vendedorData = new Map<string, { vendas: number; metas: number }>();
@@ -2589,7 +2589,7 @@ export async function getMetaRiscoData(
         .select(`
             target_amount,
             actual_amount,
-            seller:favorecidos!seller_id(name)
+            seller:profiles!seller_id(name)
         `)
         .eq('branch_id', branchId)
         .eq('year', year)
