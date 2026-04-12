@@ -72,12 +72,10 @@ export async function getUpcomingBirthdays(branchId: string, days: number): Prom
         const bDay = bd.getDate();
 
         // Build a candidate date in current year, or next year if already passed
-        let candidateYear = currentYear;
         const candidateDate = new Date(currentYear, bMonth - 1, bDay, 0, 0, 0, 0);
 
         if (candidateDate < today) {
-            candidateYear += 1;
-            candidateDate.setFullYear(candidateYear);
+            candidateDate.setFullYear(currentYear + 1);
         }
 
         const diffMs = candidateDate.getTime() - today.getTime();
@@ -118,12 +116,8 @@ export async function getBirthdaysByMonth(branchId: string, month: number): Prom
         })
         .map(buildBirthdayRecord);
 
-    // Sort by day of month
-    results.sort((a, b) => {
-        const da = new Date(`${a.birth_date}T12:00:00`).getDate();
-        const db = new Date(`${b.birth_date}T12:00:00`).getDate();
-        return da - db;
-    });
-
-    return results;
+    // Sort by day of month — extract day once per record before sorting
+    const withDay = results.map((r) => ({ r, day: new Date(`${r.birth_date}T12:00:00`).getDate() }));
+    withDay.sort((a, b) => a.day - b.day);
+    return withDay.map(({ r }) => r);
 }

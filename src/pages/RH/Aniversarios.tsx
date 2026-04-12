@@ -29,6 +29,9 @@ const TYPE_LABELS: Record<string, string> = {
     fornecedor: 'Fornecedor',
 };
 
+// Computed once at module load — stable for the lifetime of the page session
+const TODAY_ISO = new Date().toISOString().split('T')[0];
+
 function formatBirthdayDate(birthDate: string | null): string {
     if (!birthDate) return '—';
     try {
@@ -40,8 +43,7 @@ function formatBirthdayDate(birthDate: string | null): string {
 }
 
 function isTodayBirthday(birthdayThisYear: string): boolean {
-    const today = new Date().toISOString().split('T')[0];
-    return birthdayThisYear === today;
+    return birthdayThisYear === TODAY_ISO;
 }
 
 interface BirthdayCardProps {

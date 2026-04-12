@@ -1,4 +1,6 @@
 import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import {
     Users, AlertTriangle, Calendar, FileText, Bell, Bus, Stethoscope, ClipboardList, Cake,
 } from 'lucide-react';
@@ -28,13 +30,7 @@ function getPriorityColor(alertType: string): string {
 function formatBirthdayDate(birthDate: string | null | undefined): string {
     if (!birthDate) return '—';
     try {
-        const d = new Date(`${birthDate}T12:00:00`);
-        const day = d.getDate();
-        const monthNames = [
-            'jan', 'fev', 'mar', 'abr', 'mai', 'jun',
-            'jul', 'ago', 'set', 'out', 'nov', 'dez',
-        ];
-        return `${day} de ${monthNames[d.getMonth()]}`;
+        return format(new Date(`${birthDate}T12:00:00`), "d 'de' MMM", { locale: ptBR });
     } catch {
         return birthDate;
     }

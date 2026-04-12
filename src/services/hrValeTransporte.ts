@@ -94,22 +94,14 @@ export function exportVTMonthlyReportToCSV(
     month: number,
     year: number,
 ): string {
-    const header = ['Funcionário', 'Documento', 'Valor Diário', 'Dias Trabalhados', 'Total VT', 'Data Recarga'];
+    const header = ['Funcionário', 'Documento', 'Total VT', 'Data Recarga'];
 
-    const rows = recharges.map((r) => {
-        const employeeName = r.employee?.name ?? '';
-        const employeeDoc = r.employee?.document ?? '';
-        const rechargeDate = r.recharge_date ?? '';
-        // Use the raw recharge_amount — daily rate and days aren't stored separately
-        return [
-            employeeName,
-            employeeDoc,
-            '',
-            '',
-            r.recharge_amount.toFixed(2),
-            rechargeDate,
-        ];
-    });
+    const rows = recharges.map((r) => [
+        r.employee?.name ?? '',
+        r.employee?.document ?? '',
+        r.recharge_amount.toFixed(2),
+        r.recharge_date ?? '',
+    ]);
 
     const allRows = [header, ...rows];
     const csvContent = allRows
