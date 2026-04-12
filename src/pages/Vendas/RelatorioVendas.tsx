@@ -581,18 +581,17 @@ export default function RelatorioVendas() {
                 <PageHeader
                     title="Relatório de Vendas"
                     description="Consolidado diário de cartão de crédito e produtos D+"
-                    actions={(
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleExportCSV}
-                            disabled={!hasData}
-                        >
-                            <Download className="w-4 h-4 mr-2" />
-                            Exportar CSV
-                        </Button>
-                    )}
-                />
+                >
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleExportCSV}
+                        disabled={!hasData}
+                    >
+                        <Download className="w-4 h-4 mr-2" />
+                        Exportar CSV
+                    </Button>
+                </PageHeader>
 
                 {/* Filters Row */}
                 <div className="flex flex-wrap gap-3 items-end">
