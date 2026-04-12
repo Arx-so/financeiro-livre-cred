@@ -1287,6 +1287,11 @@ export interface Database {
           commission_calculated: boolean;
           commission_amount: number | null;
           financial_entries_generated: boolean;
+          installments: number;
+          sale_date: string;
+          discount_amount: number;
+          saturday_refund: number;
+          lacre: string | null;
           notes: string | null;
           created_by: string | null;
           created_at: string;
@@ -1314,6 +1319,11 @@ export interface Database {
           commission_calculated?: boolean;
           commission_amount?: number | null;
           financial_entries_generated?: boolean;
+          installments?: number;
+          sale_date?: string;
+          discount_amount?: number;
+          saturday_refund?: number;
+          lacre?: string | null;
           notes?: string | null;
           created_by?: string | null;
           created_at?: string;
@@ -1340,6 +1350,11 @@ export interface Database {
           commission_calculated?: boolean;
           commission_amount?: number | null;
           financial_entries_generated?: boolean;
+          installments?: number;
+          sale_date?: string;
+          discount_amount?: number;
+          saturday_refund?: number;
+          lacre?: string | null;
           notes?: string | null;
           updated_at?: string;
         };

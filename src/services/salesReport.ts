@@ -50,6 +50,8 @@ export interface SalesReportKPIs {
     total_taxa: number;
     total_transacoes: number;
     total_dplus: number;
+    total_discount: number;
+    total_saturday_refund: number;
 }
 
 // ─── Pure aggregation functions ───────────────────────────────────────────────
@@ -171,6 +173,8 @@ export function computeKPIs(
     const total_bruto = cc.reduce((sum, s) => sum + s.terminal_amount, 0);
     const total_liquido = cc.reduce((sum, s) => sum + s.sale_value, 0);
     const total_dplus = dplus.reduce((sum, s) => sum + (s.commission_value ?? s.contract_value), 0);
+    const total_discount = cc.reduce((sum, s) => sum + (s.discount_amount ?? 0), 0);
+    const total_saturday_refund = cc.reduce((sum, s) => sum + (s.saturday_refund ?? 0), 0);
 
     return {
         total_bruto,
@@ -178,6 +182,8 @@ export function computeKPIs(
         total_taxa: total_bruto - total_liquido,
         total_transacoes: cc.length + dplus.length,
         total_dplus,
+        total_discount,
+        total_saturday_refund,
     };
 }
 

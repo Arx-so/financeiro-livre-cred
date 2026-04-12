@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-    BarChart3, CreditCard, TrendingDown, Hash, TrendingUp, Download, Banknote,
+    BarChart3, CreditCard, TrendingDown, Hash, TrendingUp, Download, Banknote, Tag, RotateCcw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -92,6 +92,8 @@ function CreditCardTable({ sales }: CreditCardTableProps) {
 
     const grandTotalSale = sales.reduce((sum, s) => sum + s.sale_value, 0);
     const grandTotalMaq = sales.reduce((sum, s) => sum + s.terminal_amount, 0);
+    const grandTotalDiscount = sales.reduce((sum, s) => sum + (s.discount_amount ?? 0), 0);
+    const grandTotalSatRefund = sales.reduce((sum, s) => sum + (s.saturday_refund ?? 0), 0);
 
     return (
         <div className="border rounded-lg overflow-auto">
@@ -108,6 +110,9 @@ function CreditCardTable({ sales }: CreditCardTableProps) {
                         <TableHead className="text-right">Valor Venda</TableHead>
                         <TableHead className="text-right">Maquineta</TableHead>
                         <TableHead className="text-right">Taxa</TableHead>
+                        <TableHead className="text-right">Desconto</TableHead>
+                        <TableHead className="text-right">Dev. Sábado</TableHead>
+                        <TableHead>Lacre</TableHead>
                         <TableHead>Status</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -116,6 +121,8 @@ function CreditCardTable({ sales }: CreditCardTableProps) {
                         const rows = grouped.get(terminal)!;
                         const subSale = rows.reduce((sum, s) => sum + s.sale_value, 0);
                         const subMaq = rows.reduce((sum, s) => sum + s.terminal_amount, 0);
+                        const subDiscount = rows.reduce((sum, s) => sum + (s.discount_amount ?? 0), 0);
+                        const subSatRefund = rows.reduce((sum, s) => sum + (s.saturday_refund ?? 0), 0);
                         return (
                             <>
                                 {rows.map((s) => (
@@ -146,6 +153,19 @@ function CreditCardTable({ sales }: CreditCardTableProps) {
                                         <TableCell className="text-right text-sm font-mono text-destructive">
                                             {formatCurrency(s.terminal_amount - s.sale_value)}
                                         </TableCell>
+                                        <TableCell className="text-right text-sm font-mono">
+                                            {(s.discount_amount ?? 0) > 0
+                                                ? formatCurrency(s.discount_amount ?? 0)
+                                                : '—'}
+                                        </TableCell>
+                                        <TableCell className="text-right text-sm font-mono">
+                                            {(s.saturday_refund ?? 0) > 0
+                                                ? formatCurrency(s.saturday_refund ?? 0)
+                                                : '—'}
+                                        </TableCell>
+                                        <TableCell className="text-sm font-mono">
+                                            {s.lacre ?? '—'}
+                                        </TableCell>
                                         <TableCell className="text-sm">
                                             {CC_STATUS_LABELS[s.status] ?? s.status}
                                         </TableCell>
@@ -164,6 +184,13 @@ function CreditCardTable({ sales }: CreditCardTableProps) {
                                     <TableCell className="text-right font-mono text-destructive">
                                         {formatCurrency(subMaq - subSale)}
                                     </TableCell>
+                                    <TableCell className="text-right font-mono">
+                                        {subDiscount > 0 ? formatCurrency(subDiscount) : '—'}
+                                    </TableCell>
+                                    <TableCell className="text-right font-mono">
+                                        {subSatRefund > 0 ? formatCurrency(subSatRefund) : '—'}
+                                    </TableCell>
+                                    <TableCell />
                                     <TableCell />
                                 </TableRow>
                             </>
@@ -176,6 +203,13 @@ function CreditCardTable({ sales }: CreditCardTableProps) {
                         <TableCell className="text-right font-mono text-destructive">
                             {formatCurrency(grandTotalMaq - grandTotalSale)}
                         </TableCell>
+                        <TableCell className="text-right font-mono text-destructive">
+                            {grandTotalDiscount > 0 ? formatCurrency(grandTotalDiscount) : '—'}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-destructive">
+                            {grandTotalSatRefund > 0 ? formatCurrency(grandTotalSatRefund) : '—'}
+                        </TableCell>
+                        <TableCell />
                         <TableCell />
                     </TableRow>
                 </TableBody>
@@ -621,7 +655,7 @@ export default function RelatorioVendas() {
                     />
                 ) : (
                     <>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                             <StatCard
                                 label="Total Bruto (Maquineta)"
                                 value={formatCurrency(data?.kpis.total_bruto ?? 0)}
@@ -645,6 +679,18 @@ export default function RelatorioVendas() {
                                 value={data?.kpis.total_transacoes ?? 0}
                                 icon={Hash}
                                 variant="default"
+                            />
+                            <StatCard
+                                label="Total Descontos"
+                                value={formatCurrency(data?.kpis.total_discount ?? 0)}
+                                icon={Tag}
+                                variant="expense"
+                            />
+                            <StatCard
+                                label="Total Dev. Sábado"
+                                value={formatCurrency(data?.kpis.total_saturday_refund ?? 0)}
+                                icon={RotateCcw}
+                                variant="expense"
                             />
                         </div>
 

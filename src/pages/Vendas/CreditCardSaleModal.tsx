@@ -47,7 +47,16 @@ interface FormData {
     sale_type: string;
     payment_method: string;
     payment_account: string;
+    installments: number;
+    sale_date: string;
+    discount_amount: number;
+    saturday_refund: number;
+    lacre: string;
     notes: string;
+}
+
+function todayISO(): string {
+    return new Date().toISOString().split('T')[0];
 }
 
 const DEFAULT_FORM: FormData = {
@@ -62,6 +71,11 @@ const DEFAULT_FORM: FormData = {
     sale_type: SALE_TYPES.VENDA_NOVA,
     payment_method: PAYMENT_METHODS.PIX,
     payment_account: TRANSFER_SOURCES.TF_RENTA,
+    installments: 1,
+    sale_date: todayISO(),
+    discount_amount: 0,
+    saturday_refund: 0,
+    lacre: '',
     notes: '',
 };
 
@@ -122,7 +136,7 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
     const [vendedorFormData, setVendedorFormData] = useState({ name: '', email: '', password: '' });
 
     useEffect(() => {
-        if (!open) setFormData(DEFAULT_FORM);
+        if (!open) setFormData({ ...DEFAULT_FORM, sale_date: todayISO() });
     }, [open]);
 
     const resetFavorecidoForm = () => {
@@ -239,6 +253,11 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
             sale_type: formData.sale_type as SalesCreditCardInsert['sale_type'],
             payment_method: formData.payment_method as SalesCreditCardInsert['payment_method'],
             payment_account: requiresAccount ? formData.payment_account || null : null,
+            installments: formData.installments || 1,
+            sale_date: formData.sale_date || todayISO(),
+            discount_amount: formData.discount_amount || 0,
+            saturday_refund: formData.saturday_refund || 0,
+            lacre: formData.lacre || null,
             notes: formData.notes || null,
             created_by: userId || null,
             status: 'pendente',
@@ -293,6 +312,15 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
+                                <Label htmlFor="sale_date">Data da Venda *</Label>
+                                <Input
+                                    id="sale_date"
+                                    type="date"
+                                    value={formData.sale_date}
+                                    onChange={(e) => handleFieldChange('sale_date', e.target.value)}
+                                />
+                            </div>
+                            <div>
                                 <Label htmlFor="sale_value">Valor da Venda (R$) *</Label>
                                 <CurrencyInput
                                     id="sale_value"
@@ -319,6 +347,42 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
                                         {fee > 0 ? `+${formatCurrency(fee)}` : '—'}
                                     </span>
                                 </div>
+                            </div>
+                            <div>
+                                <Label htmlFor="installments">Parcelas</Label>
+                                <Input
+                                    id="installments"
+                                    type="number"
+                                    min={1}
+                                    max={24}
+                                    value={formData.installments}
+                                    onChange={(e) => handleFieldChange('installments', parseInt(e.target.value, 10) || 1)}
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="discount_amount">Desconto (R$)</Label>
+                                <CurrencyInput
+                                    id="discount_amount"
+                                    value={formData.discount_amount}
+                                    onChange={(val) => handleFieldChange('discount_amount', val)}
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="saturday_refund">Valor Devolução Sábado (R$)</Label>
+                                <CurrencyInput
+                                    id="saturday_refund"
+                                    value={formData.saturday_refund}
+                                    onChange={(val) => handleFieldChange('saturday_refund', val)}
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="lacre">Lacre</Label>
+                                <Input
+                                    id="lacre"
+                                    value={formData.lacre}
+                                    onChange={(e) => handleFieldChange('lacre', e.target.value)}
+                                    placeholder="Referência do lacre"
+                                />
                             </div>
                         </div>
                     </div>
