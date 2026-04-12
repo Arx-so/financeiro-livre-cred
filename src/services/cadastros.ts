@@ -208,12 +208,12 @@ export async function getFuncionarios(): Promise<Favorecido[]> {
     return data;
 }
 
-// Get sellers (users with role 'vendas')
+// Get sellers (users with role 'vendedor' or legacy 'vendas')
 export async function getVendedores(): Promise<Array<{ id: string; name: string; email: string }>> {
     const { data, error } = await supabase
         .from('profiles')
         .select('id, name, email')
-        .eq('role', 'vendas')
+        .in('role', ['vendedor', 'vendas'])
         .order('name');
 
     if (error) {

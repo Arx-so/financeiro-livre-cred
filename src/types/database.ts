@@ -1,4 +1,16 @@
-export type UserRole = 'admin' | 'gerente' | 'usuario' | 'financeiro' | 'vendas' | 'leitura';
+export type UserRole =
+    | 'admin'
+    | 'gerente'
+    | 'coordenador'
+    | 'assistente'
+    | 'vendedor'
+    | 'seguranca'
+    | 'financeiro'
+    | 'rh'
+    | 'leitura'
+    // legacy — kept for backward compatibility
+    | 'usuario'
+    | 'vendas';
 export type ProductType = 'generico' | 'cartao_credito' | 'fgts' | 'consignado';
 export type FavorecidoTipo = 'cliente' | 'fornecedor' | 'funcionario' | 'ambos';
 export type EntryType = 'receita' | 'despesa';

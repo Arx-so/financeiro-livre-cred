@@ -248,13 +248,19 @@ export async function inviteUser(email: string, name: string, role: UserRole, br
 
 // Get role display text in Portuguese
 export function getRoleText(role: UserRole): string {
-    const roleTexts: Record<UserRole, string> = {
+    const roleTexts: Partial<Record<UserRole, string>> = {
         admin: 'Administrador',
         gerente: 'Gerente',
-        usuario: 'Usuário',
+        coordenador: 'Coordenador',
+        assistente: 'Assistente',
+        vendedor: 'Vendedor',
+        seguranca: 'Segurança',
         financeiro: 'Financeiro',
-        vendas: 'Vendas',
+        rh: 'Recursos Humanos',
         leitura: 'Leitura',
+        // legacy
+        usuario: 'Usuário',
+        vendas: 'Vendas',
     };
 
     return roleTexts[role] || role;
@@ -262,13 +268,18 @@ export function getRoleText(role: UserRole): string {
 
 // Get role badge color class
 export function getRoleBadgeClass(role: UserRole): string {
-    const classes: Record<UserRole, string> = {
+    const classes: Partial<Record<UserRole, string>> = {
         admin: 'bg-expense-muted text-expense',
         gerente: 'bg-pending-muted text-pending',
-        usuario: 'bg-muted text-muted-foreground',
+        coordenador: 'bg-pending-muted text-pending',
+        assistente: 'bg-muted text-muted-foreground',
+        vendedor: 'bg-income-muted text-income',
+        seguranca: 'bg-muted text-muted-foreground',
         financeiro: 'bg-primary/10 text-primary',
-        vendas: 'bg-income-muted text-income',
+        rh: 'bg-primary/10 text-primary',
         leitura: 'bg-muted text-muted-foreground',
+        usuario: 'bg-muted text-muted-foreground',
+        vendas: 'bg-income-muted text-income',
     };
 
     return classes[role] || 'bg-muted text-muted-foreground';
