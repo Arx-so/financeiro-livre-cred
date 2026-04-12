@@ -38,7 +38,13 @@ export async function getFavorecidos(filters: FavorecidoFilters = {}): Promise<F
     }
 
     if (filters.type) {
-        query = query.eq('type', filters.type);
+        if (filters.type === 'funcionario') {
+            query = query.in('type', ['funcionario', 'ambos']);
+        } else if (filters.type === 'cliente') {
+            query = query.in('type', ['cliente', 'ambos']);
+        } else {
+            query = query.eq('type', filters.type);
+        }
     }
 
     if (filters.isActive !== undefined) {

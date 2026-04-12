@@ -24,7 +24,8 @@ async function fetchAllFuncionariosWithBirthday(branchId: string): Promise<Emplo
         .select('id, name, type, category, birth_date')
         .eq('branch_id', branchId)
         .in('type', ['funcionario', 'ambos'])
-        .not('birth_date', 'is', null);
+        .not('birth_date', 'is', null)
+        .limit(1000);
 
     if (error) throw error;
     return (data ?? []) as EmployeeRow[];

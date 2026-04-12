@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { FavorecidoSelect } from '@/components/shared/FavorecidoSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateCreditCardSale } from '@/hooks/useSalesCreditCard';
+import { useCreateFavorecido } from '@/hooks/useCadastros';
 import { useBranchStore, useAuthStore } from '@/stores';
 import type { SalesCreditCardInsert } from '@/types/database';
 import {
@@ -59,6 +62,8 @@ const DEFAULT_FORM: FormData = {
     notes: '',
 };
 
+const DEFAULT_NEW_FAV = { name: '', type: 'cliente' as 'cliente' | 'funcionario', document: '' };
+
 function formatCurrency(value: number): string {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
@@ -72,11 +77,39 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
     const branchId = useBranchStore((state) => state.unidadeAtual?.id) ?? '';
     const userId = useAuthStore((state) => state.user?.id) ?? '';
     const createMutation = useCreateCreditCardSale();
+    const createFavorecido = useCreateFavorecido();
     const [formData, setFormData] = useState<FormData>(DEFAULT_FORM);
+
+    const [newClienteOpen, setNewClienteOpen] = useState(false);
+    const [newVendedorOpen, setNewVendedorOpen] = useState(false);
+    const [newFavData, setNewFavData] = useState(DEFAULT_NEW_FAV);
+    const [isSavingFav, setIsSavingFav] = useState(false);
 
     useEffect(() => {
         if (!open) setFormData(DEFAULT_FORM);
     }, [open]);
+
+    const handleSaveNewFav = async (targetField: 'client_id' | 'seller_id') => {
+        if (!newFavData.name.trim()) { toast.error('Informe o nome do favorecido.'); return; }
+        setIsSavingFav(true);
+        try {
+            const created = await createFavorecido.mutateAsync({
+                branch_id: branchId || null,
+                name: newFavData.name.trim(),
+                type: newFavData.type,
+                document: newFavData.document.trim() || null,
+            });
+            setFormData((prev) => ({ ...prev, [targetField]: created.id }));
+            toast.success('Favorecido criado com sucesso.');
+            setNewClienteOpen(false);
+            setNewVendedorOpen(false);
+            setNewFavData(DEFAULT_NEW_FAV);
+        } catch {
+            toast.error('Erro ao criar favorecido.');
+        } finally {
+            setIsSavingFav(false);
+        }
+    };
 
     const handleFieldChange = (field: keyof FormData, value: string | number) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
@@ -138,11 +171,27 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
                         <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
                             1. Cliente
                         </h3>
-                        <FavorecidoSelect
-                            value={formData.client_id}
-                            onChange={(id) => handleFieldChange('client_id', id)}
-                            placeholder="Buscar cliente por nome, CPF, telefone..."
-                        />
+                        <div className="flex gap-2">
+                            <div className="flex-1">
+                                <FavorecidoSelect
+                                    value={formData.client_id}
+                                    onChange={(id) => handleFieldChange('client_id', id)}
+                                    placeholder="Buscar cliente por nome, CPF, telefone..."
+                                />
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                type="button"
+                                onClick={() => {
+                                    setNewFavData({ ...DEFAULT_NEW_FAV, type: 'cliente' });
+                                    setNewClienteOpen(true);
+                                }}
+                                title="Novo cliente"
+                            >
+                                <Plus className="w-4 h-4" />
+                            </Button>
+                        </div>
                     </div>
 
                     {/* 2. Valores */}
@@ -153,26 +202,18 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
                                 <Label htmlFor="sale_value">Valor da Venda (R$) *</Label>
-                                <Input
+                                <CurrencyInput
                                     id="sale_value"
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={formData.sale_value || ''}
-                                    onChange={(e) => handleFieldChange('sale_value', Number(e.target.value))}
-                                    className="font-mono-numbers"
+                                    value={formData.sale_value}
+                                    onChange={(val) => handleFieldChange('sale_value', val)}
                                 />
                             </div>
                             <div>
                                 <Label htmlFor="terminal_amount">Valor da Maquineta (R$) *</Label>
-                                <Input
+                                <CurrencyInput
                                     id="terminal_amount"
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={formData.terminal_amount || ''}
-                                    onChange={(e) => handleFieldChange('terminal_amount', Number(e.target.value))}
-                                    className="font-mono-numbers"
+                                    value={formData.terminal_amount}
+                                    onChange={(val) => handleFieldChange('terminal_amount', val)}
                                 />
                             </div>
                             <div>
@@ -198,7 +239,10 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <Label htmlFor="terminal">Maquineta *</Label>
-                                <Select value={formData.terminal} onValueChange={(v) => handleFieldChange('terminal', v)}>
+                                <Select
+                                    value={formData.terminal}
+                                    onValueChange={(v) => handleFieldChange('terminal', v)}
+                                >
                                     <SelectTrigger id="terminal">
                                         <SelectValue />
                                     </SelectTrigger>
@@ -211,7 +255,10 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
                             </div>
                             <div>
                                 <Label htmlFor="card_brand">Bandeira *</Label>
-                                <Select value={formData.card_brand} onValueChange={(v) => handleFieldChange('card_brand', v)}>
+                                <Select
+                                    value={formData.card_brand}
+                                    onValueChange={(v) => handleFieldChange('card_brand', v)}
+                                >
                                     <SelectTrigger id="card_brand">
                                         <SelectValue />
                                     </SelectTrigger>
@@ -253,12 +300,28 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <Label>Vendedor *</Label>
-                                <FavorecidoSelect
-                                    value={formData.seller_id}
-                                    onChange={(id) => handleFieldChange('seller_id', id)}
-                                    placeholder="Selecionar vendedor"
-                                    filterType="funcionario"
-                                />
+                                <div className="flex gap-2">
+                                    <div className="flex-1">
+                                        <FavorecidoSelect
+                                            value={formData.seller_id}
+                                            onChange={(id) => handleFieldChange('seller_id', id)}
+                                            placeholder="Selecionar vendedor"
+                                            filterType="funcionario"
+                                        />
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        size="icon"
+                                        type="button"
+                                        onClick={() => {
+                                            setNewFavData({ ...DEFAULT_NEW_FAV, type: 'funcionario' });
+                                            setNewVendedorOpen(true);
+                                        }}
+                                        title="Novo vendedor"
+                                    >
+                                        <Plus className="w-4 h-4" />
+                                    </Button>
+                                </div>
                             </div>
                             <div>
                                 <Label htmlFor="sale_type">Tipo de Venda</Label>
@@ -340,6 +403,96 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
                         {createMutation.isPending ? 'Salvando...' : 'Salvar Venda'}
                     </Button>
                 </DialogFooter>
+
+                {/* Inline: Novo Cliente */}
+                <Dialog
+                    open={newClienteOpen}
+                    onOpenChange={(v) => { setNewClienteOpen(v); if (!v) setNewFavData(DEFAULT_NEW_FAV); }}
+                >
+                    <DialogContent className="max-w-sm">
+                        <DialogHeader>
+                            <DialogTitle>Novo Cliente</DialogTitle>
+                            <DialogDescription>
+                                Cadastre um novo cliente para usar nesta venda.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-2">
+                            <div>
+                                <Label htmlFor="nf_cliente_name">Nome *</Label>
+                                <Input
+                                    id="nf_cliente_name"
+                                    value={newFavData.name}
+                                    onChange={(e) => setNewFavData((p) => ({ ...p, name: e.target.value }))}
+                                    placeholder="Nome completo"
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="nf_cliente_doc">CPF / Documento</Label>
+                                <Input
+                                    id="nf_cliente_doc"
+                                    value={newFavData.document}
+                                    onChange={(e) => setNewFavData((p) => ({ ...p, document: e.target.value }))}
+                                    placeholder="000.000.000-00"
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => { setNewClienteOpen(false); setNewFavData(DEFAULT_NEW_FAV); }}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button onClick={() => handleSaveNewFav('client_id')} disabled={isSavingFav}>
+                                {isSavingFav ? 'Salvando...' : 'Criar Cliente'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Inline: Novo Vendedor */}
+                <Dialog
+                    open={newVendedorOpen}
+                    onOpenChange={(v) => { setNewVendedorOpen(v); if (!v) setNewFavData(DEFAULT_NEW_FAV); }}
+                >
+                    <DialogContent className="max-w-sm">
+                        <DialogHeader>
+                            <DialogTitle>Novo Vendedor</DialogTitle>
+                            <DialogDescription>Cadastre um novo funcionário/vendedor.</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-2">
+                            <div>
+                                <Label htmlFor="nf_vendedor_name">Nome *</Label>
+                                <Input
+                                    id="nf_vendedor_name"
+                                    value={newFavData.name}
+                                    onChange={(e) => setNewFavData((p) => ({ ...p, name: e.target.value }))}
+                                    placeholder="Nome completo"
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="nf_vendedor_doc">CPF / Documento</Label>
+                                <Input
+                                    id="nf_vendedor_doc"
+                                    value={newFavData.document}
+                                    onChange={(e) => setNewFavData((p) => ({ ...p, document: e.target.value }))}
+                                    placeholder="000.000.000-00"
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => { setNewVendedorOpen(false); setNewFavData(DEFAULT_NEW_FAV); }}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button onClick={() => handleSaveNewFav('seller_id')} disabled={isSavingFav}>
+                                {isSavingFav ? 'Salvando...' : 'Criar Vendedor'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </DialogContent>
         </Dialog>
     );

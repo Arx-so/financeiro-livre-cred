@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { FavorecidoSelect } from '@/components/shared/FavorecidoSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateDPlusSale } from '@/hooks/useSalesDPlus';
+import { useCreateFavorecido } from '@/hooks/useCadastros';
 import { useBranchStore, useAuthStore } from '@/stores';
 import type { SalesDPlusProductInsert } from '@/types/database';
 import { DPLUS_SALE_STATUSES } from '@/constants/sales';
@@ -50,19 +53,45 @@ const DEFAULT_FORM: FormData = {
     notes: '',
 };
 
-function formatCurrency(value: number): string {
-    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
+const DEFAULT_NEW_FAV = { name: '', type: 'cliente' as 'cliente' | 'funcionario', document: '' };
 
 export function DPlusSaleModal({ open, onClose, onSaved }: DPlusSaleModalProps) {
     const branchId = useBranchStore((state) => state.unidadeAtual?.id) ?? '';
     const userId = useAuthStore((state) => state.user?.id) ?? '';
     const createMutation = useCreateDPlusSale();
+    const createFavorecido = useCreateFavorecido();
     const [formData, setFormData] = useState<FormData>(DEFAULT_FORM);
+
+    const [newClienteOpen, setNewClienteOpen] = useState(false);
+    const [newVendedorOpen, setNewVendedorOpen] = useState(false);
+    const [newFavData, setNewFavData] = useState(DEFAULT_NEW_FAV);
+    const [isSavingFav, setIsSavingFav] = useState(false);
 
     useEffect(() => {
         if (!open) setFormData(DEFAULT_FORM);
     }, [open]);
+
+    const handleSaveNewFav = async (targetField: 'client_id' | 'seller_id') => {
+        if (!newFavData.name.trim()) { toast.error('Informe o nome do favorecido.'); return; }
+        setIsSavingFav(true);
+        try {
+            const created = await createFavorecido.mutateAsync({
+                branch_id: branchId || null,
+                name: newFavData.name.trim(),
+                type: newFavData.type,
+                document: newFavData.document.trim() || null,
+            });
+            setFormData((prev) => ({ ...prev, [targetField]: created.id }));
+            toast.success('Favorecido criado com sucesso.');
+            setNewClienteOpen(false);
+            setNewVendedorOpen(false);
+            setNewFavData(DEFAULT_NEW_FAV);
+        } catch {
+            toast.error('Erro ao criar favorecido.');
+        } finally {
+            setIsSavingFav(false);
+        }
+    };
 
     const handleFieldChange = (field: keyof FormData, value: string | number) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
@@ -110,11 +139,27 @@ export function DPlusSaleModal({ open, onClose, onSaved }: DPlusSaleModalProps) 
                         <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
                             1. Cliente *
                         </h3>
-                        <FavorecidoSelect
-                            value={formData.client_id}
-                            onChange={(id) => handleFieldChange('client_id', id)}
-                            placeholder="Buscar cliente por nome, CPF, telefone..."
-                        />
+                        <div className="flex gap-2">
+                            <div className="flex-1">
+                                <FavorecidoSelect
+                                    value={formData.client_id}
+                                    onChange={(id) => handleFieldChange('client_id', id)}
+                                    placeholder="Buscar cliente por nome, CPF, telefone..."
+                                />
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                type="button"
+                                onClick={() => {
+                                    setNewFavData({ ...DEFAULT_NEW_FAV, type: 'cliente' });
+                                    setNewClienteOpen(true);
+                                }}
+                                title="Novo cliente"
+                            >
+                                <Plus className="w-4 h-4" />
+                            </Button>
+                        </div>
                     </div>
 
                     {/* 2. Vendedor */}
@@ -122,12 +167,28 @@ export function DPlusSaleModal({ open, onClose, onSaved }: DPlusSaleModalProps) 
                         <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
                             2. Vendedor *
                         </h3>
-                        <FavorecidoSelect
-                            value={formData.seller_id}
-                            onChange={(id) => handleFieldChange('seller_id', id)}
-                            placeholder="Selecionar vendedor"
-                            filterType="funcionario"
-                        />
+                        <div className="flex gap-2">
+                            <div className="flex-1">
+                                <FavorecidoSelect
+                                    value={formData.seller_id}
+                                    onChange={(id) => handleFieldChange('seller_id', id)}
+                                    placeholder="Selecionar vendedor"
+                                    filterType="funcionario"
+                                />
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                type="button"
+                                onClick={() => {
+                                    setNewFavData({ ...DEFAULT_NEW_FAV, type: 'funcionario' });
+                                    setNewVendedorOpen(true);
+                                }}
+                                title="Novo vendedor"
+                            >
+                                <Plus className="w-4 h-4" />
+                            </Button>
+                        </div>
                     </div>
 
                     {/* 3. Proposta */}
@@ -173,20 +234,11 @@ export function DPlusSaleModal({ open, onClose, onSaved }: DPlusSaleModalProps) 
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
                                 <Label htmlFor="contract_value">Valor do Contrato (R$) *</Label>
-                                <Input
+                                <CurrencyInput
                                     id="contract_value"
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={formData.contract_value || ''}
-                                    onChange={(e) => handleFieldChange('contract_value', Number(e.target.value))}
-                                    className="font-mono-numbers"
+                                    value={formData.contract_value}
+                                    onChange={(val) => handleFieldChange('contract_value', val)}
                                 />
-                                {formData.contract_value > 0 && (
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        {formatCurrency(formData.contract_value)}
-                                    </p>
-                                )}
                             </div>
                             <div>
                                 <Label htmlFor="bank_info">Banco</Label>
@@ -227,6 +279,96 @@ export function DPlusSaleModal({ open, onClose, onSaved }: DPlusSaleModalProps) 
                         {createMutation.isPending ? 'Salvando...' : 'Salvar Venda D+'}
                     </Button>
                 </DialogFooter>
+
+                {/* Inline: Novo Cliente */}
+                <Dialog
+                    open={newClienteOpen}
+                    onOpenChange={(v) => { setNewClienteOpen(v); if (!v) setNewFavData(DEFAULT_NEW_FAV); }}
+                >
+                    <DialogContent className="max-w-sm">
+                        <DialogHeader>
+                            <DialogTitle>Novo Cliente</DialogTitle>
+                            <DialogDescription>
+                                Cadastre um novo cliente para usar nesta venda.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-2">
+                            <div>
+                                <Label htmlFor="dp_cliente_name">Nome *</Label>
+                                <Input
+                                    id="dp_cliente_name"
+                                    value={newFavData.name}
+                                    onChange={(e) => setNewFavData((p) => ({ ...p, name: e.target.value }))}
+                                    placeholder="Nome completo"
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="dp_cliente_doc">CPF / Documento</Label>
+                                <Input
+                                    id="dp_cliente_doc"
+                                    value={newFavData.document}
+                                    onChange={(e) => setNewFavData((p) => ({ ...p, document: e.target.value }))}
+                                    placeholder="000.000.000-00"
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => { setNewClienteOpen(false); setNewFavData(DEFAULT_NEW_FAV); }}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button onClick={() => handleSaveNewFav('client_id')} disabled={isSavingFav}>
+                                {isSavingFav ? 'Salvando...' : 'Criar Cliente'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Inline: Novo Vendedor */}
+                <Dialog
+                    open={newVendedorOpen}
+                    onOpenChange={(v) => { setNewVendedorOpen(v); if (!v) setNewFavData(DEFAULT_NEW_FAV); }}
+                >
+                    <DialogContent className="max-w-sm">
+                        <DialogHeader>
+                            <DialogTitle>Novo Vendedor</DialogTitle>
+                            <DialogDescription>Cadastre um novo funcionário/vendedor.</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-2">
+                            <div>
+                                <Label htmlFor="dp_vendedor_name">Nome *</Label>
+                                <Input
+                                    id="dp_vendedor_name"
+                                    value={newFavData.name}
+                                    onChange={(e) => setNewFavData((p) => ({ ...p, name: e.target.value }))}
+                                    placeholder="Nome completo"
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="dp_vendedor_doc">CPF / Documento</Label>
+                                <Input
+                                    id="dp_vendedor_doc"
+                                    value={newFavData.document}
+                                    onChange={(e) => setNewFavData((p) => ({ ...p, document: e.target.value }))}
+                                    placeholder="000.000.000-00"
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                variant="outline"
+                                onClick={() => { setNewVendedorOpen(false); setNewFavData(DEFAULT_NEW_FAV); }}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button onClick={() => handleSaveNewFav('seller_id')} disabled={isSavingFav}>
+                                {isSavingFav ? 'Salvando...' : 'Criar Vendedor'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </DialogContent>
         </Dialog>
     );

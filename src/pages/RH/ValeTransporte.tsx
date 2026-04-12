@@ -11,6 +11,7 @@ import { FavorecidoSelect } from '@/components/shared/FavorecidoSelect';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -292,13 +293,10 @@ export default function ValeTransporte() {
 
                         <div>
                             <Label htmlFor="daily_rate">Valor Diário (R$)</Label>
-                            <Input
+                            <CurrencyInput
                                 id="daily_rate"
-                                type="number"
-                                step="0.01"
-                                min="0"
                                 value={formData.daily_rate}
-                                onChange={(e) => handleFormChange('daily_rate', Number(e.target.value))}
+                                onChange={(val) => handleFormChange('daily_rate', val)}
                             />
                         </div>
 
@@ -316,14 +314,10 @@ export default function ValeTransporte() {
 
                         <div>
                             <Label htmlFor="recharge_amount">Total VT (R$)</Label>
-                            <Input
+                            <CurrencyInput
                                 id="recharge_amount"
-                                type="number"
-                                step="0.01"
-                                min="0"
                                 value={formData.recharge_amount}
-                                onChange={(e) => handleFormChange('recharge_amount', Number(e.target.value))}
-                                className="font-mono-numbers"
+                                onChange={(val) => handleFormChange('recharge_amount', val)}
                             />
                             <p className="text-xs text-muted-foreground mt-1">
                                 {formatCurrency(formData.daily_rate)}
