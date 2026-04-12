@@ -46,6 +46,7 @@ import RhValeTransporte from "./pages/RH/ValeTransporte";
 import RhCalendario from "./pages/RH/Calendario";
 import RhAtestados from "./pages/RH/Atestados";
 import VendasNovo from "./pages/Vendas";
+import RelatorioVendas from "./pages/Vendas/RelatorioVendas";
 
 const queryClient = new QueryClient();
 
@@ -161,6 +162,7 @@ function AppRoutes() {
 
             {/* Vendas — new sales dashboard */}
             <Route path="/vendas/novo" element={<ProtectedRoute><VendasNovo /></ProtectedRoute>} />
+            <Route path="/vendas/relatorio" element={<ProtectedRoute><RelatorioVendas /></ProtectedRoute>} />
 
             {/* 404 - Protected to prevent information leak */}
             <Route path="*" element={<ProtectedRoute><NotFound /></ProtectedRoute>} />

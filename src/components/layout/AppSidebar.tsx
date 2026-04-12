@@ -148,6 +148,12 @@ const navigationGroups: NavGroup[] = [
                 roles: ['admin', 'gerente', 'usuario', 'vendas'],
             },
             {
+                name: 'Relatório de Vendas',
+                href: '/vendas/relatorio',
+                icon: BarChart3,
+                roles: ['admin', 'gerente', 'usuario', 'vendas', 'financeiro'],
+            },
+            {
                 name: 'Produtos',
                 href: '/produtos',
                 icon: Package,
