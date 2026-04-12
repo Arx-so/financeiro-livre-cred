@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { FavorecidoSelect } from '@/components/shared/FavorecidoSelect';
+import { VendedorSelect } from '@/components/shared/VendedorSelect';
 import { FavorecidoForm } from '@/pages/Favorecidos/components/FavorecidoForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,7 +16,8 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateCreditCardSale } from '@/hooks/useSalesCreditCard';
-import { useCreateFavorecido, useUploadFavorecidoPhoto } from '@/hooks/useCadastros';
+import { useCreateFavorecido, useUploadFavorecidoPhoto, useVendedores } from '@/hooks/useCadastros';
+import { useCreateUser } from '@/hooks/useUsers';
 import { useBranchStore, useAuthStore } from '@/stores';
 import type { SalesCreditCardInsert } from '@/types/database';
 import {
@@ -102,12 +104,12 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
     const createMutation = useCreateCreditCardSale();
     const createFavorecido = useCreateFavorecido();
     const uploadPhoto = useUploadFavorecidoPhoto();
+    const { refetch: refetchVendedores } = useVendedores();
+    const createUserMutation = useCreateUser();
     const [formData, setFormData] = useState<FormData>(DEFAULT_FORM);
 
-    // --- Inline Favorecido creation ---
+    // --- Inline Cliente (Favorecido) creation ---
     const [isFavorecidoModalOpen, setIsFavorecidoModalOpen] = useState(false);
-    const [favorecidoModalType, setFavorecidoModalType] = useState<'cliente' | 'funcionario'>('cliente');
-    const [favorecidoTargetField, setFavorecidoTargetField] = useState<'client_id' | 'seller_id'>('client_id');
     const [favorecidoFormData, setFavorecidoFormData] = useState<any>(EMPTY_FAVORECIDO_FORM);
     const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -115,21 +117,22 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
     const favorecidoCameraInputRef = useRef<HTMLInputElement>(null);
     const favorecidoDocumentInputRef = useRef<HTMLInputElement>(null);
 
+    // --- Inline Vendedor creation ---
+    const [isVendedorModalOpen, setIsVendedorModalOpen] = useState(false);
+    const [vendedorFormData, setVendedorFormData] = useState({ name: '', email: '', password: '' });
+
     useEffect(() => {
         if (!open) setFormData(DEFAULT_FORM);
     }, [open]);
 
     const resetFavorecidoForm = () => {
-        setFavorecidoFormData({ ...EMPTY_FAVORECIDO_FORM, type: favorecidoModalType });
+        setFavorecidoFormData({ ...EMPTY_FAVORECIDO_FORM, type: 'cliente' });
         setSelectedPhoto(null);
         setPhotoPreview(null);
     };
 
-    const openFavorecidoModal = (type: 'cliente' | 'funcionario', targetField: 'client_id' | 'seller_id') => {
-        setFavorecidoModalType(type);
-        setFavorecidoTargetField(targetField);
-        setFavorecidoFormData({ ...EMPTY_FAVORECIDO_FORM, type });
-        setIsFavorecidoModalOpen(true);
+    const resetVendedorForm = () => {
+        setVendedorFormData({ name: '', email: '', password: '' });
     };
 
     const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -161,12 +164,46 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
             if (selectedPhoto && newFav.id) {
                 await uploadPhoto.mutateAsync({ favorecidoId: newFav.id, file: selectedPhoto });
             }
-            setFormData((prev) => ({ ...prev, [favorecidoTargetField]: newFav.id }));
-            toast.success('Favorecido criado!');
+            setFormData((prev) => ({ ...prev, client_id: newFav.id }));
+            toast.success('Cliente criado!');
             setIsFavorecidoModalOpen(false);
             resetFavorecidoForm();
         } catch {
-            toast.error('Erro ao criar favorecido');
+            toast.error('Erro ao criar cliente');
+        }
+    };
+
+    const handleSubmitVendedor = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!vendedorFormData.name.trim() || !vendedorFormData.email.trim() || !vendedorFormData.password.trim()) {
+            toast.error('Preencha nome, email e senha');
+            return;
+        }
+        if (vendedorFormData.password.length < 6) {
+            toast.error('A senha deve ter no mínimo 6 caracteres');
+            return;
+        }
+        try {
+            const result = await createUserMutation.mutateAsync({
+                email: vendedorFormData.email.trim(),
+                password: vendedorFormData.password,
+                name: vendedorFormData.name.trim(),
+                role: 'vendas',
+                branchIds: unidadeAtual?.id ? [unidadeAtual.id] : [],
+            });
+            if (!result.success) {
+                toast.error(result.error || 'Erro ao criar vendedor');
+                return;
+            }
+            await refetchVendedores();
+            if (result.userId) {
+                setFormData((prev) => ({ ...prev, seller_id: result.userId! }));
+            }
+            toast.success('Vendedor criado!');
+            setIsVendedorModalOpen(false);
+            resetVendedorForm();
+        } catch {
+            toast.error('Erro ao criar vendedor');
         }
     };
 
@@ -241,7 +278,7 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
                                 variant="outline"
                                 size="icon"
                                 type="button"
-                                onClick={() => openFavorecidoModal('cliente', 'client_id')}
+                                onClick={() => setIsFavorecidoModalOpen(true)}
                                 title="Novo cliente"
                             >
                                 <Plus className="w-4 h-4" />
@@ -356,18 +393,16 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
                             <div>
                                 <Label>Vendedor *</Label>
                                 <div className="flex gap-2">
-                                    <FavorecidoSelect
+                                    <VendedorSelect
                                         value={formData.seller_id}
                                         onChange={(id) => handleFieldChange('seller_id', id)}
-                                        placeholder="Selecionar vendedor"
-                                        filterType="funcionario"
                                         className="flex-1"
                                     />
                                     <Button
                                         variant="outline"
                                         size="icon"
                                         type="button"
-                                        onClick={() => openFavorecidoModal('funcionario', 'seller_id')}
+                                        onClick={() => setIsVendedorModalOpen(true)}
                                         title="Novo vendedor"
                                     >
                                         <Plus className="w-4 h-4" />
@@ -455,7 +490,7 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
                     </Button>
                 </DialogFooter>
 
-                {/* Inline Favorecido creation modal */}
+                {/* Inline Cliente creation modal */}
                 <Dialog
                     open={isFavorecidoModalOpen}
                     onOpenChange={(openState) => {
@@ -465,11 +500,9 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
                 >
                     <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
-                            <DialogTitle>
-                                {favorecidoModalType === 'funcionario' ? 'Novo Funcionário' : 'Novo Cliente / Favorecido'}
-                            </DialogTitle>
+                            <DialogTitle>Novo Cliente / Favorecido</DialogTitle>
                             <DialogDescription>
-                                Cadastre um novo favorecido para usar nesta venda.
+                                Cadastre um novo cliente para usar nesta venda.
                             </DialogDescription>
                         </DialogHeader>
                         <FavorecidoForm
@@ -494,6 +527,72 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
                             onSubmit={handleSubmitFavorecido}
                             onCancel={() => { setIsFavorecidoModalOpen(false); resetFavorecidoForm(); }}
                         />
+                    </DialogContent>
+                </Dialog>
+
+                {/* Inline Vendedor creation modal */}
+                <Dialog
+                    open={isVendedorModalOpen}
+                    onOpenChange={(openState) => { setIsVendedorModalOpen(openState); if (!openState) resetVendedorForm(); }}
+                >
+                    <DialogContent className="max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Novo Vendedor</DialogTitle>
+                            <DialogDescription>
+                                Crie um novo usuário com perfil de vendedor.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <form className="space-y-4 mt-4" onSubmit={handleSubmitVendedor}>
+                            <div>
+                                <label className="block text-sm font-medium text-foreground mb-2">Nome</label>
+                                <input
+                                    type="text"
+                                    className="input-financial"
+                                    value={vendedorFormData.name}
+                                    onChange={(e) => setVendedorFormData({ ...vendedorFormData, name: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-foreground mb-2">Email</label>
+                                <input
+                                    type="email"
+                                    className="input-financial"
+                                    value={vendedorFormData.email}
+                                    onChange={(e) => setVendedorFormData({ ...vendedorFormData, email: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-foreground mb-2">Senha</label>
+                                <input
+                                    type="password"
+                                    className="input-financial"
+                                    value={vendedorFormData.password}
+                                    onChange={(e) => setVendedorFormData({ ...vendedorFormData, password: e.target.value })}
+                                    minLength={6}
+                                    required
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">Mínimo 6 caracteres</p>
+                            </div>
+                            <div className="flex justify-end gap-3 pt-4">
+                                <button
+                                    type="button"
+                                    className="btn-secondary"
+                                    onClick={() => { setIsVendedorModalOpen(false); resetVendedorForm(); }}
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="btn-primary"
+                                    disabled={createUserMutation.isPending}
+                                >
+                                    {createUserMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                                    Criar Vendedor
+                                </button>
+                            </div>
+                        </form>
                     </DialogContent>
                 </Dialog>
             </DialogContent>
