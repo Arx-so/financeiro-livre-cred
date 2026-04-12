@@ -81,9 +81,6 @@ export async function getBirthdaysByMonth(branchId: string, month: number): Prom
     return employees
         .filter((emp) => new Date(`${emp.birth_date}T12:00:00`).getMonth() + 1 === month)
         .map(buildBirthdayRecord)
-        .sort((a, b) => {
-            const aDay = new Date(`${a.birth_date}T12:00:00`).getDate();
-            const bDay = new Date(`${b.birth_date}T12:00:00`).getDate();
-            return aDay - bDay;
-        });
+        // birthdayThisYear is YYYY-MM-DD — slice the day part directly to avoid Date construction in comparator
+        .sort((a, b) => Number(a.birthdayThisYear.slice(8)) - Number(b.birthdayThisYear.slice(8)));
 }

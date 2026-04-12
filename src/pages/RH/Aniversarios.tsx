@@ -14,13 +14,9 @@ import {
 import {
     Tabs, TabsList, TabsTrigger,
 } from '@/components/ui/tabs';
+import { MONTHS_FULL } from '@/lib/utils';
 import { useBirthdaysByMonth, useUpcomingBirthdays, useBirthdaysToday } from '@/hooks/useAniversarios';
 import type { FavorecidoWithBirthday } from '@/services/hrAniversarios';
-
-const MONTH_NAMES = [
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
-];
 
 const TYPE_LABELS: Record<string, string> = {
     funcionario: 'Funcionário',
@@ -31,6 +27,7 @@ const TYPE_LABELS: Record<string, string> = {
 
 // Computed once at module load — stable for the lifetime of the page session
 const TODAY_ISO = new Date().toISOString().split('T')[0];
+const CURRENT_YEAR = new Date().getFullYear();
 
 function formatBirthdayDate(birthDate: string | null): string {
     if (!birthDate) return '—';
@@ -42,16 +39,12 @@ function formatBirthdayDate(birthDate: string | null): string {
     }
 }
 
-function isTodayBirthday(birthdayThisYear: string): boolean {
-    return birthdayThisYear === TODAY_ISO;
-}
-
 interface BirthdayCardProps {
     person: FavorecidoWithBirthday;
 }
 
 function BirthdayCard({ person }: BirthdayCardProps) {
-    const isToday = isTodayBirthday(person.birthdayThisYear);
+    const isToday = person.birthdayThisYear === TODAY_ISO;
 
     return (
         <Card className={isToday ? 'border-primary ring-1 ring-primary' : ''}>
@@ -69,7 +62,7 @@ function BirthdayCard({ person }: BirthdayCardProps) {
                                 (
                                 {person.age}
                                 {' anos em '}
-                                {new Date().getFullYear()}
+                                {CURRENT_YEAR}
                                 )
                             </span>
                         </p>
@@ -133,7 +126,7 @@ export default function Aniversarios() {
                             <ChevronLeft className="w-4 h-4" />
                         </Button>
                         <span className="text-sm font-medium w-28 text-center">
-                            {MONTH_NAMES[selectedMonth - 1]}
+                            {MONTHS_FULL[selectedMonth - 1]}
                         </span>
                         <Button variant="outline" size="icon" onClick={nextMonth} aria-label="Próximo mês">
                             <ChevronRight className="w-4 h-4" />
@@ -151,7 +144,7 @@ export default function Aniversarios() {
                                 ? 'Nenhum aniversariante hoje.'
                                 : filterMode === 'proximos30'
                                     ? 'Nenhum aniversariante nos próximos 30 dias.'
-                                    : `Nenhum aniversariante em ${MONTH_NAMES[selectedMonth - 1]}.`
+                                    : `Nenhum aniversariante em ${MONTHS_FULL[selectedMonth - 1]}.`
                         }
                     />
                 ) : (

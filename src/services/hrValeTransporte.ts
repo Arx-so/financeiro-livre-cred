@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { MONTHS_FULL } from '@/lib/utils';
 import type {
     VtRecharge,
     VtRechargeInsert,
@@ -84,11 +85,6 @@ export async function createVtRecharge(data: VtRechargeInsert): Promise<VtRechar
     return created;
 }
 
-const MONTH_NAMES_PT = [
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
-];
-
 export function exportVTMonthlyReportToCSV(
     recharges: VtRechargeWithEmployee[],
     month: number,
@@ -109,7 +105,7 @@ export function exportVTMonthlyReportToCSV(
         .join('\n');
 
     const bom = '\uFEFF'; // UTF-8 BOM for Excel compatibility
-    return `${bom}Relatório VT — ${MONTH_NAMES_PT[month - 1]} ${year}\n\n${csvContent}`;
+    return `${bom}Relatório VT — ${MONTHS_FULL[month - 1]} ${year}\n\n${csvContent}`;
 }
 
 export async function generateVtMonthlyReport(
