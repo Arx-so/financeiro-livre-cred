@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { FavorecidoSelect } from '@/components/shared/FavorecidoSelect';
+import { FavorecidoForm } from '@/pages/Favorecidos/components/FavorecidoForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateCreditCardSale } from '@/hooks/useSalesCreditCard';
-import { useCreateFavorecido } from '@/hooks/useCadastros';
+import { useCreateFavorecido, useUploadFavorecidoPhoto } from '@/hooks/useCadastros';
 import { useBranchStore, useAuthStore } from '@/stores';
 import type { SalesCreditCardInsert } from '@/types/database';
 import {
@@ -62,7 +63,28 @@ const DEFAULT_FORM: FormData = {
     notes: '',
 };
 
-const DEFAULT_NEW_FAV = { name: '', type: 'cliente' as 'cliente' | 'funcionario', document: '' };
+const EMPTY_FAVORECIDO_FORM = {
+    type: 'cliente',
+    name: '',
+    document: '',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    zip_code: '',
+    category: '',
+    categoria_contratacao: '',
+    notes: '',
+    bank_name: '',
+    bank_agency: '',
+    bank_account: '',
+    bank_account_type: '',
+    pix_key: '',
+    pix_key_type: '',
+    preferred_payment_type: '',
+    birth_date: '',
+};
 
 function formatCurrency(value: number): string {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -74,40 +96,77 @@ function calcFeeRate(saleValue: number, terminalAmount: number): number {
 }
 
 export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleModalProps) {
-    const branchId = useBranchStore((state) => state.unidadeAtual?.id) ?? '';
+    const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
+    const branchId = unidadeAtual?.id ?? '';
     const userId = useAuthStore((state) => state.user?.id) ?? '';
     const createMutation = useCreateCreditCardSale();
     const createFavorecido = useCreateFavorecido();
+    const uploadPhoto = useUploadFavorecidoPhoto();
     const [formData, setFormData] = useState<FormData>(DEFAULT_FORM);
 
-    const [newClienteOpen, setNewClienteOpen] = useState(false);
-    const [newVendedorOpen, setNewVendedorOpen] = useState(false);
-    const [newFavData, setNewFavData] = useState(DEFAULT_NEW_FAV);
-    const [isSavingFav, setIsSavingFav] = useState(false);
+    // --- Inline Favorecido creation ---
+    const [isFavorecidoModalOpen, setIsFavorecidoModalOpen] = useState(false);
+    const [favorecidoModalType, setFavorecidoModalType] = useState<'cliente' | 'funcionario'>('cliente');
+    const [favorecidoTargetField, setFavorecidoTargetField] = useState<'client_id' | 'seller_id'>('client_id');
+    const [favorecidoFormData, setFavorecidoFormData] = useState<any>(EMPTY_FAVORECIDO_FORM);
+    const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const favorecidoFileInputRef = useRef<HTMLInputElement>(null);
+    const favorecidoCameraInputRef = useRef<HTMLInputElement>(null);
+    const favorecidoDocumentInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (!open) setFormData(DEFAULT_FORM);
     }, [open]);
 
-    const handleSaveNewFav = async (targetField: 'client_id' | 'seller_id') => {
-        if (!newFavData.name.trim()) { toast.error('Informe o nome do favorecido.'); return; }
-        setIsSavingFav(true);
+    const resetFavorecidoForm = () => {
+        setFavorecidoFormData({ ...EMPTY_FAVORECIDO_FORM, type: favorecidoModalType });
+        setSelectedPhoto(null);
+        setPhotoPreview(null);
+    };
+
+    const openFavorecidoModal = (type: 'cliente' | 'funcionario', targetField: 'client_id' | 'seller_id') => {
+        setFavorecidoModalType(type);
+        setFavorecidoTargetField(targetField);
+        setFavorecidoFormData({ ...EMPTY_FAVORECIDO_FORM, type });
+        setIsFavorecidoModalOpen(true);
+    };
+
+    const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setSelectedPhoto(file);
+            const reader = new FileReader();
+            reader.onloadend = () => { setPhotoPreview(reader.result as string); };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSubmitFavorecido = async (e: React.FormEvent) => {
+        e.preventDefault();
         try {
-            const created = await createFavorecido.mutateAsync({
-                branch_id: branchId || null,
-                name: newFavData.name.trim(),
-                type: newFavData.type,
-                document: newFavData.document.trim() || null,
+            const newFav = await createFavorecido.mutateAsync({
+                branch_id: unidadeAtual?.id || null,
+                type: favorecidoFormData.type,
+                name: favorecidoFormData.name,
+                document: favorecidoFormData.document || null,
+                email: favorecidoFormData.email || null,
+                phone: favorecidoFormData.phone || null,
+                address: favorecidoFormData.address || null,
+                city: favorecidoFormData.city || null,
+                state: favorecidoFormData.state || null,
+                zip_code: favorecidoFormData.zip_code || null,
+                notes: favorecidoFormData.notes || null,
             });
-            setFormData((prev) => ({ ...prev, [targetField]: created.id }));
-            toast.success('Favorecido criado com sucesso.');
-            setNewClienteOpen(false);
-            setNewVendedorOpen(false);
-            setNewFavData(DEFAULT_NEW_FAV);
+            if (selectedPhoto && newFav.id) {
+                await uploadPhoto.mutateAsync({ favorecidoId: newFav.id, file: selectedPhoto });
+            }
+            setFormData((prev) => ({ ...prev, [favorecidoTargetField]: newFav.id }));
+            toast.success('Favorecido criado!');
+            setIsFavorecidoModalOpen(false);
+            resetFavorecidoForm();
         } catch {
-            toast.error('Erro ao criar favorecido.');
-        } finally {
-            setIsSavingFav(false);
+            toast.error('Erro ao criar favorecido');
         }
     };
 
@@ -172,21 +231,17 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
                             1. Cliente
                         </h3>
                         <div className="flex gap-2">
-                            <div className="flex-1">
-                                <FavorecidoSelect
-                                    value={formData.client_id}
-                                    onChange={(id) => handleFieldChange('client_id', id)}
-                                    placeholder="Buscar cliente por nome, CPF, telefone..."
-                                />
-                            </div>
+                            <FavorecidoSelect
+                                value={formData.client_id}
+                                onChange={(id) => handleFieldChange('client_id', id)}
+                                placeholder="Buscar cliente por nome, CPF, telefone..."
+                                className="flex-1"
+                            />
                             <Button
                                 variant="outline"
                                 size="icon"
                                 type="button"
-                                onClick={() => {
-                                    setNewFavData({ ...DEFAULT_NEW_FAV, type: 'cliente' });
-                                    setNewClienteOpen(true);
-                                }}
+                                onClick={() => openFavorecidoModal('cliente', 'client_id')}
                                 title="Novo cliente"
                             >
                                 <Plus className="w-4 h-4" />
@@ -301,22 +356,18 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
                             <div>
                                 <Label>Vendedor *</Label>
                                 <div className="flex gap-2">
-                                    <div className="flex-1">
-                                        <FavorecidoSelect
-                                            value={formData.seller_id}
-                                            onChange={(id) => handleFieldChange('seller_id', id)}
-                                            placeholder="Selecionar vendedor"
-                                            filterType="funcionario"
-                                        />
-                                    </div>
+                                    <FavorecidoSelect
+                                        value={formData.seller_id}
+                                        onChange={(id) => handleFieldChange('seller_id', id)}
+                                        placeholder="Selecionar vendedor"
+                                        filterType="funcionario"
+                                        className="flex-1"
+                                    />
                                     <Button
                                         variant="outline"
                                         size="icon"
                                         type="button"
-                                        onClick={() => {
-                                            setNewFavData({ ...DEFAULT_NEW_FAV, type: 'funcionario' });
-                                            setNewVendedorOpen(true);
-                                        }}
+                                        onClick={() => openFavorecidoModal('funcionario', 'seller_id')}
                                         title="Novo vendedor"
                                     >
                                         <Plus className="w-4 h-4" />
@@ -404,93 +455,45 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
                     </Button>
                 </DialogFooter>
 
-                {/* Inline: Novo Cliente */}
+                {/* Inline Favorecido creation modal */}
                 <Dialog
-                    open={newClienteOpen}
-                    onOpenChange={(v) => { setNewClienteOpen(v); if (!v) setNewFavData(DEFAULT_NEW_FAV); }}
+                    open={isFavorecidoModalOpen}
+                    onOpenChange={(openState) => {
+                        setIsFavorecidoModalOpen(openState);
+                        if (!openState) resetFavorecidoForm();
+                    }}
                 >
-                    <DialogContent className="max-w-sm">
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
-                            <DialogTitle>Novo Cliente</DialogTitle>
+                            <DialogTitle>
+                                {favorecidoModalType === 'funcionario' ? 'Novo Funcionário' : 'Novo Cliente / Favorecido'}
+                            </DialogTitle>
                             <DialogDescription>
-                                Cadastre um novo cliente para usar nesta venda.
+                                Cadastre um novo favorecido para usar nesta venda.
                             </DialogDescription>
                         </DialogHeader>
-                        <div className="space-y-4 py-2">
-                            <div>
-                                <Label htmlFor="nf_cliente_name">Nome *</Label>
-                                <Input
-                                    id="nf_cliente_name"
-                                    value={newFavData.name}
-                                    onChange={(e) => setNewFavData((p) => ({ ...p, name: e.target.value }))}
-                                    placeholder="Nome completo"
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="nf_cliente_doc">CPF / Documento</Label>
-                                <Input
-                                    id="nf_cliente_doc"
-                                    value={newFavData.document}
-                                    onChange={(e) => setNewFavData((p) => ({ ...p, document: e.target.value }))}
-                                    placeholder="000.000.000-00"
-                                />
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button
-                                variant="outline"
-                                onClick={() => { setNewClienteOpen(false); setNewFavData(DEFAULT_NEW_FAV); }}
-                            >
-                                Cancelar
-                            </Button>
-                            <Button onClick={() => handleSaveNewFav('client_id')} disabled={isSavingFav}>
-                                {isSavingFav ? 'Salvando...' : 'Criar Cliente'}
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
-
-                {/* Inline: Novo Vendedor */}
-                <Dialog
-                    open={newVendedorOpen}
-                    onOpenChange={(v) => { setNewVendedorOpen(v); if (!v) setNewFavData(DEFAULT_NEW_FAV); }}
-                >
-                    <DialogContent className="max-w-sm">
-                        <DialogHeader>
-                            <DialogTitle>Novo Vendedor</DialogTitle>
-                            <DialogDescription>Cadastre um novo funcionário/vendedor.</DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-2">
-                            <div>
-                                <Label htmlFor="nf_vendedor_name">Nome *</Label>
-                                <Input
-                                    id="nf_vendedor_name"
-                                    value={newFavData.name}
-                                    onChange={(e) => setNewFavData((p) => ({ ...p, name: e.target.value }))}
-                                    placeholder="Nome completo"
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="nf_vendedor_doc">CPF / Documento</Label>
-                                <Input
-                                    id="nf_vendedor_doc"
-                                    value={newFavData.document}
-                                    onChange={(e) => setNewFavData((p) => ({ ...p, document: e.target.value }))}
-                                    placeholder="000.000.000-00"
-                                />
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button
-                                variant="outline"
-                                onClick={() => { setNewVendedorOpen(false); setNewFavData(DEFAULT_NEW_FAV); }}
-                            >
-                                Cancelar
-                            </Button>
-                            <Button onClick={() => handleSaveNewFav('seller_id')} disabled={isSavingFav}>
-                                {isSavingFav ? 'Salvando...' : 'Criar Vendedor'}
-                            </Button>
-                        </DialogFooter>
+                        <FavorecidoForm
+                            formData={favorecidoFormData}
+                            setFormData={setFavorecidoFormData}
+                            editingId={null}
+                            photoPreview={photoPreview}
+                            fileInputRef={favorecidoFileInputRef}
+                            cameraInputRef={favorecidoCameraInputRef}
+                            documentInputRef={favorecidoDocumentInputRef}
+                            favorecidoDocuments={[]}
+                            documentsLoading={false}
+                            favorecidoLogs={[]}
+                            logsLoading={false}
+                            isUploadingDocument={false}
+                            isDeletingPhoto={false}
+                            isSaving={createFavorecido.isPending}
+                            onPhotoSelect={handlePhotoSelect}
+                            onRemovePhoto={() => { setSelectedPhoto(null); setPhotoPreview(null); }}
+                            onDocumentUpload={() => {}}
+                            onDeleteDocument={() => {}}
+                            onSubmit={handleSubmitFavorecido}
+                            onCancel={() => { setIsFavorecidoModalOpen(false); resetFavorecidoForm(); }}
+                        />
                     </DialogContent>
                 </Dialog>
             </DialogContent>
