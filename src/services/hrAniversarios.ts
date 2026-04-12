@@ -3,23 +3,31 @@ import type { Favorecido } from '@/types/database';
 
 export interface FavorecidoWithBirthday extends Pick<Favorecido, 'id' | 'name' | 'type' | 'category' | 'birth_date'> {
     age: number;
-    birthdayThisYear: string; // ISO date string for this year's birthday
+    /** ISO YYYY-MM-DD of this employee's birthday in the current calendar year */
+    birthdayThisYear: string;
 }
 
-function buildBirthdayRecord(
-    emp: Pick<Favorecido, 'id' | 'name' | 'type' | 'category' | 'birth_date'>,
-): FavorecidoWithBirthday {
+type EmployeeRow = Pick<Favorecido, 'id' | 'name' | 'type' | 'category' | 'birth_date'>;
+
+function buildBirthdayRecord(emp: EmployeeRow): FavorecidoWithBirthday {
     const bd = new Date(`${emp.birth_date}T12:00:00`);
-    const now = new Date();
-    const currentYear = now.getFullYear();
+    const currentYear = new Date().getFullYear();
     const birthdayThisYear = `${currentYear}-${String(bd.getMonth() + 1).padStart(2, '0')}-${String(bd.getDate()).padStart(2, '0')}`;
     const age = currentYear - bd.getFullYear();
+    return { ...emp, age, birthdayThisYear };
+}
 
-    return {
-        ...emp,
-        age,
-        birthdayThisYear,
-    };
+/** Single shared fetch — all three public functions filter in memory to avoid duplicate network calls. */
+async function fetchAllFuncionariosWithBirthday(branchId: string): Promise<EmployeeRow[]> {
+    const { data, error } = await supabase
+        .from('favorecidos')
+        .select('id, name, type, category, birth_date')
+        .eq('branch_id', branchId)
+        .in('type', ['funcionario', 'ambos'])
+        .not('birth_date', 'is', null);
+
+    if (error) throw error;
+    return (data ?? []) as EmployeeRow[];
 }
 
 export async function getBirthdaysToday(branchId: string): Promise<FavorecidoWithBirthday[]> {
@@ -27,20 +35,10 @@ export async function getBirthdaysToday(branchId: string): Promise<FavorecidoWit
     const month = today.getMonth() + 1;
     const day = today.getDate();
 
-    const { data, error } = await supabase
-        .from('favorecidos')
-        .select('id, name, type, category, birth_date')
-        .eq('branch_id', branchId)
-        .in('type', ['funcionario', 'ambos'])
-        .not('birth_date', 'is', null);
-
-    if (error) throw error;
-
-    const employees = (data ?? []) as Array<Pick<Favorecido, 'id' | 'name' | 'type' | 'category' | 'birth_date'>>;
+    const employees = await fetchAllFuncionariosWithBirthday(branchId);
 
     return employees
         .filter((emp) => {
-            if (!emp.birth_date) return false;
             const bd = new Date(`${emp.birth_date}T12:00:00`);
             return (bd.getMonth() + 1) === month && bd.getDate() === day;
         })
@@ -48,76 +46,44 @@ export async function getBirthdaysToday(branchId: string): Promise<FavorecidoWit
 }
 
 export async function getUpcomingBirthdays(branchId: string, days: number): Promise<FavorecidoWithBirthday[]> {
-    const { data, error } = await supabase
-        .from('favorecidos')
-        .select('id, name, type, category, birth_date')
-        .eq('branch_id', branchId)
-        .in('type', ['funcionario', 'ambos'])
-        .not('birth_date', 'is', null);
-
-    if (error) throw error;
-
-    const employees = (data ?? []) as Array<Pick<Favorecido, 'id' | 'name' | 'type' | 'category' | 'birth_date'>>;
+    const employees = await fetchAllFuncionariosWithBirthday(branchId);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const currentYear = today.getFullYear();
 
-    const results: FavorecidoWithBirthday[] = [];
+    // Build [record, nextOccurrenceMs] pairs so we only compute candidateDate once per employee
+    const candidatePairs: { emp: EmployeeRow; nextMs: number }[] = [];
 
     for (const emp of employees) {
-        if (!emp.birth_date) continue;
         const bd = new Date(`${emp.birth_date}T12:00:00`);
-        const bMonth = bd.getMonth() + 1;
-        const bDay = bd.getDate();
-
-        // Build a candidate date in current year, or next year if already passed
-        const candidateDate = new Date(currentYear, bMonth - 1, bDay, 0, 0, 0, 0);
+        const candidateDate = new Date(currentYear, bd.getMonth(), bd.getDate(), 0, 0, 0, 0);
 
         if (candidateDate < today) {
             candidateDate.setFullYear(currentYear + 1);
         }
 
-        const diffMs = candidateDate.getTime() - today.getTime();
-        const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+        const diffDays = Math.ceil((candidateDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
         if (diffDays >= 0 && diffDays <= days) {
-            results.push(buildBirthdayRecord(emp));
+            candidatePairs.push({ emp, nextMs: candidateDate.getTime() });
         }
     }
 
-    // Sort by nearest birthday first
-    results.sort((a, b) => {
-        const da = new Date(a.birthdayThisYear);
-        const db = new Date(b.birthdayThisYear);
-        return da.getTime() - db.getTime();
-    });
-
-    return results;
+    // Sort by actual next occurrence (handles year-wrap correctly)
+    candidatePairs.sort((a, b) => a.nextMs - b.nextMs);
+    return candidatePairs.map(({ emp }) => buildBirthdayRecord(emp));
 }
 
 export async function getBirthdaysByMonth(branchId: string, month: number): Promise<FavorecidoWithBirthday[]> {
-    const { data, error } = await supabase
-        .from('favorecidos')
-        .select('id, name, type, category, birth_date')
-        .eq('branch_id', branchId)
-        .in('type', ['funcionario', 'ambos'])
-        .not('birth_date', 'is', null);
+    const employees = await fetchAllFuncionariosWithBirthday(branchId);
 
-    if (error) throw error;
-
-    const employees = (data ?? []) as Array<Pick<Favorecido, 'id' | 'name' | 'type' | 'category' | 'birth_date'>>;
-
-    const results = employees
-        .filter((emp) => {
-            if (!emp.birth_date) return false;
-            const bd = new Date(`${emp.birth_date}T12:00:00`);
-            return (bd.getMonth() + 1) === month;
-        })
-        .map(buildBirthdayRecord);
-
-    // Sort by day of month — extract day once per record before sorting
-    const withDay = results.map((r) => ({ r, day: new Date(`${r.birth_date}T12:00:00`).getDate() }));
-    withDay.sort((a, b) => a.day - b.day);
-    return withDay.map(({ r }) => r);
+    return employees
+        .filter((emp) => new Date(`${emp.birth_date}T12:00:00`).getMonth() + 1 === month)
+        .map(buildBirthdayRecord)
+        .sort((a, b) => {
+            const aDay = new Date(`${a.birth_date}T12:00:00`).getDate();
+            const bDay = new Date(`${b.birth_date}T12:00:00`).getDate();
+            return aDay - bDay;
+        });
 }

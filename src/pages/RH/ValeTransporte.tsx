@@ -39,6 +39,8 @@ const MONTHS = [
     { value: 10, label: 'Outubro' }, { value: 11, label: 'Novembro' }, { value: 12, label: 'Dezembro' },
 ];
 
+const YEARS = [CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1];
+
 function formatDate(date: string | null | undefined): string {
     if (!date) return '—';
     try {
@@ -116,8 +118,6 @@ export default function ValeTransporte() {
             onError: () => toast.error('Erro ao registrar recarga.'),
         });
     };
-
-    const YEARS = [CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1];
 
     const handleExportCSV = () => {
         const allRecharges = recharges ?? [];
