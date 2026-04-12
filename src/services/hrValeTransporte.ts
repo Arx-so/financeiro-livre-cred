@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { MONTHS_FULL } from '@/lib/utils';
 import type {
     VtRecharge,
     VtRechargeInsert,
@@ -82,6 +83,34 @@ export async function createVtRecharge(data: VtRechargeInsert): Promise<VtRechar
 
     if (error) throw error;
     return created;
+}
+
+export async function deleteVtRecharge(id: string): Promise<void> {
+    const { error } = await supabase.from('vt_recharges').delete().eq('id', id);
+    if (error) throw error;
+}
+
+export function exportVTMonthlyReportToCSV(
+    recharges: VtRechargeWithEmployee[],
+    month: number,
+    year: number,
+): string {
+    const header = ['Funcionário', 'Documento', 'Total VT', 'Data Recarga'];
+
+    const rows = recharges.map((r) => [
+        r.employee?.name ?? '',
+        r.employee?.document ?? '',
+        r.recharge_amount.toFixed(2),
+        r.recharge_date ?? '',
+    ]);
+
+    const allRows = [header, ...rows];
+    const csvContent = allRows
+        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+
+    const bom = '\uFEFF'; // UTF-8 BOM for Excel compatibility
+    return `${bom}Relatório VT — ${MONTHS_FULL[month - 1]} ${year}\n\n${csvContent}`;
 }
 
 export async function generateVtMonthlyReport(

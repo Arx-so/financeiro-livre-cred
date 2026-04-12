@@ -31,6 +31,7 @@ import {
     Stethoscope,
     ClipboardList,
     Banknote,
+    Cake,
 } from 'lucide-react';
 import { useAuthStore, useBranchStore } from '@/stores';
 import { ProfileModal } from './ProfileModal';
@@ -99,13 +100,13 @@ const navigationGroups: NavGroup[] = [
                 name: 'Lançamentos',
                 href: '/financeiro',
                 icon: Wallet,
-                roles: ['admin', 'gerente', 'usuario', 'financeiro'],
+                roles: ['admin', 'gerente', 'coordenador', 'assistente', 'financeiro', 'usuario'],
             },
             {
                 name: 'Programação',
                 href: '/programacao',
                 icon: Calendar,
-                roles: ['admin', 'gerente', 'usuario', 'financeiro'],
+                roles: ['admin', 'gerente', 'coordenador', 'assistente', 'financeiro', 'usuario'],
             },
             {
                 name: 'Conciliação',
@@ -139,19 +140,25 @@ const navigationGroups: NavGroup[] = [
                 name: 'Vendas',
                 href: '/vendas',
                 icon: ShoppingCart,
-                roles: ['admin', 'gerente', 'usuario', 'vendas'],
+                roles: ['admin', 'gerente', 'coordenador', 'assistente', 'vendedor', 'usuario', 'vendas'],
             },
             {
                 name: 'Cartão / D+',
                 href: '/vendas/novo',
                 icon: Banknote,
-                roles: ['admin', 'gerente', 'usuario', 'vendas'],
+                roles: ['admin', 'gerente', 'coordenador', 'assistente', 'vendedor', 'usuario', 'vendas'],
+            },
+            {
+                name: 'Relatório de Vendas',
+                href: '/vendas/relatorio',
+                icon: BarChart3,
+                roles: ['admin', 'gerente', 'coordenador', 'assistente', 'vendedor', 'financeiro', 'usuario', 'vendas'],
             },
             {
                 name: 'Produtos',
                 href: '/produtos',
                 icon: Package,
-                roles: ['admin', 'gerente', 'vendas'],
+                roles: ['admin', 'gerente', 'coordenador', 'vendedor', 'vendas'],
             },
         ],
     },
@@ -162,7 +169,7 @@ const navigationGroups: NavGroup[] = [
                 name: 'Favorecidos',
                 href: '/favorecidos',
                 icon: Users,
-                roles: ['admin', 'gerente', 'usuario', 'financeiro', 'vendas'],
+                roles: ['admin', 'gerente', 'coordenador', 'assistente', 'vendedor', 'financeiro', 'rh', 'usuario', 'vendas'],
             },
             {
                 name: 'Categorias',
@@ -233,6 +240,12 @@ const navigationGroups: NavGroup[] = [
                 name: 'Atestados',
                 href: '/rh/atestados',
                 icon: ClipboardList,
+                roles: ['admin', 'gerente', 'financeiro'],
+            },
+            {
+                name: 'Aniversários',
+                href: '/rh/aniversarios',
+                icon: Cake,
                 roles: ['admin', 'gerente', 'financeiro'],
             },
             {

@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import {
-    Users, AlertTriangle, Calendar, FileText, Bell, Bus, Stethoscope, ClipboardList,
+    Users, AlertTriangle, Calendar, FileText, Bell, Bus, Stethoscope, ClipboardList, Cake,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -15,6 +17,7 @@ import {
 import {
     useHrDashboardSummary, useActiveHrAlerts, useDismissHrAlert, useGenerateHrAlerts,
 } from '@/hooks/useHrAlerts';
+import { useBirthdaysToday, useUpcomingBirthdays } from '@/hooks/useAniversarios';
 import { ALERT_TYPE_LABELS, ALERT_PRIORITY } from '@/constants/hr';
 
 function getPriorityColor(alertType: string): string {
@@ -24,10 +27,21 @@ function getPriorityColor(alertType: string): string {
     return 'outline';
 }
 
+function formatBirthdayDate(birthDate: string | null | undefined): string {
+    if (!birthDate) return '—';
+    try {
+        return format(new Date(`${birthDate}T12:00:00`), "d 'de' MMM", { locale: ptBR });
+    } catch {
+        return birthDate;
+    }
+}
+
 export default function RhDashboard() {
     const navigate = useNavigate();
     const { data: summary, isLoading: summaryLoading } = useHrDashboardSummary();
     const { data: alerts, isLoading: alertsLoading } = useActiveHrAlerts();
+    const { data: birthdaysToday } = useBirthdaysToday();
+    const { data: upcomingBirthdays } = useUpcomingBirthdays(30);
     const dismissMutation = useDismissHrAlert();
     const generateMutation = useGenerateHrAlerts();
 
@@ -80,6 +94,12 @@ export default function RhDashboard() {
             icon: ClipboardList,
             description: 'Atestados médicos e declarações',
         },
+        {
+            label: 'Aniversários',
+            href: '/rh/aniversarios',
+            icon: Cake,
+            description: 'Aniversariantes dos funcionários',
+        },
     ];
 
     return (
@@ -95,7 +115,7 @@ export default function RhDashboard() {
                 {summaryLoading ? (
                     <LoadingState message="Carregando resumo..." />
                 ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
                         <StatCard
                             label="Férias Vencendo"
                             value={summary?.vacationsExpiring ?? 0}
@@ -121,6 +141,12 @@ export default function RhDashboard() {
                             variant="income"
                         />
                         <StatCard
+                            label="Aniversariantes Hoje"
+                            value={birthdaysToday?.length ?? 0}
+                            icon={Cake}
+                            variant={birthdaysToday && birthdaysToday.length > 0 ? 'income' : 'default'}
+                        />
+                        <StatCard
                             label="Atestados (mês)"
                             value={summary?.certificatesThisMonth ?? 0}
                             icon={FileText}
@@ -133,6 +159,42 @@ export default function RhDashboard() {
                             variant={summary?.certificateDaysThisMonth ? 'pending' : 'default'}
                         />
                     </div>
+                )}
+
+                {/* Upcoming Birthdays Strip */}
+                {upcomingBirthdays && upcomingBirthdays.length > 0 && (
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between py-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <Cake className="w-4 h-4" />
+                                Próximos Aniversários
+                            </CardTitle>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs"
+                                onClick={() => navigate('/rh/aniversarios')}
+                            >
+                                Ver todos
+                            </Button>
+                        </CardHeader>
+                        <CardContent className="pb-4">
+                            <div className="flex flex-wrap gap-3">
+                                {upcomingBirthdays.slice(0, 5).map((person) => (
+                                    <div
+                                        key={person.id}
+                                        className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-card text-sm"
+                                    >
+                                        <Cake className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                        <span className="font-medium">{person.name}</span>
+                                        <span className="text-muted-foreground text-xs">
+                                            {formatBirthdayDate(person.birth_date)}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
                 )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

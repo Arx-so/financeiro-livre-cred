@@ -1,21 +1,24 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Bus } from 'lucide-react';
+import { Plus, Bus, Download, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { confirmDelete } from '@/lib/confirmDelete';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { LoadingState } from '@/components/shared/LoadingState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { FavorecidoSelect } from '@/components/shared/FavorecidoSelect';
+import { FavorecidoForm } from '@/pages/Favorecidos/components/FavorecidoForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import {
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-    Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -24,7 +27,9 @@ import {
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { useVtRecharges, useVtMonthlyReport, useCreateVtRecharge } from '@/hooks/useValeTransporte';
+import { useVtRecharges, useVtMonthlyReport, useCreateVtRecharge, useDeleteVtRecharge } from '@/hooks/useValeTransporte';
+import { useCreateFavorecido, useUploadFavorecidoPhoto } from '@/hooks/useCadastros';
+import { exportVTMonthlyReportToCSV } from '@/services/hrValeTransporte';
 import { useBranchStore } from '@/stores';
 import type { VtRechargeInsert } from '@/types/database';
 
@@ -37,6 +42,8 @@ const MONTHS = [
     { value: 7, label: 'Julho' }, { value: 8, label: 'Agosto' }, { value: 9, label: 'Setembro' },
     { value: 10, label: 'Outubro' }, { value: 11, label: 'Novembro' }, { value: 12, label: 'Dezembro' },
 ];
+
+const YEARS = [CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1];
 
 function formatDate(date: string | null | undefined): string {
     if (!date) return '—';
@@ -70,12 +77,92 @@ const DEFAULT_FORM: VtFormData = {
     working_days: 24,
 };
 
+const EMPTY_FAVORECIDO_FORM = {
+    type: 'funcionario',
+    name: '',
+    document: '',
+    email: '',
+    phone: '',
+    address: '',
+    city: '',
+    state: '',
+    zip_code: '',
+    category: '',
+    categoria_contratacao: '',
+    notes: '',
+    bank_name: '',
+    bank_agency: '',
+    bank_account: '',
+    bank_account_type: '',
+    pix_key: '',
+    pix_key_type: '',
+    preferred_payment_type: '',
+    birth_date: '',
+};
+
 export default function ValeTransporte() {
-    const branchId = useBranchStore((state) => state.unidadeAtual?.id) ?? '';
+    const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
+    const isAdm = unidadeAtual?.code === 'ADM';
+    const branchId = isAdm ? '' : (unidadeAtual?.id ?? '');
     const [selectedMonth, setSelectedMonth] = useState(CURRENT_MONTH);
     const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [formData, setFormData] = useState<VtFormData>(DEFAULT_FORM);
+
+    // --- Inline Favorecido creation ---
+    const [isFavorecidoModalOpen, setIsFavorecidoModalOpen] = useState(false);
+    const [favorecidoFormData, setFavorecidoFormData] = useState<any>(EMPTY_FAVORECIDO_FORM);
+    const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+    const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const favorecidoFileInputRef = useRef<HTMLInputElement>(null);
+    const favorecidoCameraInputRef = useRef<HTMLInputElement>(null);
+    const favorecidoDocumentInputRef = useRef<HTMLInputElement>(null);
+    const createFavorecido = useCreateFavorecido();
+    const uploadPhoto = useUploadFavorecidoPhoto();
+
+    const resetFavorecidoForm = () => {
+        setFavorecidoFormData(EMPTY_FAVORECIDO_FORM);
+        setSelectedPhoto(null);
+        setPhotoPreview(null);
+    };
+
+    const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setSelectedPhoto(file);
+            const reader = new FileReader();
+            reader.onloadend = () => { setPhotoPreview(reader.result as string); };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSubmitFavorecido = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            const newFav = await createFavorecido.mutateAsync({
+                branch_id: unidadeAtual?.id || null,
+                type: favorecidoFormData.type,
+                name: favorecidoFormData.name,
+                document: favorecidoFormData.document || null,
+                email: favorecidoFormData.email || null,
+                phone: favorecidoFormData.phone || null,
+                address: favorecidoFormData.address || null,
+                city: favorecidoFormData.city || null,
+                state: favorecidoFormData.state || null,
+                zip_code: favorecidoFormData.zip_code || null,
+                notes: favorecidoFormData.notes || null,
+            });
+            if (selectedPhoto && newFav.id) {
+                await uploadPhoto.mutateAsync({ favorecidoId: newFav.id, file: selectedPhoto });
+            }
+            handleFormChange('employee_id', newFav.id);
+            toast.success('Funcionário cadastrado!');
+            setIsFavorecidoModalOpen(false);
+            resetFavorecidoForm();
+        } catch {
+            toast.error('Erro ao cadastrar funcionário');
+        }
+    };
 
     const { data: recharges, isLoading: rechargesLoading } = useVtRecharges({
         month: selectedMonth,
@@ -85,6 +172,16 @@ export default function ValeTransporte() {
     const { data: monthlyReport, isLoading: reportLoading } = useVtMonthlyReport(selectedMonth, selectedYear);
 
     const createMutation = useCreateVtRecharge();
+    const deleteMutation = useDeleteVtRecharge();
+
+    const handleDelete = (id: string) => {
+        confirmDelete('Remover esta recarga de VT?', () => {
+            deleteMutation.mutate(id, {
+                onSuccess: () => toast.success('Recarga removida.'),
+                onError: () => toast.error('Erro ao remover recarga.'),
+            });
+        });
+    };
 
     const handleFormChange = (field: keyof VtFormData, value: string | number) => {
         setFormData((prev) => {
@@ -116,12 +213,33 @@ export default function ValeTransporte() {
         });
     };
 
-    const YEARS = [CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1];
+    const handleExportCSV = () => {
+        const allRecharges = recharges ?? [];
+        if (allRecharges.length === 0) {
+            toast.error('Nenhuma recarga para exportar no período.');
+            return;
+        }
+        const csvContent = exportVTMonthlyReportToCSV(allRecharges, selectedMonth, selectedYear);
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `vt_${selectedMonth}_${selectedYear}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        toast.success('Relatório exportado com sucesso.');
+    };
 
     return (
         <AppLayout>
             <div className="space-y-6">
                 <PageHeader title="Vale Transporte" description="Controle de recargas de Vale Transporte">
+                    <Button variant="outline" onClick={handleExportCSV}>
+                        <Download className="w-4 h-4 mr-2" />
+                        Exportar CSV
+                    </Button>
                     <Button onClick={() => { setFormData(DEFAULT_FORM); setIsModalOpen(true); }}>
                         <Plus className="w-4 h-4 mr-2" />
                         Novo Recarregamento
@@ -212,6 +330,7 @@ export default function ValeTransporte() {
                                             <TableHead>Data</TableHead>
                                             <TableHead className="text-right">Valor</TableHead>
                                             <TableHead>Observações</TableHead>
+                                            <TableHead className="w-10" />
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -228,6 +347,17 @@ export default function ValeTransporte() {
                                                 </TableCell>
                                                 <TableCell className="text-sm text-muted-foreground">
                                                     {r.notes ?? '—'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-7 w-7 text-destructive hover:text-destructive"
+                                                        onClick={() => handleDelete(r.id)}
+                                                        disabled={deleteMutation.isPending}
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </Button>
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -248,12 +378,24 @@ export default function ValeTransporte() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
                         <div className="sm:col-span-2">
                             <Label>Funcionário *</Label>
-                            <FavorecidoSelect
-                                value={formData.employee_id}
-                                onChange={(id) => handleFormChange('employee_id', id)}
-                                placeholder="Selecionar funcionário"
-                                filterType="funcionario"
-                            />
+                            <div className="flex gap-2">
+                                <FavorecidoSelect
+                                    value={formData.employee_id}
+                                    onChange={(id) => handleFormChange('employee_id', id)}
+                                    placeholder="Selecionar funcionário"
+                                    filterType="funcionario"
+                                    className="flex-1"
+                                />
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => setIsFavorecidoModalOpen(true)}
+                                    title="Cadastrar novo funcionário"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                </Button>
+                            </div>
                         </div>
 
                         <div>
@@ -268,13 +410,10 @@ export default function ValeTransporte() {
 
                         <div>
                             <Label htmlFor="daily_rate">Valor Diário (R$)</Label>
-                            <Input
+                            <CurrencyInput
                                 id="daily_rate"
-                                type="number"
-                                step="0.01"
-                                min="0"
                                 value={formData.daily_rate}
-                                onChange={(e) => handleFormChange('daily_rate', Number(e.target.value))}
+                                onChange={(val) => handleFormChange('daily_rate', val)}
                             />
                         </div>
 
@@ -292,14 +431,10 @@ export default function ValeTransporte() {
 
                         <div>
                             <Label htmlFor="recharge_amount">Total VT (R$)</Label>
-                            <Input
+                            <CurrencyInput
                                 id="recharge_amount"
-                                type="number"
-                                step="0.01"
-                                min="0"
                                 value={formData.recharge_amount}
-                                onChange={(e) => handleFormChange('recharge_amount', Number(e.target.value))}
-                                className="font-mono-numbers"
+                                onChange={(val) => handleFormChange('recharge_amount', val)}
                             />
                             <p className="text-xs text-muted-foreground mt-1">
                                 {formatCurrency(formData.daily_rate)}
@@ -327,6 +462,42 @@ export default function ValeTransporte() {
                             {createMutation.isPending ? 'Salvando...' : 'Salvar'}
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            {/* Inline Favorecido creation modal */}
+            <Dialog
+                open={isFavorecidoModalOpen}
+                onOpenChange={(open) => { setIsFavorecidoModalOpen(open); if (!open) resetFavorecidoForm(); }}
+            >
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Novo Funcionário</DialogTitle>
+                        <DialogDescription>
+                            Cadastre um novo funcionário para usar neste registro.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <FavorecidoForm
+                        formData={favorecidoFormData}
+                        setFormData={setFavorecidoFormData}
+                        editingId={null}
+                        photoPreview={photoPreview}
+                        fileInputRef={favorecidoFileInputRef}
+                        cameraInputRef={favorecidoCameraInputRef}
+                        documentInputRef={favorecidoDocumentInputRef}
+                        favorecidoDocuments={[]}
+                        documentsLoading={false}
+                        favorecidoLogs={[]}
+                        logsLoading={false}
+                        isUploadingDocument={false}
+                        isDeletingPhoto={false}
+                        isSaving={createFavorecido.isPending}
+                        onPhotoSelect={handlePhotoSelect}
+                        onRemovePhoto={() => { setSelectedPhoto(null); setPhotoPreview(null); }}
+                        onDocumentUpload={() => {}}
+                        onDeleteDocument={() => {}}
+                        onSubmit={handleSubmitFavorecido}
+                        onCancel={() => { setIsFavorecidoModalOpen(false); resetFavorecidoForm(); }}
+                    />
                 </DialogContent>
             </Dialog>
         </AppLayout>

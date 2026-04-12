@@ -4,6 +4,115 @@ All notable changes to the LivreCred financial management system are documented 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.4] - 2026-04-11
+
+### Fixed
+
+#### Bug 1 — Seller listing empty in sales modals (`src/services/cadastros.ts`)
+
+- `getFavorecidos` was using `.eq('type', filters.type)` which excluded employees stored as `type = 'ambos'`.
+- Now applies `.in('type', ['funcionario', 'ambos'])` when filtering by `'funcionario'` and `.in('type', ['cliente', 'ambos'])` when filtering by `'cliente'`, so `ambos` records appear correctly in both seller and client selects.
+
+#### Bug 2 — Missing "+" button next to Vendedor and Cliente fields
+
+- `CreditCardSaleModal` and `DPlusSaleModal` now include a `<Button variant="outline" size="icon">` (Plus icon) next to each `FavorecidoSelect` for both the client and seller fields.
+- Clicking "+" opens a lightweight inline Dialog with name and document fields.
+- On save, `useCreateFavorecido().mutateAsync()` creates the favorecido and auto-selects the new id in the respective field.
+
+#### Bug 3 — Money inputs not using CurrencyInput in ValeTransporte (`src/pages/RH/ValeTransporte.tsx`)
+
+- Replaced `<Input type="number">` with `<CurrencyInput>` for the `daily_rate` (Valor Diário) and `recharge_amount` (Total VT) fields in the VT recharge dialog.
+- Both fields now use the standard BRL mask and cent-based input behaviour consistent with the rest of the app.
+
+#### Bug 4 — Birthday listing always empty (`src/services/hrAniversarios.ts`)
+
+- Added `.limit(1000)` to `fetchAllFuncionariosWithBirthday` to prevent silent row truncation on branches with large employee datasets (Supabase/PostgREST default paging can otherwise return fewer rows than expected).
+
+---
+
+## [1.1.3] - 2026-04-12
+
+### Added
+
+#### Aniversários Module — RH Birthday Management (`/rh/aniversarios`)
+
+- **Service** (`src/services/hrAniversarios.ts`):
+  - `getBirthdaysToday(branchId)` — returns funcionários (type `funcionario` or `ambos`) whose birthday falls on today's month+day.
+  - `getUpcomingBirthdays(branchId, days)` — returns employees with a birthday within the next N days; handles year-wrap (Dec → Jan) correctly by sorting on the actual next-occurrence timestamp rather than current-year ISO strings.
+  - `getBirthdaysByMonth(branchId, month)` — returns all employees with a birthday in the given month, sorted by day-of-month.
+  - All three functions share a single `fetchAllFuncionariosWithBirthday()` private query to avoid duplicate Supabase round-trips when multiple hooks are active simultaneously.
+
+- **Hook** (`src/hooks/useAniversarios.ts`):
+  - `useBirthdaysToday()` — staleTime and refetchInterval 1 hour (birthdays only change once a day).
+  - `useUpcomingBirthdays(days = 30)` — staleTime 30 minutes.
+  - `useBirthdaysByMonth(month)` — no staleTime override.
+  - Cache keys namespaced under `['aniversarios']`, scoped by branchId.
+
+- **Page** (`src/pages/RH/Aniversarios.tsx`):
+  - Three filter tabs: Por Mês / Hoje / Próximos 30 dias.
+  - Month navigator (prev/next buttons) visible only in "Por Mês" mode.
+  - Responsive card grid (1 → 2 → 3 → 4 columns).
+  - Each card shows name, type/category, birthday formatted in pt-BR, computed age for the current year, and a "Hoje!" badge with primary ring highlight for today's birthdays.
+
+- **Route** `/rh/aniversarios` added to `src/App.tsx` and nav item added to `src/components/layout/AppSidebar.tsx` under Recursos Humanos.
+
+#### VT Monthly Report CSV Export (Phase 2)
+
+- **Service** (`src/services/hrValeTransporte.ts`):
+  - `exportVTMonthlyReportToCSV(recharges, month, year)` — builds a UTF-8 BOM CSV with a title header comment, then rows of Funcionário / Documento / Total VT / Data Recarga. Returns the CSV string; the caller owns the download trigger.
+
+- **Page** (`src/pages/RH/ValeTransporte.tsx`):
+  - "Exportar CSV" button added to `PageHeader`; downloads `vt_{month}_{year}.csv` using the current period's individual recharge records.
+
+### Changed
+
+#### RH Dashboard (`/rh`) — Phase 3 KPI Fixes
+
+- Added **Aniversariantes Hoje** StatCard (live count from `useBirthdaysToday()`) alongside the existing "Aniversários do Mês" aggregate card.
+- Added **Próximos Aniversários** strip card: shows up to 5 upcoming birthdays in a compact row with a "Ver todos" link to `/rh/aniversarios`. Hidden when no upcoming birthdays.
+- Added **Aniversários** quick-link in the Módulos RH panel pointing to `/rh/aniversarios`.
+- Grid responsive breakpoints updated to `grid-cols-4 xl:grid-cols-7` to accommodate the extra KPI card.
+
+### Refactored (post-review)
+
+- `hrAniversarios.ts`: `getBirthdaysByMonth` sort comparator now slices the day from the pre-computed `birthdayThisYear` ISO string instead of constructing `Date` objects per comparison.
+- `hrValeTransporte.ts`: Removed local `MONTH_NAMES_PT` array; replaced with shared `MONTHS_FULL` from `@/lib/utils`.
+- `Aniversarios.tsx`: Removed local `MONTH_NAMES` duplicate; uses `MONTHS_FULL` from `@/lib/utils`. Hoisted `CURRENT_YEAR` to module scope to avoid per-render `new Date()`. Inlined single-use `isTodayBirthday` helper.
+
+## [1.1.2] - 2026-04-11
+
+### Added
+
+#### Sales Report Page (`/vendas/relatorio`)
+
+- **Service** (`src/services/salesReport.ts`):
+  - `buildTerminalBreakdown()` — groups CC sales by terminal, computing count, sale_value_sum, terminal_amount_sum, fee_sum, and fee_pct per terminal.
+  - `buildBrandBreakdown()` — groups CC sales by card_brand, including pct_of_total calculated against the grand sale value.
+  - `buildSellerBreakdown()` — merges CC and D+ sales by seller_id, producing cc_count, cc_value, dplus_count, dplus_commission, and total per seller. Null sellers are grouped under `[Sem Vendedor]` and sorted last.
+  - `computeKPIs()` — derives total_bruto (sum terminal_amount), total_liquido (sum sale_value), total_taxa, total_transacoes (CC + D+ count), and total_dplus (sum commission_value).
+  - `exportReportToCSV()` — builds a UTF-8 BOM CSV with header comments (KPI summary, branch, date range), then CC detail, D+ detail, and all three breakdown summaries. Triggers browser download.
+  - `getSalesReport()` — orchestrates parallel calls to `getCreditCardSales` and `getDPlusSales`, applies client-side `sale_date` filtering (existing services filter by `created_at`), and returns all aggregated data.
+
+- **Hook** (`src/hooks/useSalesReport.ts`):
+  - `useSalesReport({ dateFrom, dateTo, terminals?, sellerIds? })` — wraps `getSalesReport` with React Query, scopes `branchId` from `useBranchStore`, staleTime 30s.
+
+- **Page** (`src/pages/Vendas/RelatorioVendas.tsx`):
+  - Filters row: date-from / date-to inputs (default: today), terminal single-select, seller single-select (options dynamically built from fetched data for the current period).
+  - Four KPI StatCards: Total Bruto (primary), Total Líquido (income), Total Taxas (expense), Total Transações (default).
+  - Five Shadcn Tabs with tab-count badges:
+    - **Cartão de Crédito** — detail rows grouped by terminal, subtotal row per terminal group, grand-total row.
+    - **Produtos D+** — detail rows grouped by seller, subtotal per seller, grand-total row.
+    - **Por Terminal** — one row per terminal with Qtd / Valor Venda / Maquineta / Taxa% / Taxa R$.
+    - **Por Bandeira** — one row per card brand with % do Total column.
+    - **Por Vendedor** — one row per seller combining CC and D+ metrics.
+  - `EmptyState` (icon=BarChart3/CreditCard/Banknote) shown when no data in a section.
+  - `LoadingState` shown during fetch; error state shown on query failure.
+  - "Exportar CSV" button in PageHeader, disabled when no data.
+
+- **Routing** (`src/App.tsx`): route `/vendas/relatorio` → `RelatorioVendas` (ProtectedRoute).
+
+- **Navigation** (`src/components/layout/AppSidebar.tsx`): "Relatório de Vendas" item with `BarChart3` icon added under the Vendas accordion group; accessible to admin, gerente, usuario, vendas, and financeiro roles.
+
 ## [1.1.1] - 2026-04-11
 
 ### Added

@@ -30,7 +30,7 @@ export async function getDPlusSales(
         .select(`
             *,
             client:favorecidos!sales_d_plus_products_client_id_fkey(id, name, document, phone),
-            seller:favorecidos!sales_d_plus_products_seller_id_fkey(id, name)
+            seller:profiles!sales_d_plus_products_seller_id_fkey(id, name)
         `)
         .order('created_at', { ascending: false });
 
@@ -64,7 +64,7 @@ export async function getDPlusSaleById(id: string): Promise<SalesDPlusWithRelati
         .select(`
             *,
             client:favorecidos!sales_d_plus_products_client_id_fkey(id, name, document, phone),
-            seller:favorecidos!sales_d_plus_products_seller_id_fkey(id, name)
+            seller:profiles!sales_d_plus_products_seller_id_fkey(id, name)
         `)
         .eq('id', id)
         .maybeSingle();

@@ -4,9 +4,9 @@ description: Status of HR/Sales module implementation (Phases A-D) and key archi
 type: project
 ---
 
-## Status (as of 2026-04-11)
+## Status (as of 2026-04-12)
 
-All 4 phases are complete and committed on the `adjusts` branch.
+All phases complete and committed on the `adjusts` branch, including the Aniversários module.
 
 **Phase A — Hooks (complete)**
 - `src/hooks/useFerias.ts`, `useExames.ts`, `useValeTransporte.ts`, `useCalendario.ts`, `useAtestados.ts`, `useHrAlerts.ts`, `useSalesCreditCard.ts`, `useSalesDPlus.ts`
@@ -32,5 +32,14 @@ All 4 phases are complete and committed on the `adjusts` branch.
 - `SaleReceipt` is only for credit card sales (not D+)
 - `/vendas` route still points to the old `Contratos` page — `/vendas/novo` is the new Sales module
 - All RH pages use `EmptyState` with `icon` prop from lucide-react
+
+**Phase E — Aniversários + VT CSV Export (complete)**
+- `src/services/hrAniversarios.ts` — single shared Supabase query, three public filter fns; year-wrap sort fix
+- `src/hooks/useAniversarios.ts` — `useBirthdaysToday` (1h stale), `useUpcomingBirthdays`, `useBirthdaysByMonth`
+- `src/pages/RH/Aniversarios.tsx` — month navigator, 3 filter tabs, responsive card grid, "Hoje!" badge
+- `src/services/hrValeTransporte.ts` — `exportVTMonthlyReportToCSV()` added
+- `src/pages/RH/ValeTransporte.tsx` — CSV export button in PageHeader; `YEARS` moved to module scope
+- `src/pages/RH/index.tsx` — "Aniversariantes Hoje" KPI card, upcoming birthdays strip, Aniversários quick-link
+- Route `/rh/aniversarios` added; nav item in AppSidebar
 
 **Why:** Continuation from a previous interrupted agent session. Backend services and DB migration were already done.

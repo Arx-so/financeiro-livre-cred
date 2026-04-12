@@ -3,6 +3,7 @@ import { useBranchStore } from '@/stores';
 import {
     getVtRecharges,
     createVtRecharge,
+    deleteVtRecharge,
     generateVtMonthlyReport,
     type VtFilters,
     type VtRechargeWithEmployee,
@@ -35,12 +36,13 @@ export function useVtRecharges(filters: Omit<VtFilters, 'branchId'> = {}) {
 
 export function useVtMonthlyReport(month: number, year: number) {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
-    const branchId = unidadeAtual?.id ?? '';
+    const isAdm = unidadeAtual?.code === 'ADM';
+    const branchId = isAdm ? undefined : unidadeAtual?.id;
 
     return useQuery({
-        queryKey: vtKeys.report(branchId, month, year),
-        queryFn: () => generateVtMonthlyReport(branchId, month, year),
-        enabled: !!branchId && !!month && !!year,
+        queryKey: vtKeys.report(branchId ?? '', month, year),
+        queryFn: () => generateVtMonthlyReport(branchId ?? '', month, year),
+        enabled: (!!unidadeAtual?.id || isAdm) && !!month && !!year,
     });
 }
 
@@ -49,6 +51,17 @@ export function useCreateVtRecharge() {
 
     return useMutation({
         mutationFn: (data: VtRechargeInsert) => createVtRecharge(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: vtKeys.all });
+        },
+    });
+}
+
+export function useDeleteVtRecharge() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (id: string) => deleteVtRecharge(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: vtKeys.all });
         },

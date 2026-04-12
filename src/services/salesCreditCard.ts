@@ -6,6 +6,7 @@ import type {
     SalesCreditCardInsert,
     SalesCreditCardUpdate,
     Favorecido,
+    FinancialEntryInsert,
 } from '@/types/database';
 
 export interface SalesCreditCardWithRelations extends SalesCreditCard {
@@ -29,6 +30,8 @@ export interface SalesReportSummary {
     total_sale_value: number;
     total_terminal_amount: number;
     total_fee: number;
+    total_discount_amount: number;
+    total_saturday_refund: number;
     sale_count: number;
     by_terminal: Record<string, { count: number; sale_value: number; terminal_amount: number }>;
     by_payment_method: Record<string, { count: number; amount: number }>;
@@ -43,7 +46,7 @@ export async function getCreditCardSales(
         .select(`
             *,
             client:favorecidos!sales_credit_card_client_id_fkey(id, name, document, phone),
-            seller:favorecidos!sales_credit_card_seller_id_fkey(id, name)
+            seller:profiles!sales_credit_card_seller_id_fkey(id, name)
         `)
         .order('created_at', { ascending: false });
 
@@ -53,8 +56,8 @@ export async function getCreditCardSales(
     if (filters.terminal) query = query.eq('terminal', filters.terminal);
     if (filters.paymentMethod) query = query.eq('payment_method', filters.paymentMethod);
     if (filters.status) query = query.eq('status', filters.status);
-    if (filters.dateFrom) query = query.gte('created_at', filters.dateFrom);
-    if (filters.dateTo) query = query.lte('created_at', `${filters.dateTo}T23:59:59`);
+    if (filters.dateFrom) query = query.gte('sale_date', filters.dateFrom);
+    if (filters.dateTo) query = query.lte('sale_date', filters.dateTo);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -81,7 +84,7 @@ export async function getCreditCardSaleById(
         .select(`
             *,
             client:favorecidos!sales_credit_card_client_id_fkey(id, name, document, phone),
-            seller:favorecidos!sales_credit_card_seller_id_fkey(id, name)
+            seller:profiles!sales_credit_card_seller_id_fkey(id, name)
         `)
         .eq('id', id)
         .maybeSingle();
@@ -142,6 +145,8 @@ export async function getCreditCardSalesReport(
         total_sale_value: 0,
         total_terminal_amount: 0,
         total_fee: 0,
+        total_discount_amount: 0,
+        total_saturday_refund: 0,
         sale_count: sales.length,
         by_terminal: {},
         by_payment_method: {},
@@ -152,6 +157,8 @@ export async function getCreditCardSalesReport(
         summary.total_sale_value += s.sale_value;
         summary.total_terminal_amount += s.terminal_amount;
         summary.total_fee += s.terminal_amount - s.sale_value;
+        summary.total_discount_amount += s.discount_amount ?? 0;
+        summary.total_saturday_refund += s.saturday_refund ?? 0;
 
         // By terminal
         if (!summary.by_terminal[s.terminal]) {
@@ -203,11 +210,11 @@ export function previewCreditCardSaleEntries(
 
     return {
         receita: {
-            description: `Cartão: ${sale.terminal} - ${sale.card_brand}`,
+            description: `Cartão: ${sale.terminal ?? 'Terminal'} - ${sale.card_brand ?? 'Bandeira'}`,
             value: sale.sale_value,
         },
         despesa: {
-            description: `Taxa maquininha: ${sale.terminal}`,
+            description: `Taxa maquininha: ${sale.terminal ?? 'Terminal'}`,
             value: feeValue,
         },
     };
@@ -220,14 +227,16 @@ export function previewCreditCardSaleEntries(
 export async function generateFinancialEntriesFromCreditCardSale(
     sale: SalesCreditCardWithRelations,
 ): Promise<number> {
-    const saleDate = sale.created_at.split('T')[0];
+    const saleDate = sale.sale_date ?? sale.created_at.split('T')[0];
     const feeValue = sale.terminal_amount - sale.sale_value;
+    const clientName = sale.client?.name ?? 'Cliente';
+    const lacreNote = sale.lacre ? ` | Lacre: ${sale.lacre}` : '';
 
-    await createFinancialEntries([
+    const entries: FinancialEntryInsert[] = [
         {
             branch_id: sale.branch_id,
             type: 'receita',
-            description: `Cartão: ${sale.terminal} - ${sale.card_brand}`,
+            description: `Cartão: ${sale.terminal ?? 'Terminal'} - ${sale.card_brand ?? 'Bandeira'}${lacreNote}`,
             value: sale.sale_value,
             due_date: saleDate,
             status: 'pendente',
@@ -237,13 +246,41 @@ export async function generateFinancialEntriesFromCreditCardSale(
         {
             branch_id: sale.branch_id,
             type: 'despesa',
-            description: `Taxa maquininha: ${sale.terminal}`,
+            description: `Taxa maquininha: ${sale.terminal ?? 'Terminal'}`,
             value: feeValue,
             due_date: saleDate,
             status: 'pendente',
             credit_card_sale_id: sale.id,
         },
-    ]);
+    ];
+
+    if ((sale.discount_amount ?? 0) > 0) {
+        entries.push({
+            branch_id: sale.branch_id,
+            type: 'despesa',
+            description: `Desconto - ${clientName}`,
+            value: sale.discount_amount,
+            due_date: saleDate,
+            status: 'pendente',
+            favorecido_id: sale.client_id ?? undefined,
+            credit_card_sale_id: sale.id,
+        });
+    }
+
+    if ((sale.saturday_refund ?? 0) > 0) {
+        entries.push({
+            branch_id: sale.branch_id,
+            type: 'despesa',
+            description: `Devolução Sábado - ${clientName}`,
+            value: sale.saturday_refund,
+            due_date: saleDate,
+            status: 'pendente',
+            favorecido_id: sale.client_id ?? undefined,
+            credit_card_sale_id: sale.id,
+        });
+    }
+
+    await createFinancialEntries(entries);
 
     const { error } = await supabase
         .from('sales_credit_card')
@@ -252,5 +289,5 @@ export async function generateFinancialEntriesFromCreditCardSale(
 
     if (error) throw error;
 
-    return 2;
+    return entries.length;
 }

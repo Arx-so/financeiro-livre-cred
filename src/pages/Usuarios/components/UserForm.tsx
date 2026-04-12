@@ -16,12 +16,15 @@ interface UserFormProps {
     toggleBranchSelection: (branchId: string) => void;
 }
 
-const roleDescriptions: Record<UserRole, string> = {
-    admin: 'Administradores têm acesso total ao sistema.',
-    gerente: 'Gerentes podem gerenciar lançamentos e cadastros nas filiais permitidas.',
-    usuario: 'Usuários podem visualizar e criar lançamentos nas filiais permitidas.',
-    financeiro: 'Acesso ao módulo financeiro: lançamentos, relatórios e fluxo de caixa.',
-    vendas: 'Acesso ao módulo de vendas: contratos, metas e comissões.',
+const roleDescriptions: Partial<Record<UserRole, string>> = {
+    admin: 'Acesso total ao sistema, todas as filiais.',
+    gerente: 'Gerencia lançamentos, cadastros e relatórios em todas as filiais permitidas.',
+    coordenador: 'Acesso operacional completo na filial: lançamentos, contratos e relatórios.',
+    assistente: 'Cria e visualiza lançamentos e contratos na filial. Sem exclusão.',
+    vendedor: 'Acesso ao módulo de vendas: contratos, produtos e metas.',
+    seguranca: 'Acesso restrito: dashboard, favorecidos (somente leitura) e agenda.',
+    financeiro: 'Acesso completo ao módulo financeiro: lançamentos, relatórios e fluxo de caixa.',
+    rh: 'Acesso ao módulo de RH: funcionários, férias, atestados e vale transporte.',
     leitura: 'Somente visualização. Não pode criar ou editar registros.',
 };
 
@@ -104,12 +107,15 @@ export function UserForm({
                     value={form.role}
                     onChange={(e) => setForm({ ...form, role: e.target.value as UserRole })}
                 >
-                    <option value="usuario">Usuário</option>
-                    <option value="gerente">Gerente</option>
-                    <option value="financeiro">Financeiro</option>
-                    <option value="vendas">Vendas</option>
-                    <option value="leitura">Leitura</option>
                     <option value="admin">Administrador</option>
+                    <option value="gerente">Gerente</option>
+                    <option value="coordenador">Coordenador</option>
+                    <option value="assistente">Assistente</option>
+                    <option value="vendedor">Vendedor</option>
+                    <option value="seguranca">Segurança</option>
+                    <option value="financeiro">Financeiro</option>
+                    <option value="rh">Recursos Humanos</option>
+                    <option value="leitura">Leitura</option>
                 </select>
                 <p className="text-xs text-muted-foreground mt-1">
                     {roleDescriptions[form.role as UserRole] || ''}

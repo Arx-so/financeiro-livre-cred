@@ -45,7 +45,9 @@ import RhExames from "./pages/RH/Exames";
 import RhValeTransporte from "./pages/RH/ValeTransporte";
 import RhCalendario from "./pages/RH/Calendario";
 import RhAtestados from "./pages/RH/Atestados";
+import RhAniversarios from "./pages/RH/Aniversarios";
 import VendasNovo from "./pages/Vendas";
+import RelatorioVendas from "./pages/Vendas/RelatorioVendas";
 
 const queryClient = new QueryClient();
 
@@ -158,9 +160,11 @@ function AppRoutes() {
             <Route path="/rh/vale-transporte" element={<ProtectedRoute><RhValeTransporte /></ProtectedRoute>} />
             <Route path="/rh/calendario" element={<ProtectedRoute><RhCalendario /></ProtectedRoute>} />
             <Route path="/rh/atestados" element={<ProtectedRoute><RhAtestados /></ProtectedRoute>} />
+            <Route path="/rh/aniversarios" element={<ProtectedRoute><RhAniversarios /></ProtectedRoute>} />
 
             {/* Vendas — new sales dashboard */}
             <Route path="/vendas/novo" element={<ProtectedRoute><VendasNovo /></ProtectedRoute>} />
+            <Route path="/vendas/relatorio" element={<ProtectedRoute><RelatorioVendas /></ProtectedRoute>} />
 
             {/* 404 - Protected to prevent information leak */}
             <Route path="*" element={<ProtectedRoute><NotFound /></ProtectedRoute>} />
