@@ -31,6 +31,7 @@ import {
     Stethoscope,
     ClipboardList,
     Banknote,
+    Cake,
 } from 'lucide-react';
 import { useAuthStore, useBranchStore } from '@/stores';
 import { ProfileModal } from './ProfileModal';
@@ -239,6 +240,12 @@ const navigationGroups: NavGroup[] = [
                 name: 'Atestados',
                 href: '/rh/atestados',
                 icon: ClipboardList,
+                roles: ['admin', 'gerente', 'financeiro'],
+            },
+            {
+                name: 'Aniversários',
+                href: '/rh/aniversarios',
+                icon: Cake,
                 roles: ['admin', 'gerente', 'financeiro'],
             },
             {

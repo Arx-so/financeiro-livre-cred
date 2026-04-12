@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Plus, Bus } from 'lucide-react';
+import { Plus, Bus, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -25,6 +25,7 @@ import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { useVtRecharges, useVtMonthlyReport, useCreateVtRecharge } from '@/hooks/useValeTransporte';
+import { exportVTMonthlyReportToCSV } from '@/services/hrValeTransporte';
 import { useBranchStore } from '@/stores';
 import type { VtRechargeInsert } from '@/types/database';
 
@@ -118,10 +119,33 @@ export default function ValeTransporte() {
 
     const YEARS = [CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1];
 
+    const handleExportCSV = () => {
+        const allRecharges = recharges ?? [];
+        if (allRecharges.length === 0) {
+            toast.error('Nenhuma recarga para exportar no período.');
+            return;
+        }
+        const csvContent = exportVTMonthlyReportToCSV(allRecharges, selectedMonth, selectedYear);
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `vt_${selectedMonth}_${selectedYear}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        toast.success('Relatório exportado com sucesso.');
+    };
+
     return (
         <AppLayout>
             <div className="space-y-6">
                 <PageHeader title="Vale Transporte" description="Controle de recargas de Vale Transporte">
+                    <Button variant="outline" onClick={handleExportCSV}>
+                        <Download className="w-4 h-4 mr-2" />
+                        Exportar CSV
+                    </Button>
                     <Button onClick={() => { setFormData(DEFAULT_FORM); setIsModalOpen(true); }}>
                         <Plus className="w-4 h-4 mr-2" />
                         Novo Recarregamento

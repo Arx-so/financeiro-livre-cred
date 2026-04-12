@@ -84,6 +84,42 @@ export async function createVtRecharge(data: VtRechargeInsert): Promise<VtRechar
     return created;
 }
 
+const MONTH_NAMES_PT = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+];
+
+export function exportVTMonthlyReportToCSV(
+    recharges: VtRechargeWithEmployee[],
+    month: number,
+    year: number,
+): string {
+    const header = ['Funcionário', 'Documento', 'Valor Diário', 'Dias Trabalhados', 'Total VT', 'Data Recarga'];
+
+    const rows = recharges.map((r) => {
+        const employeeName = r.employee?.name ?? '';
+        const employeeDoc = r.employee?.document ?? '';
+        const rechargeDate = r.recharge_date ?? '';
+        // Use the raw recharge_amount — daily rate and days aren't stored separately
+        return [
+            employeeName,
+            employeeDoc,
+            '',
+            '',
+            r.recharge_amount.toFixed(2),
+            rechargeDate,
+        ];
+    });
+
+    const allRows = [header, ...rows];
+    const csvContent = allRows
+        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+
+    const bom = '\uFEFF'; // UTF-8 BOM for Excel compatibility
+    return `${bom}Relatório VT — ${MONTH_NAMES_PT[month - 1]} ${year}\n\n${csvContent}`;
+}
+
 export async function generateVtMonthlyReport(
     branchId: string,
     month: number,
