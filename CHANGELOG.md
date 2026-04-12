@@ -4,6 +4,40 @@ All notable changes to the LivreCred financial management system are documented 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-04-11
+
+### Added
+
+#### Sales Report Page (`/vendas/relatorio`)
+
+- **Service** (`src/services/salesReport.ts`):
+  - `buildTerminalBreakdown()` — groups CC sales by terminal, computing count, sale_value_sum, terminal_amount_sum, fee_sum, and fee_pct per terminal.
+  - `buildBrandBreakdown()` — groups CC sales by card_brand, including pct_of_total calculated against the grand sale value.
+  - `buildSellerBreakdown()` — merges CC and D+ sales by seller_id, producing cc_count, cc_value, dplus_count, dplus_commission, and total per seller. Null sellers are grouped under `[Sem Vendedor]` and sorted last.
+  - `computeKPIs()` — derives total_bruto (sum terminal_amount), total_liquido (sum sale_value), total_taxa, total_transacoes (CC + D+ count), and total_dplus (sum commission_value).
+  - `exportReportToCSV()` — builds a UTF-8 BOM CSV with header comments (KPI summary, branch, date range), then CC detail, D+ detail, and all three breakdown summaries. Triggers browser download.
+  - `getSalesReport()` — orchestrates parallel calls to `getCreditCardSales` and `getDPlusSales`, applies client-side `sale_date` filtering (existing services filter by `created_at`), and returns all aggregated data.
+
+- **Hook** (`src/hooks/useSalesReport.ts`):
+  - `useSalesReport({ dateFrom, dateTo, terminals?, sellerIds? })` — wraps `getSalesReport` with React Query, scopes `branchId` from `useBranchStore`, staleTime 30s.
+
+- **Page** (`src/pages/Vendas/RelatorioVendas.tsx`):
+  - Filters row: date-from / date-to inputs (default: today), terminal single-select, seller single-select (options dynamically built from fetched data for the current period).
+  - Four KPI StatCards: Total Bruto (primary), Total Líquido (income), Total Taxas (expense), Total Transações (default).
+  - Five Shadcn Tabs with tab-count badges:
+    - **Cartão de Crédito** — detail rows grouped by terminal, subtotal row per terminal group, grand-total row.
+    - **Produtos D+** — detail rows grouped by seller, subtotal per seller, grand-total row.
+    - **Por Terminal** — one row per terminal with Qtd / Valor Venda / Maquineta / Taxa% / Taxa R$.
+    - **Por Bandeira** — one row per card brand with % do Total column.
+    - **Por Vendedor** — one row per seller combining CC and D+ metrics.
+  - `EmptyState` (icon=BarChart3/CreditCard/Banknote) shown when no data in a section.
+  - `LoadingState` shown during fetch; error state shown on query failure.
+  - "Exportar CSV" button in PageHeader, disabled when no data.
+
+- **Routing** (`src/App.tsx`): route `/vendas/relatorio` → `RelatorioVendas` (ProtectedRoute).
+
+- **Navigation** (`src/components/layout/AppSidebar.tsx`): "Relatório de Vendas" item with `BarChart3` icon added under the Vendas accordion group; accessible to admin, gerente, usuario, vendas, and financeiro roles.
+
 ## [1.1.1] - 2026-04-11
 
 ### Added
