@@ -4,6 +4,49 @@ All notable changes to the LivreCred financial management system are documented 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.3] - 2026-04-12
+
+### Added
+
+#### Aniversários Module — RH Birthday Management (`/rh/aniversarios`)
+
+- **Service** (`src/services/hrAniversarios.ts`):
+  - `getBirthdaysToday(branchId)` — returns funcionários (type `funcionario` or `ambos`) whose birthday falls on today's month+day.
+  - `getUpcomingBirthdays(branchId, days)` — returns employees with a birthday within the next N days; handles year-wrap (Dec → Jan) correctly by sorting on the actual next-occurrence timestamp rather than current-year ISO strings.
+  - `getBirthdaysByMonth(branchId, month)` — returns all employees with a birthday in the given month, sorted by day-of-month.
+  - All three functions share a single `fetchAllFuncionariosWithBirthday()` private query to avoid duplicate Supabase round-trips when multiple hooks are active simultaneously.
+
+- **Hook** (`src/hooks/useAniversarios.ts`):
+  - `useBirthdaysToday()` — staleTime and refetchInterval 1 hour (birthdays only change once a day).
+  - `useUpcomingBirthdays(days = 30)` — staleTime 30 minutes.
+  - `useBirthdaysByMonth(month)` — no staleTime override.
+  - Cache keys namespaced under `['aniversarios']`, scoped by branchId.
+
+- **Page** (`src/pages/RH/Aniversarios.tsx`):
+  - Three filter tabs: Por Mês / Hoje / Próximos 30 dias.
+  - Month navigator (prev/next buttons) visible only in "Por Mês" mode.
+  - Responsive card grid (1 → 2 → 3 → 4 columns).
+  - Each card shows name, type/category, birthday formatted in pt-BR, computed age for the current year, and a "Hoje!" badge with primary ring highlight for today's birthdays.
+
+- **Route** `/rh/aniversarios` added to `src/App.tsx` and nav item added to `src/components/layout/AppSidebar.tsx` under Recursos Humanos.
+
+#### VT Monthly Report CSV Export (Phase 2)
+
+- **Service** (`src/services/hrValeTransporte.ts`):
+  - `exportVTMonthlyReportToCSV(recharges, month, year)` — builds a UTF-8 BOM CSV with a title header comment, then rows of Funcionário / Documento / Total VT / Data Recarga. Returns the CSV string; the caller owns the download trigger.
+
+- **Page** (`src/pages/RH/ValeTransporte.tsx`):
+  - "Exportar CSV" button added to `PageHeader`; downloads `vt_{month}_{year}.csv` using the current period's individual recharge records.
+
+### Changed
+
+#### RH Dashboard (`/rh`) — Phase 3 KPI Fixes
+
+- Added **Aniversariantes Hoje** StatCard (live count from `useBirthdaysToday()`) alongside the existing "Aniversários do Mês" aggregate card.
+- Added **Próximos Aniversários** strip card: shows up to 5 upcoming birthdays in a compact row with a "Ver todos" link to `/rh/aniversarios`. Hidden when no upcoming birthdays.
+- Added **Aniversários** quick-link in the Módulos RH panel pointing to `/rh/aniversarios`.
+- Grid responsive breakpoints updated to `grid-cols-4 xl:grid-cols-7` to accommodate the extra KPI card.
+
 ## [1.1.2] - 2026-04-11
 
 ### Added
