@@ -47,6 +47,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Added **Aniversários** quick-link in the Módulos RH panel pointing to `/rh/aniversarios`.
 - Grid responsive breakpoints updated to `grid-cols-4 xl:grid-cols-7` to accommodate the extra KPI card.
 
+### Refactored (post-review)
+
+- `hrAniversarios.ts`: `getBirthdaysByMonth` sort comparator now slices the day from the pre-computed `birthdayThisYear` ISO string instead of constructing `Date` objects per comparison.
+- `hrValeTransporte.ts`: Removed local `MONTH_NAMES_PT` array; replaced with shared `MONTHS_FULL` from `@/lib/utils`.
+- `Aniversarios.tsx`: Removed local `MONTH_NAMES` duplicate; uses `MONTHS_FULL` from `@/lib/utils`. Hoisted `CURRENT_YEAR` to module scope to avoid per-render `new Date()`. Inlined single-use `isTodayBirthday` helper.
+
 ## [1.1.2] - 2026-04-11
 
 ### Added
