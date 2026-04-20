@@ -702,7 +702,7 @@ export function ProductForm({
             </div>
 
             {/* Regras Específicas */}
-            <div className="rounded-xl border-2 border-amber-500/40 bg-amber-500/5 p-4 space-y-3">
+            {/* <div className="rounded-xl border-2 border-amber-500/40 bg-amber-500/5 p-4 space-y-3">
                 <div className="flex items-center gap-2">
                     <div className="p-1.5 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
                         <Settings2 className="w-4 h-4" />
@@ -721,10 +721,10 @@ export function ProductForm({
                     value={formData.specific_rules}
                     onChange={(e) => setFormData({ ...formData, specific_rules: e.target.value })}
                 />
-            </div>
+            </div> */}
 
             {/* Repartição do valor */}
-            <div className="rounded-xl border-2 border-violet-500/40 bg-violet-500/5 p-4 space-y-3">
+            {/* <div className="rounded-xl border-2 border-violet-500/40 bg-violet-500/5 p-4 space-y-3">
                 <div className="flex items-center gap-2">
                     <div className="p-1.5 rounded-lg bg-violet-500/15 text-violet-600 dark:text-violet-400">
                         <PieChart className="w-4 h-4" />
@@ -797,10 +797,10 @@ export function ProductForm({
                     </div>
                 </div>
                 <ProductFormCalculatedSplit formData={formData} />
-            </div>
+            </div> */}
 
             {/* Comissionamento */}
-            <div className="rounded-xl border-2 border-yellow-500/40 bg-yellow-500/5 p-4 space-y-4">
+            {/* <div className="rounded-xl border-2 border-yellow-500/40 bg-yellow-500/5 p-4 space-y-4">
                 <div className="flex items-center gap-2">
                     <div className="p-1.5 rounded-lg bg-yellow-500/15 text-yellow-600 dark:text-yellow-400">
                         <Percent className="w-4 h-4" />
@@ -928,7 +928,7 @@ export function ProductForm({
                         })}
                     />
                 </div>
-            </div>
+            </div> */}
 
             {/* Documentação Exigida */}
             <div className="rounded-xl border-2 border-indigo-500/40 bg-indigo-500/5 p-4 space-y-3">
