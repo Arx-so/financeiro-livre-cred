@@ -1,3 +1,4 @@
+import { supabase } from '@/lib/supabase';
 import { getCreditCardSales, type SalesCreditCardWithRelations } from '@/services/salesCreditCard';
 import { getDPlusSales, type SalesDPlusWithRelations } from '@/services/salesDPlus';
 import { TERMINAL_LABELS, CARD_BRAND_LABELS } from '@/constants/sales';
@@ -56,7 +57,7 @@ export interface SalesReportKPIs {
 
 // ─── Pure aggregation functions ───────────────────────────────────────────────
 
-export function buildTerminalBreakdown(sales: SalesCreditCardWithRelations[]): TerminalBreakdown[] {
+export function buildTerminalBreakdown(sales: CCSaleRow[]): TerminalBreakdown[] {
     const map = new Map<string, TerminalBreakdown>();
 
     for (const s of sales) {
@@ -64,7 +65,7 @@ export function buildTerminalBreakdown(sales: SalesCreditCardWithRelations[]): T
         if (!map.has(key)) {
             map.set(key, {
                 terminal: key,
-                terminal_label: TERMINAL_LABELS[key] ?? key,
+                terminal_label: TERMINAL_LABELS[key] ?? (key === 'legado' ? 'Sem Maquineta (Legado)' : key),
                 count: 0,
                 sale_value_sum: 0,
                 terminal_amount_sum: 0,
@@ -90,7 +91,7 @@ export function buildTerminalBreakdown(sales: SalesCreditCardWithRelations[]): T
     return result;
 }
 
-export function buildBrandBreakdown(sales: SalesCreditCardWithRelations[]): BrandBreakdown[] {
+export function buildBrandBreakdown(sales: CCSaleRow[]): BrandBreakdown[] {
     const map = new Map<string, BrandBreakdown>();
     const grandTotal = sales.reduce((sum, s) => sum + s.sale_value, 0);
 
@@ -124,7 +125,7 @@ export function buildBrandBreakdown(sales: SalesCreditCardWithRelations[]): Bran
 }
 
 export function buildSellerBreakdown(
-    cc: SalesCreditCardWithRelations[],
+    cc: CCSaleRow[],
     dplus: SalesDPlusWithRelations[],
 ): SellerBreakdown[] {
     const map = new Map<string, SellerBreakdown>();
@@ -167,7 +168,7 @@ export function buildSellerBreakdown(
 }
 
 export function computeKPIs(
-    cc: SalesCreditCardWithRelations[],
+    cc: CCSaleRow[],
     dplus: SalesDPlusWithRelations[],
 ): SalesReportKPIs {
     const total_bruto = cc.reduce((sum, s) => sum + s.terminal_amount, 0);
@@ -199,7 +200,7 @@ function escapeCSV(value: string | number | null | undefined): string {
 }
 
 export function exportReportToCSV(
-    cc: SalesCreditCardWithRelations[],
+    cc: CCSaleRow[],
     dplus: SalesDPlusWithRelations[],
     branchName: string,
     dateFrom: string,
@@ -239,7 +240,7 @@ export function exportReportToCSV(
             escapeCSV(s.client?.name ?? ''),
             escapeCSV(TERMINAL_LABELS[s.terminal] ?? s.terminal),
             escapeCSV(CARD_BRAND_LABELS[s.card_brand] ?? s.card_brand),
-            escapeCSV(s.card_final_digits ?? ''),
+            '',
             escapeCSV(s.installments ?? 1),
             fmt(s.sale_value),
             fmt(s.terminal_amount),
@@ -306,10 +307,110 @@ export function exportReportToCSV(
     URL.revokeObjectURL(url);
 }
 
+// ─── Unified CC row (new sales + legacy contracts) ────────────────────────────
+
+export interface CCSaleRow {
+    id: string;
+    sale_date: string | null;
+    created_at: string;
+    seller?: { id?: string; name: string } | null;
+    client?: { id?: string; name: string } | null;
+    terminal: string;
+    card_brand: string;
+    payment_method: string;
+    installments: number | null;
+    sale_value: number;
+    terminal_amount: number;
+    discount_amount: number | null;
+    saturday_refund: number | null;
+    lacre: string | null;
+    status: string;
+    seller_id?: string | null;
+    is_legacy?: boolean;
+}
+
+export function toUnifiedCCSale(s: SalesCreditCardWithRelations): CCSaleRow {
+    return {
+        id: s.id,
+        sale_date: s.sale_date,
+        created_at: s.created_at,
+        seller: s.seller ?? null,
+        client: s.client ?? null,
+        terminal: s.terminal,
+        card_brand: s.card_brand,
+        payment_method: s.payment_method,
+        installments: s.installments ?? null,
+        sale_value: s.sale_value,
+        terminal_amount: s.terminal_amount,
+        discount_amount: s.discount_amount ?? null,
+        saturday_refund: s.saturday_refund ?? null,
+        lacre: s.lacre ?? null,
+        status: s.status,
+        seller_id: s.seller_id ?? null,
+        is_legacy: false,
+    };
+}
+
+async function getLegacyCCContracts(filters: SalesReportFilters): Promise<CCSaleRow[]> {
+    let query = supabase
+        .from('contracts')
+        .select(`
+            id, branch_id, value, cc_amount_released, cc_terminal, cc_card_brand,
+            cc_payment_method, cc_discount_amount, cc_saturday_refund, cc_lacre,
+            start_date, status, created_at, seller_id, product_id,
+            favorecido:favorecidos!favorecido_id(id, name),
+            seller:profiles!seller_id(id, name)
+        `)
+        .in('status', ['criado', 'em_aprovacao', 'aprovado', 'ativo', 'pendente', 'encerrado'])
+        .order('start_date', { ascending: false });
+
+    if (filters.branchId) query = query.eq('branch_id', filters.branchId);
+    if (filters.dateFrom) query = query.gte('start_date', filters.dateFrom);
+    if (filters.dateTo) query = query.lte('start_date', filters.dateTo);
+
+    // Filter by product type via join
+    const { data: productData } = await supabase
+        .from('products')
+        .select('id')
+        .eq('product_type', 'cartao_credito');
+
+    const ccProductIds = (productData ?? []).map((p: { id: string }) => p.id);
+    if (ccProductIds.length === 0) return [];
+
+    query = query.in('product_id', ccProductIds);
+
+    if (filters.sellerIds?.length) {
+        query = query.in('seller_id', filters.sellerIds);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return (data ?? []).map((c: any): CCSaleRow => ({
+        id: c.id,
+        sale_date: c.start_date ?? null,
+        created_at: c.created_at,
+        seller: c.seller ? { id: c.seller.id, name: c.seller.name } : null,
+        client: c.favorecido ? { id: c.favorecido.id, name: c.favorecido.name } : null,
+        terminal: c.cc_terminal ?? 'legado',
+        card_brand: c.cc_card_brand ?? 'desconhecida',
+        payment_method: c.cc_payment_method ?? '',
+        installments: c.installments ?? null,
+        sale_value: c.cc_amount_released ?? c.value ?? 0,
+        terminal_amount: c.value ?? 0,
+        discount_amount: c.cc_discount_amount ?? null,
+        saturday_refund: c.cc_saturday_refund ?? null,
+        lacre: c.cc_lacre ?? null,
+        status: c.status,
+        seller_id: c.seller_id ?? null,
+        is_legacy: true,
+    }));
+}
+
 // ─── Main service function (fetches both tables) ──────────────────────────────
 
 export interface SalesReportData {
-    ccSales: SalesCreditCardWithRelations[];
+    ccSales: CCSaleRow[];
     dplusSales: SalesDPlusWithRelations[];
     kpis: SalesReportKPIs;
     terminalBreakdown: TerminalBreakdown[];
@@ -318,7 +419,7 @@ export interface SalesReportData {
 }
 
 export async function getSalesReport(filters: SalesReportFilters): Promise<SalesReportData> {
-    const [ccSales, dplusSales] = await Promise.all([
+    const [ccSalesRaw, dplusSales, legacyCC] = await Promise.all([
         getCreditCardSales({
             branchId: filters.branchId,
             dateFrom: filters.dateFrom,
@@ -332,12 +433,20 @@ export async function getSalesReport(filters: SalesReportFilters): Promise<Sales
             dateTo: filters.dateTo,
             ...(filters.sellerIds?.length ? { sellerId: filters.sellerIds[0] } : {}),
         }),
+        getLegacyCCContracts(filters),
     ]);
+
+    const ccSales: CCSaleRow[] = ccSalesRaw.map(toUnifiedCCSale);
 
     // Apply multi-value terminal filter client-side (service only accepts single terminal)
     const filteredCC = filters.terminals?.length && filters.terminals.length > 1
         ? ccSales.filter((s) => filters.terminals!.includes(s.terminal))
         : ccSales;
+
+    // Filter legacy by terminal too
+    const filteredLegacy = filters.terminals?.length
+        ? legacyCC.filter((s) => filters.terminals!.includes(s.terminal))
+        : legacyCC;
 
     // Apply multi-value seller filter client-side for both types
     const filteredCCBySeller = filters.sellerIds?.length && filters.sellerIds.length > 1
@@ -359,12 +468,19 @@ export async function getSalesReport(filters: SalesReportFilters): Promise<Sales
         return d >= filters.dateFrom && d <= filters.dateTo;
     });
 
+    // Merge new CC sales with legacy contracts
+    const allCCSales = [...ccByDate, ...filteredLegacy].sort((a, b) => {
+        const da = a.sale_date ?? a.created_at.split('T')[0];
+        const db = b.sale_date ?? b.created_at.split('T')[0];
+        return db.localeCompare(da);
+    });
+
     return {
-        ccSales: ccByDate,
+        ccSales: allCCSales,
         dplusSales: dplusByDate,
-        kpis: computeKPIs(ccByDate, dplusByDate),
-        terminalBreakdown: buildTerminalBreakdown(ccByDate),
-        brandBreakdown: buildBrandBreakdown(ccByDate),
-        sellerBreakdown: buildSellerBreakdown(ccByDate, dplusByDate),
+        kpis: computeKPIs(allCCSales, dplusByDate),
+        terminalBreakdown: buildTerminalBreakdown(allCCSales),
+        brandBreakdown: buildBrandBreakdown(allCCSales),
+        sellerBreakdown: buildSellerBreakdown(allCCSales, dplusByDate),
     };
 }

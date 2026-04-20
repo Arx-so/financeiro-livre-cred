@@ -1,1 +1,2 @@
 - [Project context](project_context.md) — LivreCred domain vocabulary, architecture, and data flow
+- [Recent major releases](recent_releases.md) — HR & Sales modules v1.2.0, patterns and conventions established

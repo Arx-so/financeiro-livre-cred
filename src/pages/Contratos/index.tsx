@@ -1,5 +1,5 @@
 import {
-    useState, useRef, useCallback, useMemo
+    useState, useRef, useCallback, useMemo, useEffect
 } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -23,6 +23,7 @@ import {
     DollarSign,
     LayoutGrid,
     List,
+    Paperclip,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -73,11 +74,20 @@ import {
 import type {
     ContractInsert, ContractRecurrenceType, ProductInsert, ProductOtherFees, ProductCommissionReceivedBy
 } from '@/types/database';
+import {
+    TERMINALS, TERMINAL_LABELS,
+    CARD_BRANDS, CARD_BRAND_LABELS,
+    PAYMENT_METHODS, PAYMENT_METHOD_LABELS,
+    TRANSFER_SOURCES, TRANSFER_SOURCE_LABELS,
+    SALE_TYPES, SALE_TYPE_LABELS,
+    PAYMENT_METHODS_REQUIRING_ACCOUNT,
+} from '@/constants/sales';
 import { FavorecidoForm } from '@/pages/Favorecidos/components/FavorecidoForm';
 import { ProductForm, type ProductFormData } from '@/pages/Produtos/components/ProductForm';
 import { ProductTypeModal } from '@/pages/Produtos/components/ProductTypeModal';
-import { ProductRulesPanel } from './components/ProductRulesPanel';
 import { KanbanView } from './KanbanView';
+import { ContractViewerModal } from './ContractViewerModal';
+import type { ContractWithRelations } from '@/services/contratos';
 
 export default function Contratos() {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
@@ -108,6 +118,15 @@ export default function Contratos() {
     const [generateContractId, setGenerateContractId] = useState<string | null>(null);
     const [isGeneratingEntries, setIsGeneratingEntries] = useState(false);
 
+    // Comprovante CC modal
+    const [comprovanteContract, setComprovanteContract] = useState<any | null>(null);
+
+    // Viewer modal state
+    const [viewingContract, setViewingContract] = useState<ContractWithRelations | null>(null);
+
+    // Pending files to upload after contract creation
+    const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+
     // Form state
     const [formData, setFormData] = useState({
         favorecido_id: '',
@@ -121,6 +140,16 @@ export default function Contratos() {
         payment_due_day: '',
         interest_rate: '',
         cc_amount_released: '',
+        cc_terminal: TERMINALS.SUMUP_W,
+        cc_card_brand: CARD_BRANDS.VISA,
+        cc_card_last_four: '',
+        cc_card_holder_name: '',
+        cc_sale_type: SALE_TYPES.VENDA_NOVA,
+        cc_payment_method: PAYMENT_METHODS.PIX,
+        cc_payment_account: TRANSFER_SOURCES.TF_RENTA,
+        cc_discount_amount: '',
+        cc_saturday_refund: '',
+        cc_lacre: '',
     });
 
     const isAdm = unidadeAtual?.code === 'ADM';
@@ -166,6 +195,18 @@ export default function Contratos() {
         if (client && product) return `${product} - ${client}`;
         return client || product || 'Nova venda';
     }, [selectedFavorecido, selectedProduct]);
+
+    // Pre-fill cc_terminal and cc_card_brand from product specific_rules when product changes (new contract only)
+    useEffect(() => {
+        if (!selectedProduct || editingId) return;
+        const rules = selectedProduct.specific_rules as Record<string, unknown> | null;
+        if (!rules) return;
+        setFormData((prev) => ({
+            ...prev,
+            ...(rules.card_machine ? { cc_terminal: rules.card_machine as string } : {}),
+            ...(rules.card_brand ? { cc_card_brand: rules.card_brand as string } : {}),
+        }));
+    }, [selectedProduct?.id, editingId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Credit card: compute total interest rate from amounts
     const ccRate = useMemo(() => {
@@ -625,8 +666,19 @@ export default function Contratos() {
             payment_due_day: '',
             interest_rate: '',
             cc_amount_released: '',
+            cc_terminal: TERMINALS.SUMUP_W,
+            cc_card_brand: CARD_BRANDS.VISA,
+            cc_card_last_four: '',
+            cc_card_holder_name: '',
+            cc_sale_type: SALE_TYPES.VENDA_NOVA,
+            cc_payment_method: PAYMENT_METHODS.PIX,
+            cc_payment_account: TRANSFER_SOURCES.TF_RENTA,
+            cc_discount_amount: '',
+            cc_saturday_refund: '',
+            cc_lacre: '',
         });
         setEditingId(null);
+        setPendingFiles([]);
     }, []);
 
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
@@ -691,6 +743,8 @@ export default function Contratos() {
             }
         }
 
+        const requiresAccount = PAYMENT_METHODS_REQUIRING_ACCOUNT.includes(formData.cc_payment_method);
+
         const contractData: ContractInsert = {
             branch_id: unidadeAtual.id,
             title: autoTitle,
@@ -707,15 +761,33 @@ export default function Contratos() {
             payment_due_day: formData.payment_due_day ? parseInt(formData.payment_due_day, 10) : null,
             interest_rate: interestRate,
             cc_amount_released: formData.cc_amount_released ? parseFloat(formData.cc_amount_released) : null,
-            status: editingId ? undefined : 'criado',
+            ...(isCartao && {
+                cc_terminal: formData.cc_terminal || null,
+                cc_card_brand: formData.cc_card_brand || null,
+                cc_card_last_four: formData.cc_card_last_four || null,
+                cc_card_holder_name: formData.cc_card_holder_name || null,
+                cc_sale_type: formData.cc_sale_type || null,
+                cc_payment_method: formData.cc_payment_method || null,
+                cc_payment_account: requiresAccount ? formData.cc_payment_account || null : null,
+                cc_discount_amount: formData.cc_discount_amount ? parseFloat(formData.cc_discount_amount) : null,
+                cc_saturday_refund: formData.cc_saturday_refund ? parseFloat(formData.cc_saturday_refund) : null,
+                cc_lacre: formData.cc_lacre || null,
+            }),
+            status: editingId ? undefined : 'aprovado',
         };
 
         if (editingId) {
             updateMutation.mutate({ id: editingId, data: contractData });
         } else {
-            createMutation.mutate(contractData);
+            const created = await createMutation.mutateAsync(contractData);
+            if (pendingFiles.length > 0 && created?.id) {
+                await Promise.allSettled(
+                    pendingFiles.map((f) => uploadContractFile(created.id, f, user?.id ?? undefined))
+                );
+                queryClient.invalidateQueries({ queryKey: ['contracts'] });
+            }
         }
-    }, [formData, editingId, unidadeAtual?.id, products, ccRate, autoTitle, createMutation, updateMutation]);
+    }, [formData, editingId, unidadeAtual?.id, products, ccRate, autoTitle, createMutation, updateMutation, pendingFiles, user?.id, queryClient]);
 
     const handleDelete = useCallback((id: string, title: string, status: string) => {
         if (status === 'aprovado') {
@@ -771,6 +843,16 @@ export default function Contratos() {
             payment_due_day: contract.payment_due_day?.toString() || '',
             interest_rate: contract.interest_rate?.toString() || '',
             cc_amount_released: contract.cc_amount_released?.toString() || '',
+            cc_terminal: contract.cc_terminal || TERMINALS.SUMUP_W,
+            cc_card_brand: contract.cc_card_brand || CARD_BRANDS.VISA,
+            cc_card_last_four: contract.cc_card_last_four || '',
+            cc_card_holder_name: contract.cc_card_holder_name || '',
+            cc_sale_type: contract.cc_sale_type || SALE_TYPES.VENDA_NOVA,
+            cc_payment_method: contract.cc_payment_method || PAYMENT_METHODS.PIX,
+            cc_payment_account: contract.cc_payment_account || TRANSFER_SOURCES.TF_RENTA,
+            cc_discount_amount: contract.cc_discount_amount?.toString() || '',
+            cc_saturday_refund: contract.cc_saturday_refund?.toString() || '',
+            cc_lacre: contract.cc_lacre || '',
         });
         setEditingId(contract.id);
         setIsModalOpen(true);
@@ -1024,13 +1106,15 @@ export default function Contratos() {
 
                                 {/* Bloco cartão de crédito */}
                                 {selectedProduct?.product_type === 'cartao_credito' && (
-                                    <div className="rounded-xl border-2 border-blue-500/40 bg-blue-500/5 p-4 space-y-3">
+                                    <div className="rounded-xl border-2 border-blue-500/40 bg-blue-500/5 p-4 space-y-4">
                                         <div className="flex items-center gap-2">
                                             <DollarSign className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                                             <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">
                                                 Operação de Cartão de Crédito
                                             </span>
                                         </div>
+
+                                        {/* Valores */}
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-sm font-medium text-foreground mb-2">
@@ -1057,6 +1141,7 @@ export default function Contratos() {
                                                 </p>
                                             </div>
                                         </div>
+
                                         {/* Taxa calculada */}
                                         {ccRate !== null && (
                                             <div className={[
@@ -1064,7 +1149,8 @@ export default function Contratos() {
                                                 ccRateStatus === 'ok'
                                                     ? 'bg-green-500/10 text-green-700 dark:text-green-400'
                                                     : 'bg-red-500/10 text-red-700 dark:text-red-400',
-                                            ].join(' ')}>
+                                            ].join(' ')}
+                                            >
                                                 <span>
                                                     Taxa total calculada:
                                                     {' '}
@@ -1098,6 +1184,126 @@ export default function Contratos() {
                                                 )}
                                             </div>
                                         )}
+
+                                        {/* Terminal e Cartão */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-foreground mb-2">Maquineta</label>
+                                                <select
+                                                    className="input-financial"
+                                                    value={formData.cc_terminal}
+                                                    onChange={(e) => setFormData({ ...formData, cc_terminal: e.target.value })}
+                                                >
+                                                    {Object.entries(TERMINAL_LABELS).map(([val, label]) => (
+                                                        <option key={val} value={val}>{label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-foreground mb-2">Bandeira</label>
+                                                <select
+                                                    className="input-financial"
+                                                    value={formData.cc_card_brand}
+                                                    onChange={(e) => setFormData({ ...formData, cc_card_brand: e.target.value })}
+                                                >
+                                                    {Object.entries(CARD_BRAND_LABELS).map(([val, label]) => (
+                                                        <option key={val} value={val}>{label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-foreground mb-2">Final do Cartão (4 dígitos)</label>
+                                                <input
+                                                    type="text"
+                                                    className="input-financial font-mono"
+                                                    maxLength={4}
+                                                    placeholder="1234"
+                                                    value={formData.cc_card_last_four}
+                                                    onChange={(e) => setFormData({ ...formData, cc_card_last_four: e.target.value.replace(/\D/g, '') })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-foreground mb-2">Titular do Cartão</label>
+                                                <input
+                                                    type="text"
+                                                    className="input-financial"
+                                                    placeholder="Nome como no cartão"
+                                                    value={formData.cc_card_holder_name}
+                                                    onChange={(e) => setFormData({ ...formData, cc_card_holder_name: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Tipo de venda e pagamento */}
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-foreground mb-2">Tipo de Venda</label>
+                                                <select
+                                                    className="input-financial"
+                                                    value={formData.cc_sale_type}
+                                                    onChange={(e) => setFormData({ ...formData, cc_sale_type: e.target.value })}
+                                                >
+                                                    {Object.entries(SALE_TYPE_LABELS).map(([val, label]) => (
+                                                        <option key={val} value={val}>{label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-foreground mb-2">Forma de Pagamento</label>
+                                                <select
+                                                    className="input-financial"
+                                                    value={formData.cc_payment_method}
+                                                    onChange={(e) => setFormData({ ...formData, cc_payment_method: e.target.value })}
+                                                >
+                                                    {Object.entries(PAYMENT_METHOD_LABELS).map(([val, label]) => (
+                                                        <option key={val} value={val}>{label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            {PAYMENT_METHODS_REQUIRING_ACCOUNT.includes(formData.cc_payment_method) && (
+                                                <div>
+                                                    <label className="block text-sm font-medium text-foreground mb-2">Realizador</label>
+                                                    <select
+                                                        className="input-financial"
+                                                        value={formData.cc_payment_account}
+                                                        onChange={(e) => setFormData({ ...formData, cc_payment_account: e.target.value })}
+                                                    >
+                                                        {Object.entries(TRANSFER_SOURCE_LABELS).map(([val, label]) => (
+                                                            <option key={val} value={val}>{label}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Desconto, sábado e lacre
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-foreground mb-2">Desconto (R$)</label>
+                                                <CurrencyInput
+                                                    value={formData.cc_discount_amount}
+                                                    onChange={(numValue) => setFormData({ ...formData, cc_discount_amount: String(numValue) })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-foreground mb-2">Devolução Sábado (R$)</label>
+                                                <CurrencyInput
+                                                    value={formData.cc_saturday_refund}
+                                                    onChange={(numValue) => setFormData({ ...formData, cc_saturday_refund: String(numValue) })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-foreground mb-2">Lacre</label>
+                                                <input
+                                                    type="text"
+                                                    className="input-financial"
+                                                    placeholder="Código do lacre"
+                                                    value={formData.cc_lacre}
+                                                    onChange={(e) => setFormData({ ...formData, cc_lacre: e.target.value })}
+                                                />
+                                            </div>
+                                        </div> */}
+
                                         <p className="text-xs text-blue-600/80 dark:text-blue-400/80">
                                             Ao gerar lançamentos: 1 saída (valor ao cliente) + N entradas (parcelas da maquininha).
                                         </p>
@@ -1115,14 +1321,6 @@ export default function Contratos() {
                                     </div>
                                 )}
 
-                                {selectedProduct && (
-                                    <ProductRulesPanel
-                                        product={selectedProduct}
-                                        saleValue={typeof formData.value === 'string' ? parseFloat(formData.value) || 0 : Number(formData.value)}
-                                    />
-                                )}
-
-                                {/* Parcelas + Dia de vencimento */}
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-foreground mb-2">
@@ -1260,6 +1458,44 @@ export default function Contratos() {
                                         onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                                     />
                                 </div>
+                                {!editingId && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-2">
+                                            Anexos
+                                        </label>
+                                        <label className="btn-secondary py-2 cursor-pointer inline-flex">
+                                            <Upload className="w-4 h-4" />
+                                            Selecionar arquivos
+                                            <input
+                                                type="file"
+                                                multiple
+                                                className="hidden"
+                                                onChange={(e) => {
+                                                    const files = Array.from(e.target.files ?? []);
+                                                    setPendingFiles((prev) => [...prev, ...files]);
+                                                    e.target.value = '';
+                                                }}
+                                            />
+                                        </label>
+                                        {pendingFiles.length > 0 && (
+                                            <div className="mt-2 space-y-1">
+                                                {pendingFiles.map((f, i) => (
+                                                    <div key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                        <Paperclip className="w-3.5 h-3.5 shrink-0" />
+                                                        <span className="flex-1 truncate">{f.name}</span>
+                                                        <button
+                                                            type="button"
+                                                            className="text-destructive hover:text-destructive/80"
+                                                            onClick={() => setPendingFiles((prev) => prev.filter((_, j) => j !== i))}
+                                                        >
+                                                            <XCircle className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                                 <div className="flex justify-end gap-3 pt-4">
                                     <button type="button" className="btn-secondary" onClick={() => { setIsModalOpen(false); resetForm(); }}>
                                         Cancelar
@@ -1392,16 +1628,16 @@ export default function Contratos() {
                                                     </span>
                                                 )}
                                             </div>
-                                            {/* Approval info */}
-                                            {contract.approved_at && (
+                                            {/* Creator info */}
+                                            {contract.creator && (
                                                 <div className="text-xs text-muted-foreground mt-2">
-                                                    Aprovado por
+                                                    Criado por
                                                     {' '}
-                                                    {contract.approver?.name}
+                                                    {contract.creator.name}
                                                     {' '}
                                                     em
                                                     {' '}
-                                                    {formatDate(contract.approved_at)}
+                                                    {formatDate(contract.created_at)}
                                                 </div>
                                             )}
                                             {contract.signed_at && (
@@ -1425,6 +1661,13 @@ export default function Contratos() {
                                     </div>
                                 </div>
                                 <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border">
+                                    <button
+                                        className="btn-secondary py-2"
+                                        onClick={() => setViewingContract(contract)}
+                                    >
+                                        <FileText className="w-4 h-4" />
+                                        Ver
+                                    </button>
                                     {contract.status !== 'aprovado' && (
                                         <button
                                             className="btn-secondary py-2"
@@ -1537,6 +1780,16 @@ export default function Contratos() {
                                     >
                                         <Printer className="w-4 h-4" />
                                     </button>
+                                    {products?.find((p) => p.id === contract.product_id)?.product_type === 'cartao_credito' && (
+                                        <button
+                                            className="btn-secondary py-2"
+                                            onClick={() => setComprovanteContract(contract)}
+                                            title="Gerar comprovante de cartão"
+                                        >
+                                            <CheckCircle className="w-4 h-4" />
+                                            Comprovante
+                                        </button>
+                                    )}
                                     {contract.status !== 'aprovado' && (
                                         <button
                                             className="btn-secondary py-2 text-destructive hover:bg-destructive/10"
@@ -1551,6 +1804,112 @@ export default function Contratos() {
                     </div>
                 )}
             </div>
+
+            {/* Comprovante CC Modal */}
+            <Dialog open={!!comprovanteContract} onOpenChange={(open) => { if (!open) setComprovanteContract(null); }}>
+                <DialogContent className="max-w-md print:shadow-none">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <CheckCircle className="w-5 h-5 text-green-500" />
+                            Comprovante — Cartão de Crédito
+                        </DialogTitle>
+                        <DialogDescription>
+                            {comprovanteContract?.title}
+                        </DialogDescription>
+                    </DialogHeader>
+                    {comprovanteContract && (
+                        <div className="space-y-3 py-2 text-sm">
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                                <span className="text-muted-foreground">Data</span>
+                                <span className="font-medium">{formatDate(comprovanteContract.start_date)}</span>
+
+                                <span className="text-muted-foreground">Cliente</span>
+                                <span className="font-medium">{comprovanteContract.favorecido?.name ?? '—'}</span>
+
+                                <span className="text-muted-foreground">Vendedor</span>
+                                <span className="font-medium">{comprovanteContract.seller?.name ?? '—'}</span>
+
+                                <span className="text-muted-foreground">Maquineta</span>
+                                <span className="font-medium">
+                                    {TERMINAL_LABELS[comprovanteContract.cc_terminal] ?? comprovanteContract.cc_terminal ?? '—'}
+                                </span>
+
+                                <span className="text-muted-foreground">Bandeira</span>
+                                <span className="font-medium">
+                                    {CARD_BRAND_LABELS[comprovanteContract.cc_card_brand] ?? comprovanteContract.cc_card_brand ?? '—'}
+                                    {comprovanteContract.cc_card_last_four && ` •••• ${comprovanteContract.cc_card_last_four}`}
+                                </span>
+
+                                {comprovanteContract.cc_card_holder_name && (
+                                    <>
+                                        <span className="text-muted-foreground">Titular</span>
+                                        <span className="font-medium">{comprovanteContract.cc_card_holder_name}</span>
+                                    </>
+                                )}
+
+                                <span className="text-muted-foreground">Tipo de Venda</span>
+                                <span className="font-medium">
+                                    {SALE_TYPE_LABELS[comprovanteContract.cc_sale_type] ?? comprovanteContract.cc_sale_type ?? '—'}
+                                </span>
+
+                                <span className="text-muted-foreground">Pagamento</span>
+                                <span className="font-medium">
+                                    {PAYMENT_METHOD_LABELS[comprovanteContract.cc_payment_method] ?? comprovanteContract.cc_payment_method ?? '—'}
+                                    {comprovanteContract.cc_payment_account && ` — ${TRANSFER_SOURCE_LABELS[comprovanteContract.cc_payment_account] ?? comprovanteContract.cc_payment_account}`}
+                                </span>
+
+                                <span className="text-muted-foreground">Parcelas</span>
+                                <span className="font-medium">{comprovanteContract.installments ?? 1}x</span>
+
+                                <span className="text-muted-foreground font-semibold">Valor na Maquineta</span>
+                                <span className="font-semibold">{formatCurrency(comprovanteContract.value)}</span>
+
+                                <span className="text-muted-foreground font-semibold">Valor Liberado</span>
+                                <span className="font-semibold">
+                                    {comprovanteContract.cc_amount_released != null
+                                        ? formatCurrency(comprovanteContract.cc_amount_released)
+                                        : '—'}
+                                </span>
+
+                                {(comprovanteContract.cc_discount_amount ?? 0) > 0 && (
+                                    <>
+                                        <span className="text-muted-foreground">Desconto</span>
+                                        <span className="font-medium">{formatCurrency(comprovanteContract.cc_discount_amount)}</span>
+                                    </>
+                                )}
+
+                                {comprovanteContract.cc_lacre && (
+                                    <>
+                                        <span className="text-muted-foreground">Lacre</span>
+                                        <span className="font-mono font-medium">{comprovanteContract.cc_lacre}</span>
+                                    </>
+                                )}
+                            </div>
+
+                            {comprovanteContract.notes && (
+                                <p className="text-xs text-muted-foreground border-t pt-2">{comprovanteContract.notes}</p>
+                            )}
+                        </div>
+                    )}
+                    <div className="flex justify-end gap-2 pt-2 border-t">
+                        <button
+                            type="button"
+                            className="btn-secondary py-2"
+                            onClick={() => window.print()}
+                        >
+                            <Printer className="w-4 h-4" />
+                            Imprimir Comprovante
+                        </button>
+                        <button
+                            type="button"
+                            className="btn-primary py-2"
+                            onClick={() => setComprovanteContract(null)}
+                        >
+                            Fechar
+                        </button>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             {/* Template Selection Modal for PDF (download e impressão usam o mesmo PDF) */}
             <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
@@ -1837,6 +2196,12 @@ export default function Contratos() {
             </Dialog>
 
             <ConfirmDialog {...dialogProps} isLoading={isDeleting} />
+
+            <ContractViewerModal
+                contract={viewingContract}
+                open={!!viewingContract}
+                onClose={() => setViewingContract(null)}
+            />
         </AppLayout>
     );
 }

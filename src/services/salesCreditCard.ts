@@ -46,7 +46,7 @@ export async function getCreditCardSales(
         .select(`
             *,
             client:favorecidos!sales_credit_card_client_id_fkey(id, name, document, phone),
-            seller:profiles!sales_credit_card_seller_id_fkey(id, name)
+            seller:favorecidos!sales_credit_card_seller_id_fkey(id, name)
         `)
         .order('created_at', { ascending: false });
 
@@ -84,7 +84,7 @@ export async function getCreditCardSaleById(
         .select(`
             *,
             client:favorecidos!sales_credit_card_client_id_fkey(id, name, document, phone),
-            seller:profiles!sales_credit_card_seller_id_fkey(id, name)
+            seller:favorecidos!sales_credit_card_seller_id_fkey(id, name)
         `)
         .eq('id', id)
         .maybeSingle();
