@@ -23,10 +23,10 @@ export const creditCardSalesKeys = {
     report: (filters: CreditCardSaleFilters) => [...creditCardSalesKeys.all, 'report', filters] as const,
 };
 
-export function useCreditCardSales(filters: Omit<CreditCardSaleFilters, 'branchId'> = {}) {
+export function useCreditCardSales(filters: Omit<CreditCardSaleFilters, 'branchId'> & { branchId?: string } = {}) {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
     const isAdm = unidadeAtual?.code === 'ADM';
-    const branchId = isAdm ? undefined : unidadeAtual?.id;
+    const branchId = isAdm ? filters.branchId : unidadeAtual?.id;
 
     const mergedFilters: CreditCardSaleFilters = { ...filters, branchId };
 

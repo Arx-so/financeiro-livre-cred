@@ -1,2 +1,5 @@
 - [LivreCred Architecture Overview](codebase-overview.md) — Multi-tenant by branch, React+TS+Vite+Supabase stack
 - [Request 1 Analysis](request-1-hr-and-sales.md) — HR module (Férias, Exames, VT) and Sales/Contratos refactor
+- [Sales Report Structure](sales-report-structure.md) — Daily sales report layout, KPIs, and grouping logic
+- [Request 1 Audit Findings](request-1-audit-findings.md) — 85% complete; critical blocker: Aniversários; 4 gaps identified
+- [Client Communication Style](client-communication.md) — Client preferences and expectations for reporting

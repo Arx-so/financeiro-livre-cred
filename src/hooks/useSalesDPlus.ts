@@ -22,10 +22,10 @@ export const dPlusSalesKeys = {
     report: (filters: DPlusSaleFilters) => [...dPlusSalesKeys.all, 'report', filters] as const,
 };
 
-export function useDPlusSales(filters: Omit<DPlusSaleFilters, 'branchId'> = {}) {
+export function useDPlusSales(filters: Omit<DPlusSaleFilters, 'branchId'> & { branchId?: string } = {}) {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
     const isAdm = unidadeAtual?.code === 'ADM';
-    const branchId = isAdm ? undefined : unidadeAtual?.id;
+    const branchId = isAdm ? filters.branchId : unidadeAtual?.id;
 
     const mergedFilters: DPlusSaleFilters = { ...filters, branchId };
 

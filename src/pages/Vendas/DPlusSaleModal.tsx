@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Loader2 } from 'lucide-react';
+import { Plus, Paperclip, X, Printer, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { FavorecidoSelect } from '@/components/shared/FavorecidoSelect';
-import { VendedorSelect } from '@/components/shared/VendedorSelect';
 import { FavorecidoForm } from '@/pages/Favorecidos/components/FavorecidoForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,11 +15,17 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateDPlusSale } from '@/hooks/useSalesDPlus';
-import { useCreateFavorecido, useUploadFavorecidoPhoto, useVendedores } from '@/hooks/useCadastros';
-import { useCreateUser } from '@/hooks/useUsers';
+import { useCreateFavorecido, useUploadFavorecidoPhoto } from '@/hooks/useCadastros';
 import { useBranchStore, useAuthStore } from '@/stores';
-import type { SalesDPlusProductInsert } from '@/types/database';
-import { DPLUS_SALE_STATUSES } from '@/constants/sales';
+import type { SalesDPlusProductInsert, SalesDPlusProduct } from '@/types/database';
+import {
+    DPLUS_SALE_STATUSES,
+    DPLUS_PAYMENT_METHODS,
+    DPLUS_PAYMENT_METHOD_LABELS,
+    DPLUS_PAYMENT_METHODS_WITH_INFO,
+} from '@/constants/sales';
+import { uploadDPlusDocument, generateFinancialEntriesFromDPlusSale, getDPlusSaleById } from '@/services/salesDPlus';
+import { supabase } from '@/lib/supabase';
 
 const DPLUS_STATUS_LABELS: Record<string, string> = {
     pendente: 'Pendente',
@@ -42,6 +47,8 @@ interface FormData {
     bank_info: string;
     table_info: string;
     status: string;
+    payment_method: string;
+    payment_info: string;
     notes: string;
 }
 
@@ -53,6 +60,8 @@ const DEFAULT_FORM: FormData = {
     bank_info: '',
     table_info: '',
     status: DPLUS_SALE_STATUSES.PENDENTE,
+    payment_method: '',
+    payment_info: '',
     notes: '',
 };
 
@@ -79,6 +88,18 @@ const EMPTY_FAVORECIDO_FORM = {
     birth_date: '',
 };
 
+function paymentInfoLabel(method: string): string {
+    if (method === DPLUS_PAYMENT_METHODS.PIX) return 'Chave PIX';
+    if (method === DPLUS_PAYMENT_METHODS.TRANSFERENCIA) return 'Dados Bancários (Banco / Agência / Conta)';
+    return 'Informação de Pagamento';
+}
+
+function paymentInfoPlaceholder(method: string): string {
+    if (method === DPLUS_PAYMENT_METHODS.PIX) return 'Ex: 11999998888 ou cpf@banco.com';
+    if (method === DPLUS_PAYMENT_METHODS.TRANSFERENCIA) return 'Ex: Banco do Brasil / Ag 0001 / CC 12345-6';
+    return '';
+}
+
 export function DPlusSaleModal({ open, onClose, onSaved }: DPlusSaleModalProps) {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
     const branchId = unidadeAtual?.id ?? '';
@@ -86,9 +107,11 @@ export function DPlusSaleModal({ open, onClose, onSaved }: DPlusSaleModalProps) 
     const createMutation = useCreateDPlusSale();
     const createFavorecido = useCreateFavorecido();
     const uploadPhoto = useUploadFavorecidoPhoto();
-    const { refetch: refetchVendedores } = useVendedores();
-    const createUserMutation = useCreateUser();
     const [formData, setFormData] = useState<FormData>(DEFAULT_FORM);
+
+    // Document attachments
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // --- Inline Cliente (Favorecido) creation ---
     const [isFavorecidoModalOpen, setIsFavorecidoModalOpen] = useState(false);
@@ -99,12 +122,25 @@ export function DPlusSaleModal({ open, onClose, onSaved }: DPlusSaleModalProps) 
     const favorecidoCameraInputRef = useRef<HTMLInputElement>(null);
     const favorecidoDocumentInputRef = useRef<HTMLInputElement>(null);
 
-    // --- Inline Vendedor creation ---
+    // --- Inline Vendedor (Funcionário) creation ---
     const [isVendedorModalOpen, setIsVendedorModalOpen] = useState(false);
-    const [vendedorFormData, setVendedorFormData] = useState({ name: '', email: '', password: '' });
+    const [vendedorFormData, setVendedorFormData] = useState<any>({ ...EMPTY_FAVORECIDO_FORM, type: 'funcionario' });
+    const [selectedVendedorPhoto, setSelectedVendedorPhoto] = useState<File | null>(null);
+    const [vendedorPhotoPreview, setVendedorPhotoPreview] = useState<string | null>(null);
+    const vendedorFileInputRef = useRef<HTMLInputElement>(null);
+    const vendedorCameraInputRef = useRef<HTMLInputElement>(null);
+    const vendedorDocumentInputRef = useRef<HTMLInputElement>(null);
+
+    // --- Completion modal ---
+    const [completedSaleId, setCompletedSaleId] = useState<string | null>(null);
+    const [isSavingDocs, setIsSavingDocs] = useState(false);
 
     useEffect(() => {
-        if (!open) setFormData(DEFAULT_FORM);
+        if (!open) {
+            setFormData(DEFAULT_FORM);
+            setSelectedFiles([]);
+            setCompletedSaleId(null);
+        }
     }, [open]);
 
     const resetFavorecidoForm = () => {
@@ -114,7 +150,9 @@ export function DPlusSaleModal({ open, onClose, onSaved }: DPlusSaleModalProps) 
     };
 
     const resetVendedorForm = () => {
-        setVendedorFormData({ name: '', email: '', password: '' });
+        setVendedorFormData({ ...EMPTY_FAVORECIDO_FORM, type: 'funcionario' });
+        setSelectedVendedorPhoto(null);
+        setVendedorPhotoPreview(null);
     };
 
     const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,6 +161,16 @@ export function DPlusSaleModal({ open, onClose, onSaved }: DPlusSaleModalProps) 
             setSelectedPhoto(file);
             const reader = new FileReader();
             reader.onloadend = () => { setPhotoPreview(reader.result as string); };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleVendedorPhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            setSelectedVendedorPhoto(file);
+            const reader = new FileReader();
+            reader.onloadend = () => { setVendedorPhotoPreview(reader.result as string); };
             reader.readAsDataURL(file);
         }
     };
@@ -157,30 +205,24 @@ export function DPlusSaleModal({ open, onClose, onSaved }: DPlusSaleModalProps) 
 
     const handleSubmitVendedor = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!vendedorFormData.name.trim() || !vendedorFormData.email.trim() || !vendedorFormData.password.trim()) {
-            toast.error('Preencha nome, email e senha');
-            return;
-        }
-        if (vendedorFormData.password.length < 6) {
-            toast.error('A senha deve ter no mínimo 6 caracteres');
-            return;
-        }
         try {
-            const result = await createUserMutation.mutateAsync({
-                email: vendedorFormData.email.trim(),
-                password: vendedorFormData.password,
-                name: vendedorFormData.name.trim(),
-                role: 'vendas',
-                branchIds: unidadeAtual?.id ? [unidadeAtual.id] : [],
+            const newVendedor = await createFavorecido.mutateAsync({
+                branch_id: unidadeAtual?.id || null,
+                type: 'funcionario',
+                name: vendedorFormData.name,
+                document: vendedorFormData.document || null,
+                email: vendedorFormData.email || null,
+                phone: vendedorFormData.phone || null,
+                address: vendedorFormData.address || null,
+                city: vendedorFormData.city || null,
+                state: vendedorFormData.state || null,
+                zip_code: vendedorFormData.zip_code || null,
+                notes: vendedorFormData.notes || null,
             });
-            if (!result.success) {
-                toast.error(result.error || 'Erro ao criar vendedor');
-                return;
+            if (selectedVendedorPhoto && newVendedor.id) {
+                await uploadPhoto.mutateAsync({ favorecidoId: newVendedor.id, file: selectedVendedorPhoto });
             }
-            await refetchVendedores();
-            if (result.userId) {
-                setFormData((prev) => ({ ...prev, seller_id: result.userId! }));
-            }
+            setFormData((prev) => ({ ...prev, seller_id: newVendedor.id }));
             toast.success('Vendedor criado!');
             setIsVendedorModalOpen(false);
             resetVendedorForm();
@@ -189,11 +231,23 @@ export function DPlusSaleModal({ open, onClose, onSaved }: DPlusSaleModalProps) 
         }
     };
 
+    const handleFileAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files ?? []);
+        setSelectedFiles((prev) => [...prev, ...files]);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const handleFileRemove = (index: number) => {
+        setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+    };
+
     const handleFieldChange = (field: keyof FormData, value: string | number) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
     };
 
-    const handleSubmit = () => {
+    const showPaymentInfo = DPLUS_PAYMENT_METHODS_WITH_INFO.includes(formData.payment_method);
+
+    const handleSubmit = async () => {
         if (!formData.client_id) { toast.error('Selecione o cliente.'); return; }
         if (!formData.seller_id) { toast.error('Selecione o vendedor.'); return; }
         if (!formData.proposal_number.trim()) { toast.error('Informe o número da proposta.'); return; }
@@ -208,19 +262,60 @@ export function DPlusSaleModal({ open, onClose, onSaved }: DPlusSaleModalProps) 
             bank_info: formData.bank_info.trim() || null,
             table_info: formData.table_info.trim() || null,
             status: formData.status as SalesDPlusProductInsert['status'],
+            payment_method: formData.payment_method || null,
+            payment_info: showPaymentInfo ? (formData.payment_info.trim() || null) : null,
             notes: formData.notes.trim() || null,
             created_by: userId || null,
         };
 
-        createMutation.mutate(insertData, {
-            onSuccess: (created) => {
-                toast.success('Venda D+ registrada.');
-                onSaved?.(created.id);
-                onClose();
-            },
-            onError: () => toast.error('Erro ao registrar venda D+.'),
-        });
+        setIsSavingDocs(true);
+        try {
+            await new Promise<void>((resolve, reject) => {
+                createMutation.mutate(insertData, {
+                    onSuccess: async (created: SalesDPlusProduct) => {
+                        try {
+                            // Upload documents if any
+                            if (selectedFiles.length > 0) {
+                                const urls = await Promise.all(
+                                    selectedFiles.map((f) => uploadDPlusDocument(f, branchId, created.id)),
+                                );
+                                await supabase
+                                    .from('sales_d_plus_products')
+                                    .update({ document_urls: urls })
+                                    .eq('id', created.id);
+                            }
+
+                            // Auto-generate financial entries
+                            const saleWithRelations = await getDPlusSaleById(created.id);
+                            if (saleWithRelations) {
+                                await generateFinancialEntriesFromDPlusSale(saleWithRelations);
+                            }
+
+                            onSaved?.(created.id);
+                            setCompletedSaleId(created.id);
+                            resolve();
+                        } catch (err) {
+                            reject(err);
+                        }
+                    },
+                    onError: (err) => reject(err),
+                });
+            });
+        } catch {
+            toast.error('Erro ao registrar venda D+.');
+        } finally {
+            setIsSavingDocs(false);
+        }
     };
+
+    const handlePrint = () => window.print();
+
+    const handleCloseCompleted = () => {
+        setCompletedSaleId(null);
+        onClose();
+    };
+
+    const isSaving = createMutation.isPending || isSavingDocs;
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
@@ -260,9 +355,11 @@ export function DPlusSaleModal({ open, onClose, onSaved }: DPlusSaleModalProps) 
                             2. Vendedor *
                         </h3>
                         <div className="flex gap-2">
-                            <VendedorSelect
+                            <FavorecidoSelect
                                 value={formData.seller_id}
                                 onChange={(id) => handleFieldChange('seller_id', id)}
+                                filterType="funcionario"
+                                placeholder="Buscar vendedor..."
                                 className="flex-1"
                             />
                             <Button
@@ -347,7 +444,87 @@ export function DPlusSaleModal({ open, onClose, onSaved }: DPlusSaleModalProps) 
                         </div>
                     </div>
 
-                    {/* 5. Observações */}
+                    {/* 5. Forma de Pagamento */}
+                    <div>
+                        <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
+                            5. Forma de Pagamento
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <Label htmlFor="payment_method">Forma de Pagamento</Label>
+                                <Select
+                                    value={formData.payment_method || '__none__'}
+                                    onValueChange={(v) => {
+                                        handleFieldChange('payment_method', v === '__none__' ? '' : v);
+                                        handleFieldChange('payment_info', '');
+                                    }}
+                                >
+                                    <SelectTrigger id="payment_method">
+                                        <SelectValue placeholder="Selecionar..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="__none__">— Não informar —</SelectItem>
+                                        {Object.entries(DPLUS_PAYMENT_METHOD_LABELS).map(([val, label]) => (
+                                            <SelectItem key={val} value={val}>{label}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            {showPaymentInfo && (
+                                <div>
+                                    <Label htmlFor="payment_info">{paymentInfoLabel(formData.payment_method)}</Label>
+                                    <Input
+                                        id="payment_info"
+                                        value={formData.payment_info}
+                                        onChange={(e) => handleFieldChange('payment_info', e.target.value)}
+                                        placeholder={paymentInfoPlaceholder(formData.payment_method)}
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* 6. Documentos */}
+                    <div>
+                        <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase tracking-wide">
+                            6. Documentos
+                        </h3>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            multiple
+                            className="hidden"
+                            onChange={handleFileAdd}
+                        />
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            <Paperclip className="w-4 h-4 mr-2" />
+                            Anexar arquivos
+                        </Button>
+                        {selectedFiles.length > 0 && (
+                            <ul className="mt-3 space-y-1">
+                                {selectedFiles.map((f, i) => (
+                                    <li key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
+                                        <Paperclip className="w-3.5 h-3.5 shrink-0" />
+                                        <span className="flex-1 truncate">{f.name}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleFileRemove(i)}
+                                            className="text-muted-foreground hover:text-destructive"
+                                        >
+                                            <X className="w-3.5 h-3.5" />
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+
+                    {/* 7. Observações */}
                     <div>
                         <Label htmlFor="dplus_notes">Observações</Label>
                         <Textarea
@@ -360,9 +537,9 @@ export function DPlusSaleModal({ open, onClose, onSaved }: DPlusSaleModalProps) 
                 </div>
 
                 <DialogFooter>
-                    <Button variant="outline" onClick={onClose}>Cancelar</Button>
-                    <Button onClick={handleSubmit} disabled={createMutation.isPending}>
-                        {createMutation.isPending ? 'Salvando...' : 'Salvar Venda D+'}
+                    <Button variant="outline" onClick={onClose} disabled={isSaving}>Cancelar</Button>
+                    <Button onClick={handleSubmit} disabled={isSaving}>
+                        {isSaving ? 'Salvando...' : 'Salvar Venda D+'}
                     </Button>
                 </DialogFooter>
 
@@ -406,69 +583,67 @@ export function DPlusSaleModal({ open, onClose, onSaved }: DPlusSaleModalProps) 
                     </DialogContent>
                 </Dialog>
 
-                {/* Inline Vendedor creation modal */}
+                {/* Inline Vendedor (Funcionário) creation modal */}
                 <Dialog
                     open={isVendedorModalOpen}
                     onOpenChange={(openState) => { setIsVendedorModalOpen(openState); if (!openState) resetVendedorForm(); }}
                 >
-                    <DialogContent className="max-w-md">
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>Novo Vendedor</DialogTitle>
                             <DialogDescription>
-                                Crie um novo usuário com perfil de vendedor.
+                                Cadastre um novo funcionário para usar como vendedor nesta venda.
                             </DialogDescription>
                         </DialogHeader>
-                        <form className="space-y-4 mt-4" onSubmit={handleSubmitVendedor}>
-                            <div>
-                                <label className="block text-sm font-medium text-foreground mb-2">Nome</label>
-                                <input
-                                    type="text"
-                                    className="input-financial"
-                                    value={vendedorFormData.name}
-                                    onChange={(e) => setVendedorFormData({ ...vendedorFormData, name: e.target.value })}
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-foreground mb-2">Email</label>
-                                <input
-                                    type="email"
-                                    className="input-financial"
-                                    value={vendedorFormData.email}
-                                    onChange={(e) => setVendedorFormData({ ...vendedorFormData, email: e.target.value })}
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-foreground mb-2">Senha</label>
-                                <input
-                                    type="password"
-                                    className="input-financial"
-                                    value={vendedorFormData.password}
-                                    onChange={(e) => setVendedorFormData({ ...vendedorFormData, password: e.target.value })}
-                                    minLength={6}
-                                    required
-                                />
-                                <p className="text-xs text-muted-foreground mt-1">Mínimo 6 caracteres</p>
-                            </div>
-                            <div className="flex justify-end gap-3 pt-4">
-                                <button
-                                    type="button"
-                                    className="btn-secondary"
-                                    onClick={() => { setIsVendedorModalOpen(false); resetVendedorForm(); }}
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="btn-primary"
-                                    disabled={createUserMutation.isPending}
-                                >
-                                    {createUserMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                                    Criar Vendedor
-                                </button>
-                            </div>
-                        </form>
+                        <FavorecidoForm
+                            formData={vendedorFormData}
+                            setFormData={setVendedorFormData}
+                            editingId={null}
+                            photoPreview={vendedorPhotoPreview}
+                            fileInputRef={vendedorFileInputRef}
+                            cameraInputRef={vendedorCameraInputRef}
+                            documentInputRef={vendedorDocumentInputRef}
+                            favorecidoDocuments={[]}
+                            documentsLoading={false}
+                            favorecidoLogs={[]}
+                            logsLoading={false}
+                            isUploadingDocument={false}
+                            isDeletingPhoto={false}
+                            isSaving={createFavorecido.isPending}
+                            onPhotoSelect={handleVendedorPhotoSelect}
+                            onRemovePhoto={() => { setSelectedVendedorPhoto(null); setVendedorPhotoPreview(null); }}
+                            onDocumentUpload={() => {}}
+                            onDeleteDocument={() => {}}
+                            onSubmit={handleSubmitVendedor}
+                            onCancel={() => { setIsVendedorModalOpen(false); resetVendedorForm(); }}
+                        />
+                    </DialogContent>
+                </Dialog>
+
+                {/* Completion modal */}
+                <Dialog open={!!completedSaleId} onOpenChange={() => handleCloseCompleted()}>
+                    <DialogContent className="max-w-sm">
+                        <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                                <CheckCircle className="w-5 h-5 text-green-500" />
+                                Venda Registrada!
+                            </DialogTitle>
+                        </DialogHeader>
+                        <div className="py-4 space-y-3 text-sm text-muted-foreground">
+                            <p>
+                                A venda D+ foi registrada com sucesso.
+                            </p>
+                            <p className="font-medium text-foreground">
+                                Lançamento financeiro criado automaticamente.
+                            </p>
+                        </div>
+                        <DialogFooter className="gap-2 sm:gap-2">
+                            <Button variant="outline" onClick={handlePrint} className="gap-2">
+                                <Printer className="w-4 h-4" />
+                                Imprimir Comprovante
+                            </Button>
+                            <Button onClick={handleCloseCompleted}>Fechar</Button>
+                        </DialogFooter>
                     </DialogContent>
                 </Dialog>
             </DialogContent>

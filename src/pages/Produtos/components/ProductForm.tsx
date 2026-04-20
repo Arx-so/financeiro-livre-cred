@@ -385,7 +385,7 @@ export function ProductForm({
                     </h4>
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">Nome *</label>
+                    <label className="block text-sm font-medium text-foreground mb-2">Nome Do produto</label>
                     <input
                         type="text"
                         className="input-financial"

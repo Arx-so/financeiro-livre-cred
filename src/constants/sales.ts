@@ -99,5 +99,21 @@ export const DPLUS_SALE_STATUSES = {
     CANCELADO: 'cancelado',
 } as const;
 
+export const DPLUS_PAYMENT_METHODS = {
+    PIX: 'pix',
+    TRANSFERENCIA: 'transferencia',
+    CHEQUE: 'cheque',
+    ESPECIE: 'especie',
+} as const;
+
+export const DPLUS_PAYMENT_METHOD_LABELS: Record<string, string> = {
+    pix: 'PIX',
+    transferencia: 'Transferência Bancária',
+    cheque: 'Cheque',
+    especie: 'Espécie',
+};
+
+export const DPLUS_PAYMENT_METHODS_WITH_INFO: string[] = ['pix', 'transferencia'];
+
 /** Payment methods that require account selection (PIX/TEC) */
 export const PAYMENT_METHODS_REQUIRING_ACCOUNT: string[] = ['pix', 'tec', 'pix_especie'];

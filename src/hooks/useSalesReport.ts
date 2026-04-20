@@ -12,12 +12,13 @@ export interface UseSalesReportOptions {
     dateTo: string;
     terminals?: string[];
     sellerIds?: string[];
+    branchId?: string;
 }
 
 export function useSalesReport(options: UseSalesReportOptions) {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
     const isAdm = unidadeAtual?.code === 'ADM';
-    const branchId = isAdm ? '' : (unidadeAtual?.id ?? '');
+    const branchId = isAdm ? (options.branchId ?? '') : (unidadeAtual?.id ?? '');
 
     const filters: SalesReportFilters = {
         branchId,

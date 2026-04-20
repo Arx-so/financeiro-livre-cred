@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { uploadFile } from '@/services/storage';
 import { createFinancialEntries } from '@/services/financeiro';
 import type {
     SalesDPlusProduct,
@@ -30,7 +31,7 @@ export async function getDPlusSales(
         .select(`
             *,
             client:favorecidos!sales_d_plus_products_client_id_fkey(id, name, document, phone),
-            seller:profiles!sales_d_plus_products_seller_id_fkey(id, name)
+            seller:favorecidos!sales_d_plus_products_seller_id_fkey(id, name)
         `)
         .order('created_at', { ascending: false });
 
@@ -64,13 +65,23 @@ export async function getDPlusSaleById(id: string): Promise<SalesDPlusWithRelati
         .select(`
             *,
             client:favorecidos!sales_d_plus_products_client_id_fkey(id, name, document, phone),
-            seller:profiles!sales_d_plus_products_seller_id_fkey(id, name)
+            seller:favorecidos!sales_d_plus_products_seller_id_fkey(id, name)
         `)
         .eq('id', id)
         .maybeSingle();
 
     if (error) throw error;
     return data as SalesDPlusWithRelations | null;
+}
+
+export async function uploadDPlusDocument(
+    file: File,
+    branchId: string,
+    saleId: string,
+): Promise<string> {
+    const ext = file.name.split('.').pop() ?? 'bin';
+    const path = `dplus/${branchId}/${saleId}/${Date.now()}.${ext}`;
+    return uploadFile('documents', path, file);
 }
 
 export async function createDPlusSale(data: SalesDPlusProductInsert): Promise<SalesDPlusProduct> {

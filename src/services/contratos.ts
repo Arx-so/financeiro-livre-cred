@@ -17,6 +17,7 @@ export interface ContractWithRelations extends Contract {
   product?: { id: string; name: string; code: string | null } | null;
   seller?: { id: string; name: string } | null;
   approver?: { id: string; name: string } | null;
+  creator?: { id: string; name: string } | null;
   files?: ContractFile[];
 }
 
@@ -41,6 +42,7 @@ export async function getContracts(filters: ContractFilters = {}): Promise<Contr
             product:products!product_id(id, name, code),
             seller:profiles!seller_id(id, name, email),
             approver:profiles!approved_by(id, name),
+            creator:profiles!created_by(id, name),
             files:contract_files(*)
         `)
         .order('created_at', { ascending: false });
@@ -94,6 +96,7 @@ export async function getContract(id: string): Promise<ContractWithRelations | n
             product:products!product_id(id, name, code),
             seller:profiles!seller_id(id, name, email),
             approver:profiles!approved_by(id, name),
+            creator:profiles!created_by(id, name),
             files:contract_files(*)
         `)
         .eq('id', id)

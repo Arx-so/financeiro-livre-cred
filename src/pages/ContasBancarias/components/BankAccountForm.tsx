@@ -1,4 +1,5 @@
 import { Loader2 } from 'lucide-react';
+import { CurrencyInput } from '@/components/ui/currency-input';
 
 interface BankAccountFormProps {
     form: any;
@@ -85,13 +86,9 @@ export function BankAccountForm({
 
             <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Saldo Inicial</label>
-                <input
-                    type="number"
-                    step="0.01"
-                    className="input-financial"
-                    placeholder="0,00"
-                    value={form.initial_balance}
-                    onChange={(e) => setForm({ ...form, initial_balance: e.target.value })}
+                <CurrencyInput
+                    value={form.initial_balance ?? 0}
+                    onChange={(value) => setForm({ ...form, initial_balance: value })}
                 />
             </div>
 

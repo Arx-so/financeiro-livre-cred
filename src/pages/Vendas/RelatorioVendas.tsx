@@ -24,10 +24,11 @@ import {
 import { useSalesReport } from '@/hooks/useSalesReport';
 import { useCreditCardSales } from '@/hooks/useSalesCreditCard';
 import { useDPlusSales } from '@/hooks/useSalesDPlus';
+import { useBranches } from '@/hooks/useBranches';
 import { exportReportToCSV } from '@/services/salesReport';
 import { TERMINAL_LABELS, CARD_BRAND_LABELS, PAYMENT_METHOD_LABELS } from '@/constants/sales';
 import { useBranchStore } from '@/stores';
-import type { SalesCreditCardWithRelations } from '@/services/salesCreditCard';
+import type { CCSaleRow } from '@/services/salesReport';
 import type { SalesDPlusWithRelations } from '@/services/salesDPlus';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -66,7 +67,7 @@ const DPLUS_STATUS_LABELS: Record<string, string> = {
 // ─── Credit Card Detail Table ─────────────────────────────────────────────────
 
 interface CreditCardTableProps {
-    sales: SalesCreditCardWithRelations[];
+    sales: CCSaleRow[];
 }
 
 function CreditCardTable({ sales }: CreditCardTableProps) {
@@ -80,14 +81,16 @@ function CreditCardTable({ sales }: CreditCardTableProps) {
         );
     }
 
+    const getTerminalLabel = (terminal: string) => TERMINAL_LABELS[terminal] ?? (terminal === 'legado' ? 'Sem Maquineta (Legado)' : terminal);
+
     // Group by terminal, then collect subtotals
-    const grouped = new Map<string, SalesCreditCardWithRelations[]>();
+    const grouped = new Map<string, CCSaleRow[]>();
     for (const s of sales) {
         if (!grouped.has(s.terminal)) grouped.set(s.terminal, []);
         grouped.get(s.terminal)!.push(s);
     }
     const sortedTerminals = Array.from(grouped.keys()).sort((a, b) => (
-        (TERMINAL_LABELS[a] ?? a).localeCompare(TERMINAL_LABELS[b] ?? b)
+        getTerminalLabel(a).localeCompare(getTerminalLabel(b))
     ));
 
     const grandTotalSale = sales.reduce((sum, s) => sum + s.sale_value, 0);
@@ -131,9 +134,16 @@ function CreditCardTable({ sales }: CreditCardTableProps) {
                                             {formatDate(s.sale_date ?? s.created_at)}
                                         </TableCell>
                                         <TableCell className="text-sm">{s.seller?.name ?? '—'}</TableCell>
-                                        <TableCell className="text-sm">{s.client?.name ?? '—'}</TableCell>
                                         <TableCell className="text-sm">
-                                            {TERMINAL_LABELS[s.terminal] ?? s.terminal}
+                                            <span>{s.client?.name ?? '—'}</span>
+                                            {s.is_legacy && (
+                                                <span className="ml-1.5 text-xs bg-amber-500/15 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded font-medium">
+                                                    Legado
+                                                </span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-sm">
+                                            {getTerminalLabel(s.terminal)}
                                         </TableCell>
                                         <TableCell className="text-sm">
                                             {CARD_BRAND_LABELS[s.card_brand] ?? s.card_brand}
@@ -173,7 +183,7 @@ function CreditCardTable({ sales }: CreditCardTableProps) {
                                 ))}
                                 <TableRow className="bg-muted/50 font-semibold text-sm">
                                     <TableCell colSpan={7}>
-                                        {`Subtotal ${TERMINAL_LABELS[terminal] ?? terminal}`}
+                                        {`Subtotal ${getTerminalLabel(terminal)}`}
                                     </TableCell>
                                     <TableCell className="text-right font-mono">
                                         {formatCurrency(subSale)}
@@ -519,19 +529,26 @@ function SellerBreakdownTable({ data }: SellerBreakdownTableProps) {
 
 export default function RelatorioVendas() {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
+    const isAdm = unidadeAtual?.code === 'ADM';
 
     const today = todayISO();
     const [dateFrom, setDateFrom] = useState(today);
     const [dateTo, setDateTo] = useState(today);
     const [terminalFilter, setTerminalFilter] = useState<string>('all');
     const [sellerFilter, setSellerFilter] = useState<string>('all');
+    const [branchFilter, setBranchFilter] = useState<string>('all');
+
+    const { data: branches = [] } = useBranches();
+    const filteredBranches = branches.filter((b) => b.code !== 'ADM');
+
+    const selectedBranchId = isAdm && branchFilter !== 'all' ? branchFilter : undefined;
 
     // Build terminal/seller filter arrays from single-select values
     const terminals = terminalFilter !== 'all' ? [terminalFilter] : undefined;
 
     // Fetch data via existing hooks for seller list population
-    const { data: allCCSales = [] } = useCreditCardSales({ dateFrom, dateTo });
-    const { data: allDPlusSales = [] } = useDPlusSales({ dateFrom, dateTo });
+    const { data: allCCSales = [] } = useCreditCardSales({ dateFrom, dateTo, branchId: selectedBranchId });
+    const { data: allDPlusSales = [] } = useDPlusSales({ dateFrom, dateTo, branchId: selectedBranchId });
 
     // Build seller options from both sale types
     const sellerOptions = useMemo(() => {
@@ -552,6 +569,7 @@ export default function RelatorioVendas() {
         dateTo,
         terminals,
         sellerIds,
+        branchId: selectedBranchId,
     });
 
     const handleExportCSV = () => {
@@ -627,6 +645,22 @@ export default function RelatorioVendas() {
                             </SelectContent>
                         </Select>
                     </div>
+                    {isAdm && (
+                        <div className="flex flex-col gap-1">
+                            <span className="text-xs text-muted-foreground font-medium">Filial</span>
+                            <Select value={branchFilter} onValueChange={setBranchFilter}>
+                                <SelectTrigger className="w-44">
+                                    <SelectValue placeholder="Todas as filiais" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Todas as filiais</SelectItem>
+                                    {filteredBranches.map((b) => (
+                                        <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
                     <div className="flex flex-col gap-1">
                         <span className="text-xs text-muted-foreground font-medium">Vendedor</span>
                         <Select value={sellerFilter} onValueChange={setSellerFilter}>

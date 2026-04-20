@@ -284,7 +284,6 @@ function CreditCardTab() {
                                     <TableHead className="text-right">Valor Venda</TableHead>
                                     <TableHead className="text-right">Maquineta</TableHead>
                                     <TableHead>Status</TableHead>
-                                    <TableHead className="w-32">Lançamentos</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -330,24 +329,6 @@ function CreditCardTab() {
                                                     ))}
                                                 </SelectContent>
                                             </Select>
-                                        </TableCell>
-                                        <TableCell onClick={(e) => e.stopPropagation()}>
-                                            {sale.financial_entries_generated ? (
-                                                <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
-                                                    <CheckCircle2 className="w-3.5 h-3.5" />
-                                                    Gerados
-                                                </span>
-                                            ) : (
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="h-7 text-xs"
-                                                    onClick={() => openGenerateModal(sale)}
-                                                >
-                                                    <TrendingUp className="w-3 h-3 mr-1" />
-                                                    Gerar
-                                                </Button>
-                                            )}
                                         </TableCell>
                                     </TableRow>
                                 ))}
