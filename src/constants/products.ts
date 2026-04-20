@@ -47,6 +47,8 @@ export const CARD_MACHINES = [
     { value: 'mercadopago', label: 'Mercado Pago' },
     { value: 'sumup', label: 'SumUp' },
     { value: 'safra', label: 'Safra' },
+    { value: 'c6', label: 'C6' },
+    { value: 'pagueveloz', label: 'PagueVeloz' },
     { value: 'outra', label: 'Outra' },
 ] as const;
 
