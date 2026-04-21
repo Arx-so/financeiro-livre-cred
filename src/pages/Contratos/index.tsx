@@ -52,9 +52,8 @@ import {
     approveContract,
     rejectContract,
     generateFinancialEntriesFromContract,
-    previewContractEntries,
 } from '@/services/contratos';
-import { getFinancialEntriesByContractId } from '@/services/financeiro';
+import { getFinancialEntriesByContractId, deleteFinancialEntries } from '@/services/financeiro';
 import { useCategories } from '@/hooks/useCategorias';
 import {
     useFavorecidos, useVendedores, useCreateFavorecido, useUploadFavorecidoPhoto
@@ -87,6 +86,7 @@ import { ProductForm, type ProductFormData } from '@/pages/Produtos/components/P
 import { ProductTypeModal } from '@/pages/Produtos/components/ProductTypeModal';
 import { KanbanView } from './KanbanView';
 import { ContractViewerModal } from './ContractViewerModal';
+import { ContractCreditCardReceipt } from './ContractCreditCardReceipt';
 import type { ContractWithRelations } from '@/services/contratos';
 
 export default function Contratos() {
@@ -112,11 +112,6 @@ export default function Contratos() {
     const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
     const [pdfContractId, setPdfContractId] = useState<string | null>(null);
     const [pdfIntent, setPdfIntent] = useState<'download' | 'print'>('download');
-
-    // Generate entries modal state
-    const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
-    const [generateContractId, setGenerateContractId] = useState<string | null>(null);
-    const [isGeneratingEntries, setIsGeneratingEntries] = useState(false);
 
     // Comprovante CC modal
     const [comprovanteContract, setComprovanteContract] = useState<any | null>(null);
@@ -777,7 +772,19 @@ export default function Contratos() {
         };
 
         if (editingId) {
-            updateMutation.mutate({ id: editingId, data: contractData });
+            const currentEditingId = editingId;
+            try {
+                const updated = await updateMutation.mutateAsync({ id: currentEditingId, data: contractData });
+                // onSuccess already closed modal and reset form
+                const oldEntries = await getFinancialEntriesByContractId(currentEditingId);
+                if (oldEntries.length > 0) {
+                    await deleteFinancialEntries(oldEntries.map((entry) => entry.id));
+                }
+                await generateFinancialEntriesFromContract(updated as ContractWithRelations, product);
+                queryClient.invalidateQueries({ queryKey: ['financial-entries'] });
+            } catch {
+                // Error already handled by mutation's onError
+            }
         } else {
             const created = await createMutation.mutateAsync(contractData);
             if (pendingFiles.length > 0 && created?.id) {
@@ -786,33 +793,37 @@ export default function Contratos() {
                 );
                 queryClient.invalidateQueries({ queryKey: ['contracts'] });
             }
+            if (created?.id) {
+                try {
+                    await generateFinancialEntriesFromContract(created as ContractWithRelations, product);
+                    queryClient.invalidateQueries({ queryKey: ['financial-entries'] });
+                } catch {
+                    toast.warning('Venda criada, mas erro ao gerar lançamentos financeiros');
+                }
+            }
         }
     }, [formData, editingId, unidadeAtual?.id, products, ccRate, autoTitle, createMutation, updateMutation, pendingFiles, user?.id, queryClient]);
 
-    const handleDelete = useCallback((id: string, title: string, status: string) => {
-        if (status === 'aprovado') {
-            toast.error('Não é possível excluir um contrato aprovado');
-            return;
-        }
+    const handleDelete = useCallback((id: string, title: string) => {
         confirm(async () => {
             setIsDeleting(true);
             try {
+                const oldEntries = await getFinancialEntriesByContractId(id);
+                if (oldEntries.length > 0) {
+                    await deleteFinancialEntries(oldEntries.map((entry) => entry.id));
+                }
                 await deleteMutation.mutateAsync(id);
             } finally {
                 setIsDeleting(false);
             }
         }, {
-            title: 'Excluir contrato',
-            description: `Tem certeza que deseja excluir "${title}"?`,
+            title: 'Excluir venda',
+            description: `Tem certeza que deseja excluir "${title}"? Os lançamentos financeiros também serão excluídos.`,
             confirmText: 'Excluir',
         });
     }, [confirm, deleteMutation]);
 
     const openEditModal = useCallback((contract: any) => {
-        if (contract.status === 'aprovado') {
-            toast.error('Não é possível editar um contrato aprovado');
-            return;
-        }
         const product = contract.product_id
             ? products?.find((p) => p.id === contract.product_id)
             : null;
@@ -907,69 +918,6 @@ export default function Contratos() {
             }
         }
     }, [uploadFileMutation]);
-
-    // Query to check which contracts already have financial entries
-    const approvedContractIds = useMemo(
-        () => (contracts || [])
-            .filter((c) => c.status === 'aprovado' || c.status === 'ativo')
-            .map((c) => c.id),
-        [contracts]
-    );
-
-    const { data: contractsWithEntries } = useQuery({
-        queryKey: ['contract-entries-check', approvedContractIds],
-        queryFn: async () => {
-            const results: Record<string, boolean> = {};
-            await Promise.all(
-                approvedContractIds.map(async (id) => {
-                    const entries = await getFinancialEntriesByContractId(id);
-                    results[id] = entries.length > 0;
-                })
-            );
-            return results;
-        },
-        enabled: approvedContractIds.length > 0,
-    });
-
-    // Preview data for the generate modal
-    const generatePreview = useMemo(() => {
-        if (!generateContractId) return null;
-        const contract = contracts?.find((c) => c.id === generateContractId);
-        if (!contract) return null;
-        const product = contract.product_id
-            ? products?.find((p) => p.id === contract.product_id) ?? null
-            : null;
-        return previewContractEntries(contract as any, product ?? null);
-    }, [generateContractId, contracts, products]);
-
-    const handleGenerateEntries = useCallback(async () => {
-        if (!generateContractId) return;
-        const contract = contracts?.find((c) => c.id === generateContractId);
-        if (!contract) return;
-        const product = contract.product_id
-            ? products?.find((p) => p.id === contract.product_id) ?? null
-            : null;
-
-        setIsGeneratingEntries(true);
-        try {
-            const count = await generateFinancialEntriesFromContract(contract as any, product ?? null);
-            toast.success(`${count} lançamentos financeiros criados!`);
-            queryClient.invalidateQueries({ queryKey: ['contract-entries-check'] });
-            queryClient.invalidateQueries({ queryKey: ['financial-entries'] });
-            setIsGenerateModalOpen(false);
-            setGenerateContractId(null);
-        } catch (error) {
-            console.error('Error generating entries:', error);
-            toast.error('Erro ao gerar lançamentos financeiros');
-        } finally {
-            setIsGeneratingEntries(false);
-        }
-    }, [generateContractId, contracts, products, queryClient]);
-
-    const openGenerateModal = useCallback((contractId: string) => {
-        setGenerateContractId(contractId);
-        setIsGenerateModalOpen(true);
-    }, []);
 
     const isSaving = createMutation.isPending || updateMutation.isPending;
 
@@ -1563,10 +1511,8 @@ export default function Contratos() {
                     ) : (
                         <KanbanView
                             contracts={contracts || []}
-                            contractsWithEntries={contractsWithEntries}
                             onApprove={handleApprove}
                             onReject={handleReject}
-                            onGenerateEntries={openGenerateModal}
                             onResubmit={handleSubmitForApproval}
                             isApprovePending={approveMutation.isPending}
                             isRejectPending={rejectMutation.isPending}
@@ -1668,15 +1614,13 @@ export default function Contratos() {
                                         <FileText className="w-4 h-4" />
                                         Ver
                                     </button>
-                                    {contract.status !== 'aprovado' && (
-                                        <button
-                                            className="btn-secondary py-2"
-                                            onClick={() => openEditModal(contract)}
-                                        >
-                                            <Edit className="w-4 h-4" />
-                                            Editar
-                                        </button>
-                                    )}
+                                    <button
+                                        className="btn-secondary py-2"
+                                        onClick={() => openEditModal(contract)}
+                                    >
+                                        <Edit className="w-4 h-4" />
+                                        Editar
+                                    </button>
 
                                     {/* Workflow buttons based on status */}
                                     {contract.status === 'criado' && (
@@ -1719,24 +1663,6 @@ export default function Contratos() {
                                         >
                                             <Send className="w-4 h-4" />
                                             Re-enviar p/ Aprovação
-                                        </button>
-                                    )}
-
-                                    {(contract.status === 'aprovado' || contract.status === 'ativo') && (
-                                        <button
-                                            className="btn-primary py-2"
-                                            onClick={() => openGenerateModal(contract.id)}
-                                            disabled={contractsWithEntries?.[contract.id]}
-                                            title={
-                                                contractsWithEntries?.[contract.id]
-                                                    ? 'Lançamentos já gerados'
-                                                    : 'Gerar lançamentos financeiros'
-                                            }
-                                        >
-                                            <DollarSign className="w-4 h-4" />
-                                            {contractsWithEntries?.[contract.id]
-                                                ? 'Lançamentos gerados'
-                                                : 'Gerar Lançamentos'}
                                         </button>
                                     )}
 
@@ -1790,14 +1716,12 @@ export default function Contratos() {
                                             Comprovante
                                         </button>
                                     )}
-                                    {contract.status !== 'aprovado' && (
-                                        <button
-                                            className="btn-secondary py-2 text-destructive hover:bg-destructive/10"
-                                            onClick={() => handleDelete(contract.id, contract.title, contract.status)}
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
-                                    )}
+                                    <button
+                                        className="btn-secondary py-2 text-destructive hover:bg-destructive/10"
+                                        onClick={() => handleDelete(contract.id, contract.title)}
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
                                 </div>
                             </div>
                         ))}
@@ -1805,111 +1729,14 @@ export default function Contratos() {
                 )}
             </div>
 
-            {/* Comprovante CC Modal */}
-            <Dialog open={!!comprovanteContract} onOpenChange={(open) => { if (!open) setComprovanteContract(null); }}>
-                <DialogContent className="max-w-md print:shadow-none">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <CheckCircle className="w-5 h-5 text-green-500" />
-                            Comprovante — Cartão de Crédito
-                        </DialogTitle>
-                        <DialogDescription>
-                            {comprovanteContract?.title}
-                        </DialogDescription>
-                    </DialogHeader>
-                    {comprovanteContract && (
-                        <div className="space-y-3 py-2 text-sm">
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                                <span className="text-muted-foreground">Data</span>
-                                <span className="font-medium">{formatDate(comprovanteContract.start_date)}</span>
-
-                                <span className="text-muted-foreground">Cliente</span>
-                                <span className="font-medium">{comprovanteContract.favorecido?.name ?? '—'}</span>
-
-                                <span className="text-muted-foreground">Vendedor</span>
-                                <span className="font-medium">{comprovanteContract.seller?.name ?? '—'}</span>
-
-                                <span className="text-muted-foreground">Maquineta</span>
-                                <span className="font-medium">
-                                    {TERMINAL_LABELS[comprovanteContract.cc_terminal] ?? comprovanteContract.cc_terminal ?? '—'}
-                                </span>
-
-                                <span className="text-muted-foreground">Bandeira</span>
-                                <span className="font-medium">
-                                    {CARD_BRAND_LABELS[comprovanteContract.cc_card_brand] ?? comprovanteContract.cc_card_brand ?? '—'}
-                                    {comprovanteContract.cc_card_last_four && ` •••• ${comprovanteContract.cc_card_last_four}`}
-                                </span>
-
-                                {comprovanteContract.cc_card_holder_name && (
-                                    <>
-                                        <span className="text-muted-foreground">Titular</span>
-                                        <span className="font-medium">{comprovanteContract.cc_card_holder_name}</span>
-                                    </>
-                                )}
-
-                                <span className="text-muted-foreground">Tipo de Venda</span>
-                                <span className="font-medium">
-                                    {SALE_TYPE_LABELS[comprovanteContract.cc_sale_type] ?? comprovanteContract.cc_sale_type ?? '—'}
-                                </span>
-
-                                <span className="text-muted-foreground">Pagamento</span>
-                                <span className="font-medium">
-                                    {PAYMENT_METHOD_LABELS[comprovanteContract.cc_payment_method] ?? comprovanteContract.cc_payment_method ?? '—'}
-                                    {comprovanteContract.cc_payment_account && ` — ${TRANSFER_SOURCE_LABELS[comprovanteContract.cc_payment_account] ?? comprovanteContract.cc_payment_account}`}
-                                </span>
-
-                                <span className="text-muted-foreground">Parcelas</span>
-                                <span className="font-medium">{comprovanteContract.installments ?? 1}x</span>
-
-                                <span className="text-muted-foreground font-semibold">Valor na Maquineta</span>
-                                <span className="font-semibold">{formatCurrency(comprovanteContract.value)}</span>
-
-                                <span className="text-muted-foreground font-semibold">Valor Liberado</span>
-                                <span className="font-semibold">
-                                    {comprovanteContract.cc_amount_released != null
-                                        ? formatCurrency(comprovanteContract.cc_amount_released)
-                                        : '—'}
-                                </span>
-
-                                {(comprovanteContract.cc_discount_amount ?? 0) > 0 && (
-                                    <>
-                                        <span className="text-muted-foreground">Desconto</span>
-                                        <span className="font-medium">{formatCurrency(comprovanteContract.cc_discount_amount)}</span>
-                                    </>
-                                )}
-
-                                {comprovanteContract.cc_lacre && (
-                                    <>
-                                        <span className="text-muted-foreground">Lacre</span>
-                                        <span className="font-mono font-medium">{comprovanteContract.cc_lacre}</span>
-                                    </>
-                                )}
-                            </div>
-
-                            {comprovanteContract.notes && (
-                                <p className="text-xs text-muted-foreground border-t pt-2">{comprovanteContract.notes}</p>
-                            )}
-                        </div>
-                    )}
-                    <div className="flex justify-end gap-2 pt-2 border-t">
-                        <button
-                            type="button"
-                            className="btn-secondary py-2"
-                            onClick={() => window.print()}
-                        >
-                            <Printer className="w-4 h-4" />
-                            Imprimir Comprovante
-                        </button>
-                        <button
-                            type="button"
-                            className="btn-primary py-2"
-                            onClick={() => setComprovanteContract(null)}
-                        >
-                            Fechar
-                        </button>
-                    </div>
-                </DialogContent>
-            </Dialog>
+            {comprovanteContract && (
+                <ContractCreditCardReceipt
+                    contract={comprovanteContract}
+                    branchName={unidadeAtual?.name ?? undefined}
+                    open={!!comprovanteContract}
+                    onClose={() => setComprovanteContract(null)}
+                />
+            )}
 
             {/* Template Selection Modal for PDF (download e impressão usam o mesmo PDF) */}
             <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
@@ -2091,107 +1918,6 @@ export default function Contratos() {
                             </button>
                         </div>
                     </form>
-                </DialogContent>
-            </Dialog>
-
-            {/* Generate Financial Entries Modal */}
-            <Dialog open={isGenerateModalOpen} onOpenChange={(open) => { setIsGenerateModalOpen(open); if (!open) setGenerateContractId(null); }}>
-                <DialogContent className="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Gerar Lançamentos Financeiros</DialogTitle>
-                        <DialogDescription>
-                            Confira o resumo dos lançamentos que serão criados para esta venda.
-                        </DialogDescription>
-                    </DialogHeader>
-                    {generatePreview && (
-                        <div className="space-y-4 mt-4">
-                            <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
-                                <h4 className="text-sm font-semibold text-emerald-700 dark:text-emerald-400 mb-2">
-                                    Receita
-                                </h4>
-                                {generatePreview.isCartaoCredito ? (
-                                    <div className="space-y-1 text-sm text-emerald-600 dark:text-emerald-300">
-                                        <div className="flex justify-between">
-                                            <span>Valor cobrado na maquineta</span>
-                                            <span className="font-mono">{formatCurrency(generatePreview.ccGrossValue ?? 0)}</span>
-                                        </div>
-                                        <div className="flex justify-between text-emerald-500 dark:text-emerald-400">
-                                            <span>
-                                                Taxa da maquineta (
-                                                {generatePreview.ccMachineFee ?? 0}
-                                                %)
-                                            </span>
-                                            <span className="font-mono">
-                                                −
-                                                {formatCurrency(generatePreview.ccMachineFeeValue ?? 0)}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between font-semibold border-t border-emerald-200 dark:border-emerald-700 pt-1 mt-1">
-                                            <span>Receita líquida</span>
-                                            <span className="font-mono">{formatCurrency(generatePreview.revenueInstallmentValue)}</span>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <p className="text-sm text-emerald-600 dark:text-emerald-300">
-                                            {generatePreview.revenueCount}
-                                            {' '}
-                                            parcela(s) de
-                                            {' '}
-                                            {formatCurrency(generatePreview.revenueInstallmentValue)}
-                                        </p>
-                                        {generatePreview.interestRate > 0 && (
-                                            <p className="text-xs text-emerald-500 dark:text-emerald-400 mt-1">
-                                                Juros:
-                                                {' '}
-                                                {generatePreview.interestRate}
-                                                % a.m. (Tabela Price) — Total:
-                                                {' '}
-                                                {formatCurrency(generatePreview.totalWithInterest)}
-                                            </p>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                            {generatePreview.expenses.length > 0 && (
-                                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
-                                    <h4 className="text-sm font-semibold text-red-700 dark:text-red-400 mb-1">
-                                        Despesas
-                                    </h4>
-                                    <ul className="space-y-1">
-                                        {generatePreview.expenses.map((exp, i) => (
-                                            <li key={i} className="text-sm text-red-600 dark:text-red-300 flex justify-between">
-                                                <span>{exp.description}</span>
-                                                <span className="font-mono">{formatCurrency(exp.value)}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                    <div className="mt-2 pt-2 border-t border-red-200 dark:border-red-800 text-sm font-semibold text-red-700 dark:text-red-400 flex justify-between">
-                                        <span>Total despesas</span>
-                                        <span className="font-mono">{formatCurrency(generatePreview.totalExpenses)}</span>
-                                    </div>
-                                </div>
-                            )}
-                            <div className="flex justify-end gap-3 pt-4">
-                                <button
-                                    type="button"
-                                    className="btn-secondary"
-                                    onClick={() => { setIsGenerateModalOpen(false); setGenerateContractId(null); }}
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="button"
-                                    className="btn-primary"
-                                    onClick={handleGenerateEntries}
-                                    disabled={isGeneratingEntries}
-                                >
-                                    {isGeneratingEntries && <Loader2 className="w-4 h-4 animate-spin" />}
-                                    Confirmar e gerar
-                                </button>
-                            </div>
-                        </div>
-                    )}
                 </DialogContent>
             </Dialog>
 

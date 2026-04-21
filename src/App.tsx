@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import Financeiro from "./pages/Financeiro";
 import FinanceiroDetalhe from "./pages/Financeiro/FinanceiroDetalhe";
 import Favorecidos from "./pages/Favorecidos";
+import FavorecidoDetail from "./pages/Favorecidos/detail";
 import Categorias from "./pages/Categorias";
 import ContasBancarias from "./pages/ContasBancarias";
 import Filiais from "./pages/Filiais";
@@ -130,6 +131,7 @@ function AppRoutes() {
             <Route path="/programacao" element={<ProtectedRoute><Programacao /></ProtectedRoute>} />
             <Route path="/planejamento" element={<ProtectedRoute><Planejamento /></ProtectedRoute>} />
             <Route path="/favorecidos" element={<ProtectedRoute><Favorecidos /></ProtectedRoute>} />
+            <Route path="/favorecidos/:id" element={<ProtectedRoute><FavorecidoDetail /></ProtectedRoute>} />
             <Route path="/categorias" element={<ProtectedRoute><Categorias /></ProtectedRoute>} />
             <Route path="/contas-bancarias" element={<ProtectedRoute><ContasBancarias /></ProtectedRoute>} />
             <Route path="/filiais" element={<ProtectedRoute><Filiais /></ProtectedRoute>} />
