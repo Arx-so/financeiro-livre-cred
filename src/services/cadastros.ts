@@ -249,7 +249,11 @@ export async function uploadFavorecidoDocument(
     uploadedBy?: string
 ): Promise<FavorecidoDocument> {
     const fileExt = file.name.split('.').pop();
-    const fileName = `${favorecidoId}/${Date.now()}-${file.name}`;
+    const safeName = file.name
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-zA-Z0-9._-]/g, '_');
+    const fileName = `${favorecidoId}/${Date.now()}-${safeName}`;
 
     // Upload file to storage
     const { error: uploadError } = await supabase.storage

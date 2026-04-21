@@ -108,7 +108,7 @@ function DocPreview({ file, onClose }: DocPreviewProps) {
                             </a>
                         )}
                         <Button variant="ghost" size="sm" onClick={onClose}>
-                            <X className="w-4 h-4" />
+                            <X className="w-4 h-4" style={{ color: 'transparent'}} />
                         </Button>
                     </div>
                 </div>
@@ -231,11 +231,14 @@ export function ContractViewerModal({ contract, open, onClose }: ContractViewerM
                         <Section title="Partes">
                             <Field label="Cliente" value={contract.favorecido?.name} />
                             <Field label="Vendedor" value={contract.seller?.name} />
-                            <Field label="Produto" value={
-                                contract.product
-                                    ? `${contract.product.name}${contract.product.code ? ` (${contract.product.code})` : ''}`
-                                    : null
-                            } />
+                            <Field
+                                label="Produto"
+                                value={
+                                    contract.product
+                                        ? `${contract.product.name}${contract.product.code ? ` (${contract.product.code})` : ''}`
+                                        : null
+                                }
+                            />
                             <Field label="Categoria" value={contract.category?.name} />
                         </Section>
 
