@@ -1,5 +1,5 @@
 import {
-    CheckCircle, XCircle, DollarSign, Send, User, Calendar, Tag,
+    CheckCircle, XCircle, Send, User, Calendar, Tag,
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { getContractStatusBadge } from '@/components/shared/StatusBadge';
@@ -9,10 +9,8 @@ import { cn } from '@/lib/utils';
 
 interface KanbanViewProps {
     contracts: ContractWithRelations[];
-    contractsWithEntries?: Record<string, boolean>;
     onApprove: (id: string) => void;
     onReject: (id: string) => void;
-    onGenerateEntries: (id: string) => void;
     onResubmit: (id: string) => void;
     isApprovePending: boolean;
     isRejectPending: boolean;
@@ -57,10 +55,8 @@ function getColumnContracts(contracts: ContractWithRelations[], key: ColumnKey) 
 interface CardProps {
     contract: ContractWithRelations;
     columnKey: ColumnKey;
-    contractsWithEntries?: Record<string, boolean>;
     onApprove: (id: string) => void;
     onReject: (id: string) => void;
-    onGenerateEntries: (id: string) => void;
     onResubmit: (id: string) => void;
     isApprovePending: boolean;
     isRejectPending: boolean;
@@ -70,16 +66,13 @@ interface CardProps {
 function KanbanCard({
     contract,
     columnKey,
-    contractsWithEntries,
     onApprove,
     onReject,
-    onGenerateEntries,
     onResubmit,
     isApprovePending,
     isRejectPending,
     isResubmitPending,
 }: CardProps) {
-    const hasEntries = contractsWithEntries?.[contract.id];
 
     return (
         <div className="bg-card border border-border rounded-xl p-4 shadow-sm flex flex-col gap-3">
@@ -164,21 +157,6 @@ function KanbanCard({
                     </>
                 )}
 
-                {columnKey === 'aprovado' && (
-                    <button
-                        className={cn(
-                            'py-1.5 px-3 text-xs',
-                            hasEntries ? 'btn-secondary opacity-60 cursor-not-allowed' : 'btn-primary',
-                        )}
-                        onClick={() => !hasEntries && onGenerateEntries(contract.id)}
-                        disabled={!!hasEntries}
-                        title={hasEntries ? 'Lançamentos já gerados' : 'Gerar lançamentos financeiros'}
-                    >
-                        <DollarSign className="w-3.5 h-3.5" />
-                        {hasEntries ? 'Lançamentos gerados' : 'Gerar Lançamentos'}
-                    </button>
-                )}
-
                 {columnKey === 'rejeitado' && (
                     <button
                         className="btn-secondary py-1.5 px-3 text-xs"
@@ -196,10 +174,8 @@ function KanbanCard({
 
 export function KanbanView({
     contracts,
-    contractsWithEntries,
     onApprove,
     onReject,
-    onGenerateEntries,
     onResubmit,
     isApprovePending,
     isRejectPending,
@@ -232,10 +208,8 @@ export function KanbanView({
                                         key={contract.id}
                                         contract={contract}
                                         columnKey={column.key}
-                                        contractsWithEntries={contractsWithEntries}
                                         onApprove={onApprove}
                                         onReject={onReject}
-                                        onGenerateEntries={onGenerateEntries}
                                         onResubmit={onResubmit}
                                         isApprovePending={isApprovePending}
                                         isRejectPending={isRejectPending}

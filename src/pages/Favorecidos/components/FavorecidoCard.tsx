@@ -4,11 +4,11 @@ import {
     Mail,
     Phone,
     MapPin,
-    MoreHorizontal,
     User,
     Building2,
     Users,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import type { FavorecidoTipo } from '@/types/database';
 
 interface FavorecidoCardProps {
@@ -53,8 +53,13 @@ function getTypeBadge(type: FavorecidoTipo) {
 }
 
 export function FavorecidoCard({ favorecido, onEdit, onDelete }: FavorecidoCardProps) {
+    const navigate = useNavigate();
+
     return (
-        <div className="card-financial p-5 group">
+        <div
+            className="card-financial p-5 group cursor-pointer hover:border-primary/30 transition-colors"
+            onClick={() => navigate(`/favorecidos/${favorecido.id}`)}
+        >
             <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                     {favorecido.photo_url ? (
@@ -73,9 +78,6 @@ export function FavorecidoCard({ favorecido, onEdit, onDelete }: FavorecidoCardP
                         {getTypeBadge(favorecido.type)}
                     </div>
                 </div>
-                <button className="p-2 hover:bg-muted rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                    <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-                </button>
             </div>
 
             <div className="space-y-2 text-sm">
@@ -100,14 +102,14 @@ export function FavorecidoCard({ favorecido, onEdit, onDelete }: FavorecidoCardP
             <div className="flex gap-2 mt-4 pt-4 border-t border-border">
                 <button
                     className="btn-secondary flex-1 py-2"
-                    onClick={onEdit}
+                    onClick={(e) => { e.stopPropagation(); onEdit(); }}
                 >
                     <Edit className="w-4 h-4" />
                     Editar
                 </button>
                 <button
                     className="btn-secondary py-2 px-3 text-destructive hover:bg-destructive/10"
-                    onClick={onDelete}
+                    onClick={(e) => { e.stopPropagation(); onDelete(); }}
                 >
                     <Trash2 className="w-4 h-4" />
                 </button>

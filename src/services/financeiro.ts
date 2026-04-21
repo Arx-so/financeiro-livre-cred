@@ -22,6 +22,7 @@ export interface FinancialFilters {
   startDate?: string;
   endDate?: string;
   search?: string;
+  favorecidoId?: string;
 }
 
 export interface FinancialSummary {
@@ -71,6 +72,10 @@ export async function getFinancialEntries(filters: FinancialFilters = {}): Promi
 
     if (filters.search) {
         query = query.or(`description.ilike.%${filters.search}%`);
+    }
+
+    if (filters.favorecidoId) {
+        query = query.eq('favorecido_id', filters.favorecidoId);
     }
 
     const { data, error } = await query;

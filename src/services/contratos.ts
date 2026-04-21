@@ -128,17 +128,6 @@ export async function createContract(contract: ContractInsert): Promise<Contract
 
 // Update contract
 export async function updateContract(id: string, contract: ContractUpdate): Promise<Contract> {
-    // First check if contract is approved - cannot edit approved contracts
-    const { data: existingContract } = await supabase
-        .from('contracts')
-        .select('status')
-        .eq('id', id)
-        .single();
-
-    if (existingContract?.status === 'aprovado') {
-        throw new Error('Não é possível editar um contrato aprovado');
-    }
-
     const { data, error } = await supabase
         .from('contracts')
         .update(contract)
@@ -156,17 +145,6 @@ export async function updateContract(id: string, contract: ContractUpdate): Prom
 
 // Delete contract
 export async function deleteContract(id: string): Promise<void> {
-    // First check if contract is approved - cannot delete approved contracts
-    const { data: existingContract } = await supabase
-        .from('contracts')
-        .select('status')
-        .eq('id', id)
-        .single();
-
-    if (existingContract?.status === 'aprovado') {
-        throw new Error('Não é possível excluir um contrato aprovado');
-    }
-
     // First delete all files from storage
     const { data: files } = await supabase
         .from('contract_files')
