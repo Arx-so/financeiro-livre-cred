@@ -67,7 +67,7 @@ function MaquininhaTab({ sales, isLoading }: { sales: SalesCreditCardWithRelatio
                                     {sale.card_brand}
                                 </td>
                                 <td className="p-3 text-right font-mono-numbers font-semibold text-income">
-                                    {formatCurrency(sale.sale_value)}
+                                    {formatCurrency(sale.terminal_amount)}
                                 </td>
                                 <td className="p-3 text-right font-mono-numbers text-muted-foreground hidden md:table-cell">
                                     {sale.commission_amount != null ? formatCurrency(sale.commission_amount) : '—'}
@@ -128,10 +128,14 @@ export function TabVendas({
         <Tabs defaultValue="maquininha">
             <TabsList className="mb-4">
                 <TabsTrigger value="maquininha">
-                    Maquininha ({creditCardSales.length})
+                    Maquininha (
+                    {creditCardSales.length}
+                    )
                 </TabsTrigger>
                 <TabsTrigger value="dplus">
-                    Produtos D+ ({dplusSales.length})
+                    Produtos D+ (
+                    {dplusSales.length}
+                    )
                 </TabsTrigger>
             </TabsList>
             <TabsContent value="maquininha">

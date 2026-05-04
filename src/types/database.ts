@@ -516,6 +516,12 @@ export interface Database {
           cc_discount_amount: number | null;
           cc_saturday_refund: number | null;
           cc_lacre: string | null;
+          cc_pix_key_type: string | null;
+          cc_pix_key: string | null;
+          cc_bank_name: string | null;
+          cc_bank_agency: string | null;
+          cc_bank_account: string | null;
+          cc_bank_account_type: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -552,6 +558,12 @@ export interface Database {
           cc_discount_amount?: number | null;
           cc_saturday_refund?: number | null;
           cc_lacre?: string | null;
+          cc_pix_key_type?: string | null;
+          cc_pix_key?: string | null;
+          cc_bank_name?: string | null;
+          cc_bank_agency?: string | null;
+          cc_bank_account?: string | null;
+          cc_bank_account_type?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -586,6 +598,12 @@ export interface Database {
           cc_discount_amount?: number | null;
           cc_saturday_refund?: number | null;
           cc_lacre?: string | null;
+          cc_pix_key_type?: string | null;
+          cc_pix_key?: string | null;
+          cc_bank_name?: string | null;
+          cc_bank_agency?: string | null;
+          cc_bank_account?: string | null;
+          cc_bank_account_type?: string | null;
           updated_at?: string;
         };
       };

@@ -52,7 +52,7 @@ export function TabContratos({ contracts, isLoading }: TabContratosProps) {
                                     {contract.product?.name ?? '—'}
                                 </td>
                                 <td className="p-3 text-right font-mono-numbers font-semibold text-foreground">
-                                    {formatCurrency(contract.value)}
+                                    {formatCurrency(contract.cc_amount_released ?? contract.value)}
                                 </td>
                                 <td className="p-3 text-center">
                                     <span className={`badge ${sc.className}`}>{sc.label}</span>
