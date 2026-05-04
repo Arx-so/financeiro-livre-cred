@@ -100,7 +100,7 @@ export function useFavorecidoDetail(id: string) {
     const totalDespesa = entries.filter((e) => e.type === 'despesa').reduce((s, e) => s + e.value, 0);
     const totalPendente = entries.filter((e) => e.status === 'pendente').reduce((s, e) => s + e.value, 0);
     const contratosAtivos = (contracts.data ?? []).filter((c) => c.status === 'ativo').length;
-    const totalVendasCC = (creditCardSales.data ?? []).reduce((s, v) => s + (v.sale_value ?? 0), 0);
+    const totalVendasCC = (creditCardSales.data ?? []).reduce((s, v) => s + (v.terminal_amount ?? 0), 0);
     const totalVendasDP = (dplusSales.data ?? []).reduce((s, v) => s + (v.contract_value ?? 0), 0);
     const ultimoSalario = (payrolls.data ?? [])[0]?.net_salary ?? null;
 

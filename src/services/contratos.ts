@@ -12,7 +12,16 @@ import type {
 import { createFinancialEntries } from '@/services/financeiro';
 
 export interface ContractWithRelations extends Contract {
-  favorecido?: { id: string; name: string } | null;
+  favorecido?: {
+    id: string;
+    name: string;
+    pix_key: string | null;
+    pix_key_type: string | null;
+    bank_name: string | null;
+    bank_agency: string | null;
+    bank_account: string | null;
+    bank_account_type: string | null;
+  } | null;
   category?: { id: string; name: string; color: string } | null;
   product?: { id: string; name: string; code: string | null } | null;
   seller?: { id: string; name: string } | null;
@@ -37,7 +46,7 @@ export async function getContracts(filters: ContractFilters = {}): Promise<Contr
         .from('contracts')
         .select(`
             *,
-            favorecido:favorecidos!favorecido_id(id, name),
+            favorecido:favorecidos!favorecido_id(id, name, pix_key, pix_key_type, bank_name, bank_agency, bank_account, bank_account_type),
             category:categories!category_id(id, name, color),
             product:products!product_id(id, name, code),
             seller:profiles!seller_id(id, name, email),
@@ -91,7 +100,7 @@ export async function getContract(id: string): Promise<ContractWithRelations | n
         .from('contracts')
         .select(`
             *,
-            favorecido:favorecidos!favorecido_id(id, name),
+            favorecido:favorecidos!favorecido_id(id, name, pix_key, pix_key_type, bank_name, bank_agency, bank_account, bank_account_type),
             category:categories!category_id(id, name, color),
             product:products!product_id(id, name, code),
             seller:profiles!seller_id(id, name, email),

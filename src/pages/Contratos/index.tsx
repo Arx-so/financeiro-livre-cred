@@ -145,6 +145,12 @@ export default function Contratos() {
         cc_discount_amount: '',
         cc_saturday_refund: '',
         cc_lacre: '',
+        cc_pix_key_type: '',
+        cc_pix_key: '',
+        cc_bank_name: '',
+        cc_bank_agency: '',
+        cc_bank_account: '',
+        cc_bank_account_type: '',
     });
 
     const isAdm = unidadeAtual?.code === 'ADM';
@@ -190,6 +196,20 @@ export default function Contratos() {
         if (client && product) return `${product} - ${client}`;
         return client || product || 'Nova venda';
     }, [selectedFavorecido, selectedProduct]);
+
+    // Pre-fill payment details from favorecido when client is selected
+    useEffect(() => {
+        if (!selectedFavorecido || editingId) return;
+        setFormData((prev) => ({
+            ...prev,
+            cc_pix_key_type: prev.cc_pix_key_type || selectedFavorecido.pix_key_type || '',
+            cc_pix_key: prev.cc_pix_key || selectedFavorecido.pix_key || '',
+            cc_bank_name: prev.cc_bank_name || selectedFavorecido.bank_name || '',
+            cc_bank_agency: prev.cc_bank_agency || selectedFavorecido.bank_agency || '',
+            cc_bank_account: prev.cc_bank_account || selectedFavorecido.bank_account || '',
+            cc_bank_account_type: prev.cc_bank_account_type || selectedFavorecido.bank_account_type || '',
+        }));
+    }, [selectedFavorecido?.id, editingId]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Pre-fill cc_terminal and cc_card_brand from product specific_rules when product changes (new contract only)
     useEffect(() => {
@@ -671,6 +691,12 @@ export default function Contratos() {
             cc_discount_amount: '',
             cc_saturday_refund: '',
             cc_lacre: '',
+            cc_pix_key_type: '',
+            cc_pix_key: '',
+            cc_bank_name: '',
+            cc_bank_agency: '',
+            cc_bank_account: '',
+            cc_bank_account_type: '',
         });
         setEditingId(null);
         setPendingFiles([]);
@@ -767,6 +793,18 @@ export default function Contratos() {
                 cc_discount_amount: formData.cc_discount_amount ? parseFloat(formData.cc_discount_amount) : null,
                 cc_saturday_refund: formData.cc_saturday_refund ? parseFloat(formData.cc_saturday_refund) : null,
                 cc_lacre: formData.cc_lacre || null,
+                cc_pix_key_type: requiresAccount && formData.cc_payment_method !== PAYMENT_METHODS.TEC
+                    ? formData.cc_pix_key_type || null : null,
+                cc_pix_key: requiresAccount && formData.cc_payment_method !== PAYMENT_METHODS.TEC
+                    ? formData.cc_pix_key || null : null,
+                cc_bank_name: formData.cc_payment_method === PAYMENT_METHODS.TEC
+                    ? formData.cc_bank_name || null : null,
+                cc_bank_agency: formData.cc_payment_method === PAYMENT_METHODS.TEC
+                    ? formData.cc_bank_agency || null : null,
+                cc_bank_account: formData.cc_payment_method === PAYMENT_METHODS.TEC
+                    ? formData.cc_bank_account || null : null,
+                cc_bank_account_type: formData.cc_payment_method === PAYMENT_METHODS.TEC
+                    ? formData.cc_bank_account_type || null : null,
             }),
             status: editingId ? undefined : 'aprovado',
         };
@@ -864,6 +902,12 @@ export default function Contratos() {
             cc_discount_amount: contract.cc_discount_amount?.toString() || '',
             cc_saturday_refund: contract.cc_saturday_refund?.toString() || '',
             cc_lacre: contract.cc_lacre || '',
+            cc_pix_key_type: contract.cc_pix_key_type || '',
+            cc_pix_key: contract.cc_pix_key || '',
+            cc_bank_name: contract.cc_bank_name || '',
+            cc_bank_agency: contract.cc_bank_agency || '',
+            cc_bank_account: contract.cc_bank_account || '',
+            cc_bank_account_type: contract.cc_bank_account_type || '',
         });
         setEditingId(contract.id);
         setIsModalOpen(true);
@@ -1223,6 +1267,91 @@ export default function Contratos() {
                                                 </div>
                                             )}
                                         </div>
+
+                                        {/* Dados de pagamento do cliente — mesma regra de visibilidade do Realizador */}
+                                        {PAYMENT_METHODS_REQUIRING_ACCOUNT.includes(formData.cc_payment_method)
+                                            && formData.cc_payment_method !== PAYMENT_METHODS.TEC && (
+                                            <div className="rounded-md bg-muted/50 border border-border p-3 space-y-3">
+                                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Dados PIX do Cliente</p>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div>
+                                                        <label className="block text-xs text-muted-foreground mb-1">Tipo de Chave</label>
+                                                        <select
+                                                            className="input-financial text-sm"
+                                                            value={formData.cc_pix_key_type}
+                                                            onChange={(e) => setFormData({ ...formData, cc_pix_key_type: e.target.value })}
+                                                        >
+                                                            <option value="">Selecione</option>
+                                                            <option value="cpf">CPF</option>
+                                                            <option value="cnpj">CNPJ</option>
+                                                            <option value="email">E-mail</option>
+                                                            <option value="telefone">Telefone</option>
+                                                            <option value="aleatoria">Chave Aleatória</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs text-muted-foreground mb-1">Chave PIX</label>
+                                                        <input
+                                                            type="text"
+                                                            className="input-financial text-sm"
+                                                            placeholder="Chave PIX"
+                                                            value={formData.cc_pix_key}
+                                                            onChange={(e) => setFormData({ ...formData, cc_pix_key: e.target.value })}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {PAYMENT_METHODS_REQUIRING_ACCOUNT.includes(formData.cc_payment_method)
+                                            && formData.cc_payment_method === PAYMENT_METHODS.TEC && (
+                                            <div className="rounded-md bg-muted/50 border border-border p-3 space-y-3">
+                                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Dados Bancários do Cliente</p>
+                                                <div className="grid grid-cols-2 gap-3">
+                                                    <div>
+                                                        <label className="block text-xs text-muted-foreground mb-1">Banco</label>
+                                                        <input
+                                                            type="text"
+                                                            className="input-financial text-sm"
+                                                            placeholder="Nome do banco"
+                                                            value={formData.cc_bank_name}
+                                                            onChange={(e) => setFormData({ ...formData, cc_bank_name: e.target.value })}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs text-muted-foreground mb-1">Agência</label>
+                                                        <input
+                                                            type="text"
+                                                            className="input-financial text-sm"
+                                                            placeholder="0000"
+                                                            value={formData.cc_bank_agency}
+                                                            onChange={(e) => setFormData({ ...formData, cc_bank_agency: e.target.value })}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs text-muted-foreground mb-1">Conta</label>
+                                                        <input
+                                                            type="text"
+                                                            className="input-financial text-sm"
+                                                            placeholder="00000-0"
+                                                            value={formData.cc_bank_account}
+                                                            onChange={(e) => setFormData({ ...formData, cc_bank_account: e.target.value })}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs text-muted-foreground mb-1">Tipo de Conta</label>
+                                                        <select
+                                                            className="input-financial text-sm"
+                                                            value={formData.cc_bank_account_type}
+                                                            onChange={(e) => setFormData({ ...formData, cc_bank_account_type: e.target.value })}
+                                                        >
+                                                            <option value="">Selecione</option>
+                                                            <option value="corrente">Corrente</option>
+                                                            <option value="poupanca">Poupança</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
 
                                         {/* Desconto, sábado e lacre
                                         <div className="grid grid-cols-3 gap-4">

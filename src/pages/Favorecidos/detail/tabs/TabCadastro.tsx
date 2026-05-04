@@ -1,4 +1,6 @@
-import { Mail, Phone, MapPin, FileText, CreditCard, Calendar, Landmark } from 'lucide-react';
+import {
+    Mail, Phone, MapPin, FileText, CreditCard, Calendar, Landmark
+} from 'lucide-react';
 import type { Favorecido } from '@/types/database';
 import { formatDate } from '@/lib/utils';
 

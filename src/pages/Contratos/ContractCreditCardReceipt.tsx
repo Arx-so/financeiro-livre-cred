@@ -8,7 +8,21 @@ import {
 import {
     TERMINAL_LABELS, CARD_BRAND_LABELS, PAYMENT_METHOD_LABELS,
     TRANSFER_SOURCE_LABELS, SALE_TYPE_LABELS,
+    PAYMENT_METHODS,
 } from '@/constants/sales';
+
+const PIX_KEY_TYPE_LABELS: Record<string, string> = {
+    cpf: 'CPF',
+    cnpj: 'CNPJ',
+    email: 'E-mail',
+    telefone: 'Telefone',
+    aleatoria: 'Chave Aleatória',
+};
+
+const BANK_ACCOUNT_TYPE_LABELS: Record<string, string> = {
+    corrente: 'Corrente',
+    poupanca: 'Poupança',
+};
 import { printReceiptElement } from '@/lib/printWindow';
 import type { ContractWithRelations } from '@/services/contratos';
 
@@ -137,6 +151,51 @@ export function ContractCreditCardReceipt({
                                 <span className="text-muted-foreground">Conta:</span>
                                 <span>{TRANSFER_SOURCE_LABELS[contract.cc_payment_account] ?? contract.cc_payment_account}</span>
                             </div>
+                        )}
+                        {(contract.cc_payment_method === PAYMENT_METHODS.PIX
+                            || contract.cc_payment_method === PAYMENT_METHODS.PIX_ESPECIE)
+                            && contract.cc_pix_key && (
+                            <>
+                                {contract.cc_pix_key_type && (
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Tipo Chave PIX:</span>
+                                        <span>{PIX_KEY_TYPE_LABELS[contract.cc_pix_key_type] ?? contract.cc_pix_key_type}</span>
+                                    </div>
+                                )}
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Chave PIX:</span>
+                                    <span className="font-semibold">{contract.cc_pix_key}</span>
+                                </div>
+                            </>
+                        )}
+                        {contract.cc_payment_method === PAYMENT_METHODS.TEC && (
+                            <>
+                                {contract.cc_bank_name && (
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Banco:</span>
+                                        <span>{contract.cc_bank_name}</span>
+                                    </div>
+                                )}
+                                {contract.cc_bank_agency && (
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Agência:</span>
+                                        <span>{contract.cc_bank_agency}</span>
+                                    </div>
+                                )}
+                                {contract.cc_bank_account && (
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Conta:</span>
+                                        <span>
+                                            {contract.cc_bank_account}
+                                            {contract.cc_bank_account_type && (
+                                                <span className="text-muted-foreground ml-1">
+                                                    ({BANK_ACCOUNT_TYPE_LABELS[contract.cc_bank_account_type] ?? contract.cc_bank_account_type})
+                                                </span>
+                                            )}
+                                        </span>
+                                    </div>
+                                )}
+                            </>
                         )}
                         {contract.cc_lacre && (
                             <div className="flex justify-between">
