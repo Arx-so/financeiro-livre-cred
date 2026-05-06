@@ -208,13 +208,20 @@ export async function getFuncionarios(): Promise<Favorecido[]> {
     return data;
 }
 
-// Get sellers (users with role 'vendedor' or legacy 'vendas')
-export async function getVendedores(): Promise<Array<{ id: string; name: string; email: string }>> {
-    const { data, error } = await supabase
-        .from('profiles')
+// Get sellers (favorecidos of type funcionario/ambos who are active)
+export async function getVendedores(branchId?: string): Promise<Array<{ id: string; name: string; email: string }>> {
+    let query = supabase
+        .from('favorecidos')
         .select('id, name, email')
-        .in('role', ['vendedor', 'vendas'])
+        .in('type', ['funcionario', 'ambos'])
+        .eq('is_active', true)
         .order('name');
+
+    if (branchId) {
+        query = query.eq('branch_id', branchId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         console.error('Error fetching vendedores:', error);

@@ -139,6 +139,11 @@ export function useFavorecidosPage(options?: { lockedType?: FavorecidoTipo }) {
     const handlePhotoSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            if (!file.type.startsWith('image/')) {
+                toast.error('Formato inválido. Use JPG, PNG ou GIF.');
+                e.target.value = '';
+                return;
+            }
             setSelectedPhoto(file);
             const reader = new FileReader();
             reader.onloadend = () => {

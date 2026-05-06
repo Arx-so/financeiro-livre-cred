@@ -83,9 +83,12 @@ export function useFuncionarios() {
 }
 
 export function useVendedores() {
+    const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
+    const isAdm = unidadeAtual?.code === 'ADM';
+    const branchId = isAdm ? undefined : unidadeAtual?.id;
     return useQuery({
-        queryKey: cadastrosKeys.vendedores(),
-        queryFn: getVendedores,
+        queryKey: [...cadastrosKeys.vendedores(), branchId ?? 'adm'],
+        queryFn: () => getVendedores(branchId),
     });
 }
 
