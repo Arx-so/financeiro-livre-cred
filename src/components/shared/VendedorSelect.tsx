@@ -15,7 +15,8 @@ export interface VendedorSelectProps {
     disabled?: boolean;
 }
 
-function getInitials(name: string): string {
+function getInitials(name: string | null | undefined): string {
+    if (!name) return '?';
     return name
         .split(' ')
         .slice(0, 2)
@@ -44,8 +45,8 @@ export function VendedorSelect({
 
     const results = vendedores?.filter(
         (v) => !search
-            || v.name.toLowerCase().includes(search.toLowerCase())
-            || v.email.toLowerCase().includes(search.toLowerCase()),
+            || (v.name?.toLowerCase() ?? '').includes(search.toLowerCase())
+            || (v.email?.toLowerCase() ?? '').includes(search.toLowerCase()),
     ) ?? [];
 
     const displayVendedor = internalSelected?.id === value
