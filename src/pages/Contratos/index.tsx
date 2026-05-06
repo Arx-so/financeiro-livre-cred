@@ -59,7 +59,6 @@ import {
     useFavorecidos, useVendedores, useCreateFavorecido, useUploadFavorecidoPhoto
 } from '@/hooks/useCadastros';
 import { useProducts, useCreateProduct, useProductCategories } from '@/hooks/useProducts';
-import { useCreateUser } from '@/hooks/useUsers';
 import {
     PageHeader, EmptyState, LoadingState, StatCard, SearchInput, FavorecidoSelect, VendedorSelect, ProductSelect
 } from '@/components/shared';
@@ -534,50 +533,36 @@ export default function Contratos() {
 
     // --- Inline Vendedor creation ---
     const [isVendedorModalOpen, setIsVendedorModalOpen] = useState(false);
-    const [vendedorFormData, setVendedorFormData] = useState({
-        name: '',
-        email: '',
-        password: '',
-    });
-    const createUserMutation = useCreateUser();
+    const [vendedorFormData, setVendedorFormData] = useState({ name: '', email: '' });
+    const createFavorecidoVendedorMutation = useCreateFavorecido();
 
     const resetVendedorForm = useCallback(() => {
-        setVendedorFormData({ name: '', email: '', password: '' });
+        setVendedorFormData({ name: '', email: '' });
     }, []);
 
     const handleSubmitVendedor = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!vendedorFormData.name.trim() || !vendedorFormData.email.trim() || !vendedorFormData.password.trim()) {
-            toast.error('Preencha nome, email e senha');
-            return;
-        }
-        if (vendedorFormData.password.length < 6) {
-            toast.error('A senha deve ter no mínimo 6 caracteres');
+        if (!vendedorFormData.name.trim()) {
+            toast.error('Preencha o nome do vendedor');
             return;
         }
         try {
-            const result = await createUserMutation.mutateAsync({
-                email: vendedorFormData.email.trim(),
-                password: vendedorFormData.password,
+            const newFavorecido = await createFavorecidoVendedorMutation.mutateAsync({
                 name: vendedorFormData.name.trim(),
-                role: 'vendas',
-                branchIds: unidadeAtual?.id ? [unidadeAtual.id] : [],
+                email: vendedorFormData.email.trim() || null,
+                type: 'funcionario',
+                branch_id: unidadeAtual?.id ?? null,
+                is_active: true,
             });
-            if (!result.success) {
-                toast.error(result.error || 'Erro ao criar vendedor');
-                return;
-            }
             await refetchVendedores();
-            if (result.userId) {
-                setFormData((prev) => ({ ...prev, seller_id: result.userId! }));
-            }
+            setFormData((prev) => ({ ...prev, seller_id: newFavorecido.id }));
             toast.success('Vendedor criado!');
             setIsVendedorModalOpen(false);
             resetVendedorForm();
         } catch {
             toast.error('Erro ao criar vendedor');
         }
-    }, [vendedorFormData, unidadeAtual?.id, createUserMutation, refetchVendedores, resetVendedorForm]);
+    }, [vendedorFormData, unidadeAtual?.id, createFavorecidoVendedorMutation, refetchVendedores, resetVendedorForm]);
 
     // Mutations
     const createMutation = useMutation({
@@ -2018,20 +2003,7 @@ export default function Contratos() {
                                 className="input-financial"
                                 value={vendedorFormData.email}
                                 onChange={(e) => setVendedorFormData({ ...vendedorFormData, email: e.target.value })}
-                                required
                             />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">Senha</label>
-                            <input
-                                type="password"
-                                className="input-financial"
-                                value={vendedorFormData.password}
-                                onChange={(e) => setVendedorFormData({ ...vendedorFormData, password: e.target.value })}
-                                minLength={6}
-                                required
-                            />
-                            <p className="text-xs text-muted-foreground mt-1">Mínimo 6 caracteres</p>
                         </div>
                         <div className="flex justify-end gap-3 pt-4">
                             <button
@@ -2041,8 +2013,8 @@ export default function Contratos() {
                             >
                                 Cancelar
                             </button>
-                            <button type="submit" className="btn-primary" disabled={createUserMutation.isPending}>
-                                {createUserMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                            <button type="submit" className="btn-primary" disabled={createFavorecidoVendedorMutation.isPending}>
+                                {createFavorecidoVendedorMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                                 Criar Vendedor
                             </button>
                         </div>

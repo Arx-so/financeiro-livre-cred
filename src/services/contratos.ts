@@ -49,7 +49,7 @@ export async function getContracts(filters: ContractFilters = {}): Promise<Contr
             favorecido:favorecidos!favorecido_id(id, name, pix_key, pix_key_type, bank_name, bank_agency, bank_account, bank_account_type),
             category:categories!category_id(id, name, color),
             product:products!product_id(id, name, code),
-            seller:profiles!seller_id(id, name, email),
+            seller:favorecidos!seller_id(id, name, email),
             approver:profiles!approved_by(id, name),
             creator:profiles!created_by(id, name),
             files:contract_files(*)
@@ -103,7 +103,7 @@ export async function getContract(id: string): Promise<ContractWithRelations | n
             favorecido:favorecidos!favorecido_id(id, name, pix_key, pix_key_type, bank_name, bank_agency, bank_account, bank_account_type),
             category:categories!category_id(id, name, color),
             product:products!product_id(id, name, code),
-            seller:profiles!seller_id(id, name, email),
+            seller:favorecidos!seller_id(id, name, email),
             approver:profiles!approved_by(id, name),
             creator:profiles!created_by(id, name),
             files:contract_files(*)
