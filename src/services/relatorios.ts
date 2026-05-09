@@ -1127,7 +1127,7 @@ export async function getComissoesData(
         .from('contracts')
         .select(`
             value,
-            seller:profiles!seller_id(name)
+            seller:favorecidos!seller_id(name)
         `)
         .eq('branch_id', branchId)
         .gte('start_date', startDate)
@@ -1508,7 +1508,7 @@ export async function getComissoesReportData(
         .select(`
             value,
             type,
-            seller:profiles!seller_id(name),
+            seller:favorecidos!seller_id(name),
             category:categories(name),
             product:products!product_id(name),
             start_date
@@ -1716,7 +1716,7 @@ export async function getVendasVendedorData(
         .select(`
             value,
             type,
-            seller:profiles!seller_id(name),
+            seller:favorecidos!seller_id(name),
             category:categories(name),
             product:products!product_id(name)
         `)
@@ -1768,7 +1768,7 @@ export async function getVendasProdutoData(
             type,
             category:categories(name),
             product:products!product_id(name),
-            seller:profiles!seller_id(name)
+            seller:favorecidos!seller_id(name)
         `)
         .eq('branch_id', branchId)
         .gte('start_date', startDate)
@@ -1826,7 +1826,7 @@ export async function getMetaRealizadoData(
         .from('contracts')
         .select(`
             value,
-            seller:profiles!seller_id(name),
+            seller:favorecidos!seller_id(name),
             start_date
         `)
         .eq('branch_id', branchId)
@@ -1887,7 +1887,7 @@ export async function getContratosFechadosData(
             value,
             start_date,
             type,
-            seller:profiles!seller_id(name),
+            seller:favorecidos!seller_id(name),
             category:categories(name),
             product:products!product_id(name)
         `)

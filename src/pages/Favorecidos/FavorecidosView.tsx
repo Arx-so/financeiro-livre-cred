@@ -69,6 +69,7 @@ export function FavorecidosView(props: FavorecidosViewProps) {
         handleSubmitFavorecido,
         handleDeleteFavorecido,
         openEditFavorecidoModal,
+        canDeleteFavorecido,
     } = props;
 
     const firstItem = totalCount === 0 ? 0 : (currentPage - 1) * pageSize + 1;
@@ -156,7 +157,7 @@ export function FavorecidosView(props: FavorecidosViewProps) {
                                     key={favorecido.id}
                                     favorecido={favorecido}
                                     onEdit={() => openEditFavorecidoModal(favorecido)}
-                                    onDelete={() => handleDeleteFavorecido(favorecido.id, favorecido.name)}
+                                    onDelete={canDeleteFavorecido ? () => handleDeleteFavorecido(favorecido.id, favorecido.name) : undefined}
                                 />
                             ))}
                         </div>

@@ -257,6 +257,7 @@ export default function Contratos() {
 
     // --- Inline Favorecido creation ---
     const [isFavorecidoModalOpen, setIsFavorecidoModalOpen] = useState(false);
+    const [favorecidoModalMode, setFavorecidoModalMode] = useState<'cliente' | 'vendedor'>('cliente');
     const [favorecidoFormData, setFavorecidoFormData] = useState<any>({
         type: 'cliente',
         name: '',
@@ -337,20 +338,27 @@ export default function Contratos() {
                 city: favorecidoFormData.city || null,
                 state: favorecidoFormData.state || null,
                 zip_code: favorecidoFormData.zip_code || null,
+                category: favorecidoFormData.category || null,
                 notes: favorecidoFormData.notes || null,
             });
             if (selectedPhoto && newFav.id) {
                 await uploadPhoto.mutateAsync({ favorecidoId: newFav.id, file: selectedPhoto });
             }
-            await refetchFavorecidos();
-            setFormData((prev) => ({ ...prev, favorecido_id: newFav.id }));
-            toast.success('Favorecido criado!');
+            if (favorecidoModalMode === 'vendedor') {
+                await refetchVendedores();
+                setFormData((prev) => ({ ...prev, seller_id: newFav.id }));
+                toast.success('Vendedor criado!');
+            } else {
+                await refetchFavorecidos();
+                setFormData((prev) => ({ ...prev, favorecido_id: newFav.id }));
+                toast.success('Favorecido criado!');
+            }
             setIsFavorecidoModalOpen(false);
             resetFavorecidoForm();
         } catch {
             toast.error('Erro ao criar favorecido');
         }
-    }, [favorecidoFormData, selectedPhoto, createFavorecido, uploadPhoto, refetchFavorecidos, resetFavorecidoForm]);
+    }, [favorecidoFormData, favorecidoModalMode, selectedPhoto, createFavorecido, uploadPhoto, refetchFavorecidos, refetchVendedores, resetFavorecidoForm]);
 
     // --- Inline Product creation ---
     const [inlineProductType, setInlineProductType] = useState('generico');
@@ -531,38 +539,12 @@ export default function Contratos() {
         productCategories, categories, vendasCategory, resetProductForm,
     ]);
 
-    // --- Inline Vendedor creation ---
-    const [isVendedorModalOpen, setIsVendedorModalOpen] = useState(false);
-    const [vendedorFormData, setVendedorFormData] = useState({ name: '', email: '' });
-    const createFavorecidoVendedorMutation = useCreateFavorecido();
-
-    const resetVendedorForm = useCallback(() => {
-        setVendedorFormData({ name: '', email: '' });
+    // --- Inline Vendedor creation — reuses the favorecido modal in 'vendedor' mode ---
+    const openVendedorModal = useCallback(() => {
+        setFavorecidoFormData((prev: any) => ({ ...prev, type: 'funcionario', category: 'VENDEDOR' }));
+        setFavorecidoModalMode('vendedor');
+        setIsFavorecidoModalOpen(true);
     }, []);
-
-    const handleSubmitVendedor = useCallback(async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!vendedorFormData.name.trim()) {
-            toast.error('Preencha o nome do vendedor');
-            return;
-        }
-        try {
-            const newFavorecido = await createFavorecidoVendedorMutation.mutateAsync({
-                name: vendedorFormData.name.trim(),
-                email: vendedorFormData.email.trim() || null,
-                type: 'funcionario',
-                branch_id: unidadeAtual?.id ?? null,
-                is_active: true,
-            });
-            await refetchVendedores();
-            setFormData((prev) => ({ ...prev, seller_id: newFavorecido.id }));
-            toast.success('Vendedor criado!');
-            setIsVendedorModalOpen(false);
-            resetVendedorForm();
-        } catch {
-            toast.error('Erro ao criar vendedor');
-        }
-    }, [vendedorFormData, unidadeAtual?.id, createFavorecidoVendedorMutation, refetchVendedores, resetVendedorForm]);
 
     // Mutations
     const createMutation = useMutation({
@@ -574,7 +556,10 @@ export default function Contratos() {
             resetForm();
             toast.success('Contrato criado!');
         },
-        onError: () => toast.error('Erro ao criar contrato'),
+        onError: (e: any) => {
+            console.log(e);
+            toast.error('Erro ao criar contrato');
+        },
     });
 
     const updateMutation = useMutation({
@@ -699,8 +684,18 @@ export default function Contratos() {
             return;
         }
 
+        const rawInstallments = parseInt(formData.installments, 10);
+        if (!formData.installments || rawInstallments < 2) {
+            toast.error('O mínimo de parcelas necessárias é 2.');
+            return;
+        }
+        if (!formData.payment_due_day) {
+            toast.error('É obrigatório adicionar um dia de vencimento para o pagamento da parcela.');
+            return;
+        }
+
         const value = parseFloat(formData.value) || 0;
-        const installments = Math.max(1, parseInt(formData.installments, 10) || 1);
+        const installments = Math.max(1, rawInstallments);
         const product = products?.find((p) => p.id === formData.product_id) ?? null;
         const isCartao = product?.product_type === 'cartao_credito';
 
@@ -1072,7 +1067,7 @@ export default function Contratos() {
                                         />
                                         <button
                                             type="button"
-                                            onClick={() => setIsFavorecidoModalOpen(true)}
+                                            onClick={() => { setFavorecidoModalMode('cliente'); setIsFavorecidoModalOpen(true); }}
                                             className="inline-flex items-center px-3 py-2.5 rounded-lg font-medium text-primary border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-colors shrink-0"
                                             title="Adicionar novo cliente"
                                         >
@@ -1503,7 +1498,7 @@ export default function Contratos() {
                                             />
                                             <button
                                                 type="button"
-                                                onClick={() => setIsVendedorModalOpen(true)}
+                                                onClick={openVendedorModal}
                                                 className="inline-flex items-center px-3 py-2.5 rounded-lg font-medium text-primary border-2 border-primary bg-primary/10 hover:bg-primary/20 transition-colors shrink-0"
                                                 title="Adicionar novo vendedor"
                                             >
@@ -1907,13 +1902,17 @@ export default function Contratos() {
             {/* Inline Favorecido Creation Modal */}
             <Dialog
                 open={isFavorecidoModalOpen}
-                onOpenChange={(open) => { setIsFavorecidoModalOpen(open); if (!open) resetFavorecidoForm(); }}
+                onOpenChange={(open) => { setIsFavorecidoModalOpen(open); if (!open) { resetFavorecidoForm(); setFavorecidoModalMode('cliente'); } }}
             >
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                        <DialogTitle>Novo Cliente / Favorecido</DialogTitle>
+                        <DialogTitle>
+                            {favorecidoModalMode === 'vendedor' ? 'Novo Vendedor' : 'Novo Cliente / Favorecido'}
+                        </DialogTitle>
                         <DialogDescription>
-                            Cadastre um novo favorecido para usar nesta venda.
+                            {favorecidoModalMode === 'vendedor'
+                                ? 'Cadastre um funcionário com categoria Vendedor para vincular à venda.'
+                                : 'Cadastre um novo favorecido para usar nesta venda.'}
                         </DialogDescription>
                     </DialogHeader>
                     <FavorecidoForm
@@ -1933,7 +1932,7 @@ export default function Contratos() {
                         onDocumentUpload={() => {}}
                         onDeleteDocument={() => {}}
                         onSubmit={handleSubmitFavorecido}
-                        onCancel={() => { setIsFavorecidoModalOpen(false); resetFavorecidoForm(); }}
+                        onCancel={() => { setIsFavorecidoModalOpen(false); resetFavorecidoForm(); setFavorecidoModalMode('cliente'); }}
                     />
                 </DialogContent>
             </Dialog>
@@ -1970,55 +1969,6 @@ export default function Contratos() {
                         onSubmit={handleSubmitProduct}
                         onCancel={() => { setIsProductModalOpen(false); resetProductForm(); }}
                     />
-                </DialogContent>
-            </Dialog>
-
-            {/* Inline Vendedor Creation Modal */}
-            <Dialog
-                open={isVendedorModalOpen}
-                onOpenChange={(open) => { setIsVendedorModalOpen(open); if (!open) resetVendedorForm(); }}
-            >
-                <DialogContent className="max-w-md">
-                    <DialogHeader>
-                        <DialogTitle>Novo Vendedor</DialogTitle>
-                        <DialogDescription>
-                            Crie um novo usuário com perfil de vendedor.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <form className="space-y-4 mt-4" onSubmit={handleSubmitVendedor}>
-                        <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">Nome</label>
-                            <input
-                                type="text"
-                                className="input-financial"
-                                value={vendedorFormData.name}
-                                onChange={(e) => setVendedorFormData({ ...vendedorFormData, name: e.target.value })}
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">Email</label>
-                            <input
-                                type="email"
-                                className="input-financial"
-                                value={vendedorFormData.email}
-                                onChange={(e) => setVendedorFormData({ ...vendedorFormData, email: e.target.value })}
-                            />
-                        </div>
-                        <div className="flex justify-end gap-3 pt-4">
-                            <button
-                                type="button"
-                                className="btn-secondary"
-                                onClick={() => { setIsVendedorModalOpen(false); resetVendedorForm(); }}
-                            >
-                                Cancelar
-                            </button>
-                            <button type="submit" className="btn-primary" disabled={createFavorecidoVendedorMutation.isPending}>
-                                {createFavorecidoVendedorMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                                Criar Vendedor
-                            </button>
-                        </div>
-                    </form>
                 </DialogContent>
             </Dialog>
 

@@ -359,7 +359,7 @@ async function getLegacyCCContracts(filters: SalesReportFilters): Promise<CCSale
             cc_payment_method, cc_discount_amount, cc_saturday_refund, cc_lacre,
             start_date, status, created_at, seller_id, product_id,
             favorecido:favorecidos!favorecido_id(id, name),
-            seller:profiles!seller_id(id, name)
+            seller:favorecidos!seller_id(id, name)
         `)
         .in('status', ['criado', 'em_aprovacao', 'aprovado', 'ativo', 'pendente', 'encerrado'])
         .order('start_date', { ascending: false });

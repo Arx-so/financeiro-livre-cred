@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useAuthStore, useBranchStore, useBranchIdForFilter } from '@/stores';
+import { hasPermission } from '@/lib/permissions';
 import {
     useFavorecidos,
     useCreateFavorecido,
@@ -76,6 +77,7 @@ export function useFavorecidosPage(options?: { lockedType?: FavorecidoTipo }) {
     // Confirmation dialog
     const { confirm, dialogProps } = useConfirmDialog();
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isSavingFavorecido, setIsSavingFavorecido] = useState(false);
 
     // Search and filters
     const [searchTerm, setSearchTerm] = useState('');
@@ -217,6 +219,7 @@ export function useFavorecidosPage(options?: { lockedType?: FavorecidoTipo }) {
 
     const handleSubmitFavorecido = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSavingFavorecido(true);
 
         const favorecidoData: FavorecidoInsert = {
             branch_id: branchId || null,
@@ -261,6 +264,8 @@ export function useFavorecidosPage(options?: { lockedType?: FavorecidoTipo }) {
             resetForm();
         } catch {
             toast.error('Erro ao salvar cadastro');
+        } finally {
+            setIsSavingFavorecido(false);
         }
     }, [formData, editingId, selectedPhoto, branchId, createFavorecido, updateFavorecido, uploadPhoto, resetForm]);
 
@@ -313,9 +318,12 @@ export function useFavorecidosPage(options?: { lockedType?: FavorecidoTipo }) {
     const totalCount = favorecidosPage?.count ?? 0;
     const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
+    const canDeleteFavorecido = hasPermission(user?.role, 'favorecidos', 'delete');
+
     return {
         // User
         user,
+        canDeleteFavorecido,
 
         // Dialog
         dialogProps,
@@ -363,7 +371,7 @@ export function useFavorecidosPage(options?: { lockedType?: FavorecidoTipo }) {
         logsLoading,
 
         // Mutations loading states
-        isSavingFavorecido: createFavorecido.isPending || updateFavorecido.isPending || uploadPhoto.isPending,
+        isSavingFavorecido,
         isUploadingDocument: uploadDocument.isPending,
         isDeletingPhoto: deletePhoto.isPending,
 
