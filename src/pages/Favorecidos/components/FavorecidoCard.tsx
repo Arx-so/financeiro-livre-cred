@@ -23,7 +23,7 @@ interface FavorecidoCardProps {
         photo_url?: string | null;
     };
     onEdit: () => void;
-    onDelete: () => void;
+    onDelete?: () => void;
 }
 
 function getTypeIcon(type: FavorecidoTipo) {
@@ -107,12 +107,14 @@ export function FavorecidoCard({ favorecido, onEdit, onDelete }: FavorecidoCardP
                     <Edit className="w-4 h-4" />
                     Editar
                 </button>
-                <button
-                    className="btn-secondary py-2 px-3 text-destructive hover:bg-destructive/10"
-                    onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                >
-                    <Trash2 className="w-4 h-4" />
-                </button>
+                {onDelete && (
+                    <button
+                        className="btn-secondary py-2 px-3 text-destructive hover:bg-destructive/10"
+                        onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
+                )}
             </div>
         </div>
     );

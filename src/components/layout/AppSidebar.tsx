@@ -142,12 +142,12 @@ const navigationGroups: NavGroup[] = [
                 icon: ShoppingCart,
                 roles: ['admin', 'gerente', 'coordenador', 'assistente', 'vendedor', 'usuario', 'vendas'],
             },
-            {
-                name: 'Cartão / D+',
-                href: '/vendas/novo',
-                icon: Banknote,
-                roles: ['admin', 'gerente', 'coordenador', 'assistente', 'vendedor', 'usuario', 'vendas'],
-            },
+            // {
+            //    name: 'Cartão / D+',
+            //    href: '/vendas/novo',
+            //    icon: Banknote,
+            //    roles: ['admin', 'gerente', 'coordenador', 'assistente', 'vendedor', 'usuario', 'vendas'],
+            // },
             {
                 name: 'Relatório de Vendas',
                 href: '/vendas/relatorio',
