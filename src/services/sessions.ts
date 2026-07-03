@@ -13,6 +13,21 @@ export interface ActiveSession {
 // Duração padrão da sessão (7 dias = 168 horas)
 const SESSION_DURATION_HOURS = 168;
 
+const DEVICE_TOKEN_KEY = 'fincontrol_device_token';
+
+/**
+ * Token único deste dispositivo/navegador, persistido em localStorage.
+ * Usado como session_token para identificar qual dispositivo detém a sessão ativa.
+ */
+export function getDeviceToken(): string {
+    let token = localStorage.getItem(DEVICE_TOKEN_KEY);
+    if (!token) {
+        token = crypto.randomUUID();
+        localStorage.setItem(DEVICE_TOKEN_KEY, token);
+    }
+    return token;
+}
+
 /**
  * Verifica se existe uma sessão ativa para o usuário
  */
@@ -37,20 +52,20 @@ export async function getActiveSession(userId: string): Promise<ActiveSession | 
  */
 export async function createSession(
     userId: string,
-    sessionToken: string,
     deviceInfo?: string
 ): Promise<ActiveSession | null> {
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + SESSION_DURATION_HOURS);
 
-    // Primeiro, remove qualquer sessão existente (para garantir unicidade)
+    // Primeiro, remove qualquer sessão existente (para garantir unicidade).
+    // Isso desconecta o dispositivo anterior, que detecta a troca de token.
     await deleteSession(userId);
 
     const { data, error } = await supabase
         .from('active_sessions')
         .insert({
             user_id: userId,
-            session_token: sessionToken,
+            session_token: getDeviceToken(),
             device_info: deviceInfo || getDeviceInfo(),
             expires_at: expiresAt.toISOString(),
         })
@@ -66,42 +81,24 @@ export async function createSession(
 }
 
 /**
- * Remove a sessão ativa do usuário
+ * Remove a sessão ativa do usuário.
+ * Se `onlySessionToken` for informado, remove apenas se a sessão pertencer
+ * a esse token (evita apagar a sessão de outro dispositivo que assumiu a conta).
  */
-export async function deleteSession(userId: string): Promise<boolean> {
-    const { error } = await supabase
+export async function deleteSession(userId: string, onlySessionToken?: string): Promise<boolean> {
+    let query = supabase
         .from('active_sessions')
         .delete()
         .eq('user_id', userId);
 
-    if (error) {
-        console.error('Error deleting session:', error);
-        return false;
+    if (onlySessionToken) {
+        query = query.eq('session_token', onlySessionToken);
     }
 
-    return true;
-}
-
-/**
- * Atualiza o token da sessão existente
- */
-export async function updateSessionToken(
-    userId: string,
-    newToken: string
-): Promise<boolean> {
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + SESSION_DURATION_HOURS);
-
-    const { error } = await supabase
-        .from('active_sessions')
-        .update({
-            session_token: newToken,
-            expires_at: expiresAt.toISOString(),
-        })
-        .eq('user_id', userId);
+    const { error } = await query;
 
     if (error) {
-        console.error('Error updating session token:', error);
+        console.error('Error deleting session:', error);
         return false;
     }
 

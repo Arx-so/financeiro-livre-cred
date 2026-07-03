@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    Eye, EyeOff, Loader2, Mail
+    Eye, EyeOff, Loader2, Mail, MonitorSmartphone
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores';
@@ -21,6 +21,9 @@ export default function Login() {
     const [showForgotPassword, setShowForgotPassword] = useState(false);
     const [forgotEmail, setForgotEmail] = useState('');
     const [isSendingReset, setIsSendingReset] = useState(false);
+    const [takeoverDeviceInfo, setTakeoverDeviceInfo] = useState<string | null>(null);
+    const [showTakeoverDialog, setShowTakeoverDialog] = useState(false);
+    const [isTakingOver, setIsTakingOver] = useState(false);
 
     const login = useAuthStore((state) => state.login);
     const resetPassword = useAuthStore((state) => state.resetPassword);
@@ -41,11 +44,31 @@ export default function Login() {
         if (result.success) {
             toast.success('Login realizado com sucesso!');
             navigate('/dashboard');
+        } else if (result.requiresTakeover) {
+            setTakeoverDeviceInfo(result.activeDeviceInfo || null);
+            setShowTakeoverDialog(true);
         } else {
             toast.error(result.error || 'Email ou senha inválidos');
         }
 
         setIsLoading(false);
+    };
+
+    const handleConfirmTakeover = async () => {
+        setIsTakingOver(true);
+
+        const result = await login(email, password, { force: true });
+
+        if (result.success) {
+            toast.success('Login realizado com sucesso! O outro dispositivo foi desconectado.');
+            setShowTakeoverDialog(false);
+            navigate('/dashboard');
+        } else {
+            toast.error(result.error || 'Erro ao fazer login');
+            setShowTakeoverDialog(false);
+        }
+
+        setIsTakingOver(false);
     };
 
     const handleForgotPassword = async (e: React.FormEvent) => {
@@ -192,6 +215,51 @@ export default function Login() {
                     </p>
                 </div>
             </div>
+
+            {/* Takeover Dialog — conta ativa em outro dispositivo */}
+            <Dialog
+                open={showTakeoverDialog}
+                onOpenChange={(open) => { if (!isTakingOver) setShowTakeoverDialog(open); }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <MonitorSmartphone className="w-5 h-5 text-primary" />
+                            Conta ativa em outro dispositivo
+                        </DialogTitle>
+                        <DialogDescription>
+                            Esta conta já está conectada em outro dispositivo
+                            {takeoverDeviceInfo ? ` (${takeoverDeviceInfo})` : ''}
+                            . Ao continuar, o outro dispositivo será desconectado automaticamente.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex gap-3 pt-2">
+                        <button
+                            type="button"
+                            className="btn-secondary flex-1"
+                            disabled={isTakingOver}
+                            onClick={() => setShowTakeoverDialog(false)}
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            className="btn-primary flex-1"
+                            disabled={isTakingOver}
+                            onClick={handleConfirmTakeover}
+                        >
+                            {isTakingOver ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Entrando...
+                                </>
+                            ) : (
+                                'Continuar e desconectar'
+                            )}
+                        </button>
+                    </div>
+                </DialogContent>
+            </Dialog>
 
             {/* Forgot Password Dialog */}
             <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>

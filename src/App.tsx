@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
-    BrowserRouter, Routes, Route, Navigate
+    BrowserRouter, Routes, Route, Navigate, useNavigate
 } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
@@ -94,9 +94,11 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 // Auth initializer component
 function AuthInitializer({ children }: { children: React.ReactNode }) {
     const initialize = useAuthStore((state) => state.initialize);
+    const checkActiveSession = useAuthStore((state) => state.checkActiveSession);
     const user = useAuthStore((state) => state.user);
     const loadBranches = useBranchStore((state) => state.loadBranches);
     const clearBranches = useBranchStore((state) => state.clearBranches);
+    const navigate = useNavigate();
 
     useEffect(() => {
         initialize();
@@ -110,6 +112,27 @@ function AuthInitializer({ children }: { children: React.ReactNode }) {
             clearBranches();
         }
     }, [user, loadBranches, clearBranches]);
+
+    // Detecta login em outro dispositivo: verifica a sessão ativa
+    // periodicamente e quando a janela recupera o foco
+    useEffect(() => {
+        if (!user) return undefined;
+
+        const check = async () => {
+            const wasLoggedOut = await checkActiveSession();
+            if (wasLoggedOut) {
+                navigate('/login', { replace: true });
+            }
+        };
+
+        const interval = setInterval(check, 30000);
+        window.addEventListener('focus', check);
+
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('focus', check);
+        };
+    }, [user, checkActiveSession, navigate]);
 
     return <>{children}</>;
 }

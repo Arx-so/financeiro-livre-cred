@@ -1,6 +1,8 @@
 import { useState, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { useConfirmDialog } from '@/components/ui/confirm-dialog';
+import { useAuthStore } from '@/stores';
+import { hasPermission } from '@/lib/permissions';
 import {
     useProducts,
     useProductsSummary,
@@ -80,6 +82,10 @@ export function useProdutosPage() {
     const [isDeleting, setIsDeleting] = useState(false);
 
     const { confirm, dialogProps } = useConfirmDialog();
+    const user = useAuthStore((state) => state.user);
+
+    const canEditProducts = hasPermission(user?.role, 'produtos', 'edit');
+    const canDeleteProducts = hasPermission(user?.role, 'produtos', 'delete');
 
     const filters = useMemo(
         () => ({
@@ -402,6 +408,8 @@ export function useProdutosPage() {
         summary,
         productCategories: productCategories || [],
         isSaving,
+        canEditProducts,
+        canDeleteProducts,
         openTypeModal,
         closeTypeModal,
         handleTypeSelect,

@@ -1,7 +1,10 @@
 import { create } from 'zustand';
 import { Session, AuthError } from '@supabase/supabase-js';
+import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
-import { getActiveSession, createSession, deleteSession } from '@/services/sessions';
+import {
+    getActiveSession, createSession, deleteSession, getDeviceToken
+} from '@/services/sessions';
 import type { UserRole, Profile } from '@/types/database';
 
 export interface AuthUser {
@@ -15,6 +18,9 @@ export interface AuthUser {
 interface AuthResult {
   success: boolean;
   error?: string;
+  // Existe sessão ativa em outro dispositivo — o login precisa ser confirmado com force
+  requiresTakeover?: boolean;
+  activeDeviceInfo?: string | null;
 }
 
 interface AuthState {
@@ -25,8 +31,10 @@ interface AuthState {
   isInitialized: boolean;
 
   // Actions
-  login: (email: string, password: string) => Promise<AuthResult>;
+  login: (email: string, password: string, options?: { force?: boolean }) => Promise<AuthResult>;
   logout: () => Promise<void>;
+  // Retorna true se a sessão foi assumida por outro dispositivo e o usuário foi deslogado
+  checkActiveSession: () => Promise<boolean>;
   register: (email: string, password: string, name: string) => Promise<AuthResult>;
   resetPassword: (email: string) => Promise<AuthResult>;
   refreshUser: () => Promise<void>;
@@ -99,16 +107,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             const { data: { session: initialSession } } = await supabase.auth.getSession();
 
             if (initialSession?.user) {
-                set({ session: initialSession });
+                // Verifica se outro dispositivo assumiu a sessão enquanto este estava fechado
+                const activeSession = await getActiveSession(initialSession.user.id);
+                if (activeSession && activeSession.session_token !== getDeviceToken()) {
+                    await supabase.auth.signOut();
+                    toast.warning('Sua sessão foi encerrada porque a conta foi conectada em outro dispositivo.');
+                } else {
+                    set({ session: initialSession });
 
-                const profile = await fetchUserProfile(initialSession.user.id);
-                if (profile) {
-                    // Atualiza ou cria sessão ativa ao restaurar autenticação
-                    await createSession(
-                        profile.id,
-                        initialSession.access_token
-                    );
-                    set({ user: profile, isAuthenticated: true });
+                    const profile = await fetchUserProfile(initialSession.user.id);
+                    if (profile) {
+                        // Atualiza ou cria sessão ativa ao restaurar autenticação
+                        await createSession(profile.id);
+                        set({ user: profile, isAuthenticated: true });
+                    }
                 }
             }
         } catch {
@@ -125,7 +137,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             if (event === 'SIGNED_OUT') {
                 const currentUser = get().user;
                 if (currentUser) {
-                    await deleteSession(currentUser.id);
+                    // Remove apenas a sessão deste dispositivo
+                    await deleteSession(currentUser.id, getDeviceToken());
                 }
                 set({
                     user: null,
@@ -137,9 +150,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         });
     },
 
-    login: async (email, password) => {
+    login: async (email, password, options) => {
         try {
-            set({ isLoading: true });
+            // Não altera o isLoading global aqui: isso desmontaria a tela de
+            // Login (PublicRoute mostra LoadingScreen), perdendo o estado do
+            // modal de takeover. A tela de Login tem seu próprio loading local.
 
             // Primeiro, tenta autenticar para obter o user ID
             const { data, error } = await supabase.auth.signInWithPassword({
@@ -148,24 +163,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             });
 
             if (error) {
-                set({ isLoading: false });
                 return { success: false, error: translateAuthError(error) };
             }
 
             if (!data.user) {
-                set({ isLoading: false });
                 return { success: false, error: 'Erro ao autenticar usuário' };
             }
 
-            // Verificar se existe sessão ativa para este usuário
+            // Verificar se existe sessão ativa em outro dispositivo
             const activeSession = await getActiveSession(data.user.id);
-            if (activeSession) {
-                // Fazer logout do Supabase para limpar esta tentativa
+            const isOtherDevice = activeSession && activeSession.session_token !== getDeviceToken();
+            if (isOtherDevice && !options?.force) {
+                // Fazer logout do Supabase para limpar esta tentativa;
+                // o usuário confirma o takeover e o login é refeito com force
                 await supabase.auth.signOut();
-                set({ isLoading: false });
                 return {
                     success: false,
-                    error: 'Usuário já está logado em outro dispositivo. Faça logout no outro dispositivo primeiro.'
+                    requiresTakeover: true,
+                    activeDeviceInfo: activeSession.device_info,
                 };
             }
 
@@ -174,17 +189,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
             if (!profile) {
                 await supabase.auth.signOut();
-                set({ isLoading: false });
                 return { success: false, error: 'Perfil de usuário não encontrado. Entre em contato com o administrador.' };
             }
 
-            // Criar sessão ativa
-            const sessionCreated = await createSession(
-                data.user.id,
-                data.session?.access_token || ''
-            );
-
-            // Continue mesmo sem registro de sessão
+            // Criar sessão ativa (remove a sessão do outro dispositivo, se houver;
+            // o outro dispositivo detecta a troca e é desconectado)
+            await createSession(data.user.id);
 
             set({
                 user: profile,
@@ -195,7 +205,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
             return { success: true };
         } catch {
-            set({ isLoading: false });
             return { success: false, error: 'Erro ao fazer login. Tente novamente.' };
         }
     },
@@ -243,9 +252,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         try {
             const currentUser = get().user;
 
-            // Remove a sessão ativa do banco
+            // Remove a sessão ativa deste dispositivo do banco
             if (currentUser) {
-                await deleteSession(currentUser.id);
+                await deleteSession(currentUser.id, getDeviceToken());
             }
 
             await supabase.auth.signOut();
@@ -258,6 +267,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         } catch {
             // Silent fail on logout
         }
+    },
+
+    checkActiveSession: async () => {
+        const { user, isAuthenticated } = get();
+        if (!user || !isAuthenticated) return false;
+
+        const activeSession = await getActiveSession(user.id);
+
+        // Outro dispositivo assumiu a sessão — desloga este
+        if (activeSession && activeSession.session_token !== getDeviceToken()) {
+            await supabase.auth.signOut();
+            set({
+                user: null,
+                session: null,
+                isAuthenticated: false,
+            });
+            localStorage.removeItem('fincontrol_unidade');
+            toast.warning('Sua sessão foi encerrada porque a conta foi conectada em outro dispositivo.');
+            return true;
+        }
+
+        return false;
     },
 
     refreshUser: async () => {
