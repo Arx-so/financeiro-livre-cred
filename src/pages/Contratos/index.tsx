@@ -792,6 +792,9 @@ export default function Contratos() {
                     ? formData.cc_bank_account_type || null : null,
             }),
             status: editingId ? undefined : 'aprovado',
+            // Grava o autor apenas na criação — necessário para as políticas
+            // RLS de "own" (assistente edita, vendas/vendedor excluem os próprios)
+            ...(editingId ? {} : { created_by: user?.id || null }),
         };
 
         if (editingId) {
