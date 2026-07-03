@@ -12,8 +12,8 @@ import {
 
 interface ProductCardProps {
     product: ProductWithCategory;
-    onEdit: (product: ProductWithCategory) => void;
-    onDelete: (id: string, name: string) => void;
+    onEdit?: (product: ProductWithCategory) => void;
+    onDelete?: (id: string, name: string) => void;
     onToggleActive?: (id: string, isActive: boolean) => void;
 }
 
@@ -171,34 +171,40 @@ export function ProductCard({
                 </div>
             )}
 
-            <div className="flex gap-2 mt-4 pt-4 border-t border-border">
-                <button
-                    className="btn-secondary py-2 flex-1"
-                    onClick={() => onEdit(product)}
-                >
-                    <Edit className="w-4 h-4" />
-                    Editar
-                </button>
-                {onToggleActive && (
-                    <button
-                        className="btn-secondary py-2"
-                        onClick={() => onToggleActive(product.id, !product.is_active)}
-                        title={product.is_active ? 'Desativar' : 'Ativar'}
-                    >
-                        {product.is_active ? (
-                            <ToggleRight className="w-4 h-4 text-income" />
-                        ) : (
-                            <ToggleLeft className="w-4 h-4 text-muted-foreground" />
-                        )}
-                    </button>
-                )}
-                <button
-                    className="btn-secondary py-2 text-destructive hover:bg-destructive/10"
-                    onClick={() => onDelete(product.id, product.name)}
-                >
-                    <Trash2 className="w-4 h-4" />
-                </button>
-            </div>
+            {(onEdit || onToggleActive || onDelete) && (
+                <div className="flex gap-2 mt-4 pt-4 border-t border-border">
+                    {onEdit && (
+                        <button
+                            className="btn-secondary py-2 flex-1"
+                            onClick={() => onEdit(product)}
+                        >
+                            <Edit className="w-4 h-4" />
+                            Editar
+                        </button>
+                    )}
+                    {onToggleActive && (
+                        <button
+                            className="btn-secondary py-2"
+                            onClick={() => onToggleActive(product.id, !product.is_active)}
+                            title={product.is_active ? 'Desativar' : 'Ativar'}
+                        >
+                            {product.is_active ? (
+                                <ToggleRight className="w-4 h-4 text-income" />
+                            ) : (
+                                <ToggleLeft className="w-4 h-4 text-muted-foreground" />
+                            )}
+                        </button>
+                    )}
+                    {onDelete && (
+                        <button
+                            className="btn-secondary py-2 text-destructive hover:bg-destructive/10"
+                            onClick={() => onDelete(product.id, product.name)}
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </button>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

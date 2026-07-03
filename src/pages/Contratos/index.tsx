@@ -88,6 +88,10 @@ import { ContractViewerModal } from './ContractViewerModal';
 import { ContractCreditCardReceipt } from './ContractCreditCardReceipt';
 import type { ContractWithRelations } from '@/services/contratos';
 
+function todayISO(): string {
+    return new Date().toISOString().split('T')[0];
+}
+
 export default function Contratos() {
     const unidadeAtual = useBranchStore((state) => state.unidadeAtual);
     const user = useAuthStore((state) => state.user);
@@ -126,6 +130,7 @@ export default function Contratos() {
         favorecido_id: '',
         type: '',
         value: '',
+        sale_date: todayISO(),
         installments: '1',
         notes: '',
         category_id: '',
@@ -643,6 +648,7 @@ export default function Contratos() {
             favorecido_id: '',
             type: '',
             value: '',
+            sale_date: todayISO(),
             installments: '1',
             notes: '',
             category_id: '',
@@ -699,10 +705,9 @@ export default function Contratos() {
         const product = products?.find((p) => p.id === formData.product_id) ?? null;
         const isCartao = product?.product_type === 'cartao_credito';
 
-        // Compute start/end dates from installments
-        const todayDate = new Date();
-        const startDate = todayDate.toISOString().split('T')[0];
-        const endD = new Date(todayDate);
+        // Compute start/end dates from sale date + installments
+        const startDate = formData.sale_date || todayISO();
+        const endD = new Date(`${startDate}T12:00:00`);
         endD.setMonth(endD.getMonth() + installments - 1);
         const endDate = endD.toISOString().split('T')[0];
         const recurrenceType: ContractRecurrenceType = installments === 1 ? 'unico' : 'mensal';
@@ -864,6 +869,7 @@ export default function Contratos() {
             favorecido_id: contract.favorecido_id || '',
             type: product ? (product.commercial_description || product.name) : (contract.type || ''),
             value: contract.value?.toString() || '',
+            sale_date: contract.start_date?.split('T')[0] || todayISO(),
             installments: derivedInstallments,
             notes: contract.notes || '',
             category_id: product ? categoryIdFromProduct : (contract.category_id || ''),
@@ -1379,6 +1385,17 @@ export default function Contratos() {
                                 )}
 
                                 <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-foreground mb-2">
+                                            Data da Venda
+                                        </label>
+                                        <input
+                                            type="date"
+                                            className="input-financial"
+                                            value={formData.sale_date}
+                                            onChange={(e) => setFormData({ ...formData, sale_date: e.target.value })}
+                                        />
+                                    </div>
                                     <div>
                                         <label className="block text-sm font-medium text-foreground mb-2">
                                             Número de parcelas

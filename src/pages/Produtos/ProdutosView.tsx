@@ -55,6 +55,8 @@ export function ProdutosView(props: ProdutosViewProps) {
 
         // Flags
         isSaving,
+        canEditProducts,
+        canDeleteProducts,
 
         // Handlers
         openTypeModal,
@@ -187,8 +189,8 @@ export function ProdutosView(props: ProdutosViewProps) {
                             <ProductCard
                                 key={product.id}
                                 product={product}
-                                onEdit={openEditModal}
-                                onDelete={handleDelete}
+                                onEdit={canEditProducts ? openEditModal : undefined}
+                                onDelete={canDeleteProducts ? handleDelete : undefined}
                             />
                         ))}
                     </div>

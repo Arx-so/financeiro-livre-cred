@@ -93,7 +93,7 @@ export const permissionMatrix: Record<UserRole, Record<Resource, Record<Action, 
             view: true, create: true, edit: true, delete: true, approve: true
         },
         produtos: {
-            view: true, create: true, edit: true, delete: true, approve: true
+            view: true, create: true, edit: false, delete: false, approve: true
         },
         agenda: {
             view: true, create: true, edit: true, delete: true, approve: true
@@ -215,7 +215,7 @@ export const permissionMatrix: Record<UserRole, Record<Resource, Record<Action, 
         filiais: { view: false, create: false, edit: false, delete: false, approve: false },
         usuarios: { view: false, create: false, edit: false, delete: false, approve: false },
         relatorios: { view: true, create: false, edit: false, delete: false, approve: false },
-        produtos: { view: true, create: true, edit: true, delete: true, approve: false },
+        produtos: { view: true, create: true, edit: false, delete: false, approve: false },
         agenda: { view: true, create: true, edit: true, delete: true, approve: false },
     },
     seguranca: {
@@ -258,7 +258,7 @@ export const permissionMatrix: Record<UserRole, Record<Resource, Record<Action, 
         filiais: { view: false, create: false, edit: false, delete: false, approve: false },
         usuarios: { view: false, create: false, edit: false, delete: false, approve: false },
         relatorios: { view: true, create: false, edit: false, delete: false, approve: false },
-        produtos: { view: true, create: true, edit: true, delete: true, approve: false },
+        produtos: { view: true, create: true, edit: false, delete: false, approve: false },
         agenda: { view: true, create: true, edit: true, delete: true, approve: false },
     },
     usuario: {
