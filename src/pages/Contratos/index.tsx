@@ -691,8 +691,8 @@ export default function Contratos() {
         }
 
         const rawInstallments = parseInt(formData.installments, 10);
-        if (!formData.installments || rawInstallments < 2) {
-            toast.error('O mínimo de parcelas necessárias é 2.');
+        if (!formData.installments || rawInstallments < 1) {
+            toast.error('O mínimo de parcelas necessárias é 1.');
             return;
         }
         if (!formData.payment_due_day) {
@@ -792,6 +792,9 @@ export default function Contratos() {
                     ? formData.cc_bank_account_type || null : null,
             }),
             status: editingId ? undefined : 'aprovado',
+            // Grava o autor apenas na criação — necessário para as políticas
+            // RLS de "own" (assistente edita, vendas/vendedor excluem os próprios)
+            ...(editingId ? {} : { created_by: user?.id || null }),
         };
 
         if (editingId) {
