@@ -115,5 +115,34 @@ export const DPLUS_PAYMENT_METHOD_LABELS: Record<string, string> = {
 
 export const DPLUS_PAYMENT_METHODS_WITH_INFO: string[] = ['pix', 'transferencia'];
 
+// ============================================
+// Produção — quanto da venda de cartão conta como produção,
+// conforme a taxa aplicada (taxa = (maquineta − venda) / venda)
+// ============================================
+
+/** Faixas ordenadas da maior taxa para a menor; a primeira com minRatePct ≤ taxa vence. */
+export const PRODUCTION_TIERS: { minRatePct: number; factor: number }[] = [
+    { minRatePct: 20, factor: 1 }, // ≥ 20% → produção completa
+    { minRatePct: 19, factor: 0.8 }, // 19% a 19,9% → 80%
+    { minRatePct: 18, factor: 0.5 }, // 18% a 18,9% → 50%
+    { minRatePct: 0, factor: 0.3 }, // abaixo de 18% → 30%
+];
+
+export function calcSaleFeeRatePct(saleValue: number, terminalAmount: number): number {
+    if (saleValue <= 0) return 0;
+    return ((terminalAmount - saleValue) / saleValue) * 100;
+}
+
+export function getProductionFactor(feeRatePct: number): number {
+    const rate = Math.round(feeRatePct * 100) / 100;
+    const tier = PRODUCTION_TIERS.find((t) => rate >= t.minRatePct);
+    return tier?.factor ?? PRODUCTION_TIERS[PRODUCTION_TIERS.length - 1].factor;
+}
+
+/** Produção = valor da venda × fator da faixa. Ex: maquineta 1.190, venda 1.000 (19%) → 800. */
+export function calcProductionValue(saleValue: number, terminalAmount: number): number {
+    return saleValue * getProductionFactor(calcSaleFeeRatePct(saleValue, terminalAmount));
+}
+
 /** Payment methods that require account selection (PIX/TEC) */
 export const PAYMENT_METHODS_REQUIRING_ACCOUNT: string[] = ['pix', 'tec', 'pix_especie'];

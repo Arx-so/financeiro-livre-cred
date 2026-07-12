@@ -1,7 +1,9 @@
 import { supabase } from '@/lib/supabase';
 import { getCreditCardSales, type SalesCreditCardWithRelations } from '@/services/salesCreditCard';
 import { getDPlusSales, type SalesDPlusWithRelations } from '@/services/salesDPlus';
-import { TERMINAL_LABELS, CARD_BRAND_LABELS } from '@/constants/sales';
+import {
+    TERMINAL_LABELS, CARD_BRAND_LABELS, calcProductionValue, calcSaleFeeRatePct,
+} from '@/constants/sales';
 
 // ─── Filter interface ─────────────────────────────────────────────────────────
 
@@ -40,6 +42,7 @@ export interface SellerBreakdown {
     seller_name: string;
     cc_count: number;
     cc_value: number;
+    cc_producao: number;
     dplus_count: number;
     dplus_commission: number;
     total: number;
@@ -47,7 +50,9 @@ export interface SellerBreakdown {
 
 export interface SalesReportKPIs {
     total_bruto: number;
+    total_vendas: number;
     total_liquido: number;
+    total_nao_contabilizado: number;
     total_taxa: number;
     total_transacoes: number;
     total_dplus: number;
@@ -138,6 +143,7 @@ export function buildSellerBreakdown(
                 seller_name: sellerName || '[Sem Vendedor]',
                 cc_count: 0,
                 cc_value: 0,
+                cc_producao: 0,
                 dplus_count: 0,
                 dplus_commission: 0,
                 total: 0,
@@ -148,9 +154,11 @@ export function buildSellerBreakdown(
 
     for (const s of cc) {
         const entry = getOrCreate(s.seller_id ?? null, s.seller?.name ?? '');
+        const producao = calcProductionValue(s.sale_value, s.terminal_amount);
         entry.cc_count += 1;
         entry.cc_value += s.sale_value;
-        entry.total += s.sale_value;
+        entry.cc_producao += producao;
+        entry.total += producao;
     }
 
     for (const s of dplus) {
@@ -172,15 +180,18 @@ export function computeKPIs(
     dplus: SalesDPlusWithRelations[],
 ): SalesReportKPIs {
     const total_bruto = cc.reduce((sum, s) => sum + s.terminal_amount, 0);
-    const total_liquido = cc.reduce((sum, s) => sum + s.sale_value, 0);
+    const total_vendas = cc.reduce((sum, s) => sum + s.sale_value, 0);
+    const total_liquido = cc.reduce((sum, s) => sum + calcProductionValue(s.sale_value, s.terminal_amount), 0);
     const total_dplus = dplus.reduce((sum, s) => sum + (s.commission_value ?? s.contract_value), 0);
     const total_discount = cc.reduce((sum, s) => sum + (s.discount_amount ?? 0), 0);
     const total_saturday_refund = cc.reduce((sum, s) => sum + (s.saturday_refund ?? 0), 0);
 
     return {
         total_bruto,
+        total_vendas,
         total_liquido,
-        total_taxa: total_bruto - total_liquido,
+        total_nao_contabilizado: total_vendas - total_liquido,
+        total_taxa: total_bruto - total_vendas,
         total_transacoes: cc.length + dplus.length,
         total_dplus,
         total_discount,
@@ -221,8 +232,9 @@ export function exportReportToCSV(
     lines.push(`# Data de Geração: ${new Date().toLocaleString('pt-BR')}`);
     lines.push('#');
     lines.push('# Resumo de KPIs');
-    lines.push(`# Total Bruto,${fmt(kpis.total_bruto)}`);
-    lines.push(`# Total Líquido,${fmt(kpis.total_liquido)}`);
+    lines.push(`# Total Bruto (Maquineta),${fmt(kpis.total_bruto)}`);
+    lines.push(`# Total Líquido (Em Vendas),${fmt(kpis.total_liquido)}`);
+    lines.push(`# Não Contabilizado (Produção),${fmt(kpis.total_nao_contabilizado)}`);
     lines.push(`# Total de Taxas,${fmt(kpis.total_taxa)}`);
     lines.push(`# Transações,${kpis.total_transacoes}`);
     lines.push('');
@@ -231,7 +243,7 @@ export function exportReportToCSV(
     lines.push('# Cartão de Crédito');
     lines.push([
         'Data', 'Vendedor', 'Cliente', 'Terminal', 'Bandeira',
-        'Final Cartão', 'Parcelas', 'Valor Venda', 'Valor Maquineta', 'Taxa', 'Status',
+        'Final Cartão', 'Parcelas', 'Valor Venda', 'Valor Maquineta', 'Taxa', 'Taxa %', 'Produção', 'Status',
     ].join(','));
     for (const s of cc) {
         lines.push([
@@ -245,6 +257,8 @@ export function exportReportToCSV(
             fmt(s.sale_value),
             fmt(s.terminal_amount),
             fmt(s.terminal_amount - s.sale_value),
+            calcSaleFeeRatePct(s.sale_value, s.terminal_amount).toFixed(2),
+            fmt(calcProductionValue(s.sale_value, s.terminal_amount)),
             escapeCSV(s.status),
         ].join(','));
     }
@@ -290,10 +304,11 @@ export function exportReportToCSV(
 
     // Seller breakdown
     lines.push('# Resumo por Vendedor');
-    lines.push(['Vendedor', 'Qtd CC', 'Valor CC', 'Qtd D+', 'D+ Comissão', 'Total Geral'].join(','));
+    lines.push(['Vendedor', 'Qtd CC', 'Valor CC', 'Produção CC', 'Qtd D+', 'D+ Comissão', 'Total Geral'].join(','));
     for (const r of sellerBreak) {
         lines.push([
-            escapeCSV(r.seller_name), r.cc_count, fmt(r.cc_value), r.dplus_count, fmt(r.dplus_commission), fmt(r.total),
+            escapeCSV(r.seller_name), r.cc_count, fmt(r.cc_value), fmt(r.cc_producao),
+            r.dplus_count, fmt(r.dplus_commission), fmt(r.total),
         ].join(','));
     }
 
