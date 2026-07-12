@@ -10,6 +10,7 @@ import type {
     FinancialEntryInsert,
 } from '@/types/database';
 import { createFinancialEntries } from '@/services/financeiro';
+import { calcProductionValue } from '@/constants/sales';
 
 export interface ContractWithRelations extends Contract {
   favorecido?: {
@@ -264,10 +265,11 @@ export async function getContractsSummary(branchId: string | undefined): Promise
   active: number;
   pending: number;
   totalValue: number;
+  totalProduction: number;
 }> {
     let contractsQuery = supabase
         .from('contracts')
-        .select('status, value');
+        .select('status, value, cc_amount_released');
 
     if (branchId) {
         contractsQuery = contractsQuery.eq('branch_id', branchId);
@@ -284,12 +286,15 @@ export async function getContractsSummary(branchId: string | undefined): Promise
         (acc, contract) => {
             acc.total++;
             acc.totalValue += Number(contract.value);
+            if (contract.cc_amount_released != null) {
+                acc.totalProduction += calcProductionValue(Number(contract.cc_amount_released), Number(contract.value));
+            }
             if (contract.status === 'ativo') acc.active++;
             if (contract.status === 'pendente') acc.pending++;
             return acc;
         },
         {
-            total: 0, active: 0, pending: 0, totalValue: 0
+            total: 0, active: 0, pending: 0, totalValue: 0, totalProduction: 0
         }
     );
 }

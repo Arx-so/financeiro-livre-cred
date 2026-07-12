@@ -26,7 +26,10 @@ import { useCreditCardSales } from '@/hooks/useSalesCreditCard';
 import { useDPlusSales } from '@/hooks/useSalesDPlus';
 import { useBranches } from '@/hooks/useBranches';
 import { exportReportToCSV } from '@/services/salesReport';
-import { TERMINAL_LABELS, CARD_BRAND_LABELS, PAYMENT_METHOD_LABELS } from '@/constants/sales';
+import {
+    TERMINAL_LABELS, CARD_BRAND_LABELS, PAYMENT_METHOD_LABELS,
+    calcProductionValue, calcSaleFeeRatePct, getProductionFactor,
+} from '@/constants/sales';
 import { useBranchStore } from '@/stores';
 import type { CCSaleRow } from '@/services/salesReport';
 import type { SalesDPlusWithRelations } from '@/services/salesDPlus';
@@ -95,6 +98,7 @@ function CreditCardTable({ sales }: CreditCardTableProps) {
 
     const grandTotalSale = sales.reduce((sum, s) => sum + s.sale_value, 0);
     const grandTotalMaq = sales.reduce((sum, s) => sum + s.terminal_amount, 0);
+    const grandTotalProducao = sales.reduce((sum, s) => sum + calcProductionValue(s.sale_value, s.terminal_amount), 0);
     const grandTotalDiscount = sales.reduce((sum, s) => sum + (s.discount_amount ?? 0), 0);
     const grandTotalSatRefund = sales.reduce((sum, s) => sum + (s.saturday_refund ?? 0), 0);
 
@@ -113,6 +117,7 @@ function CreditCardTable({ sales }: CreditCardTableProps) {
                         <TableHead className="text-right">Valor Venda</TableHead>
                         <TableHead className="text-right">Maquineta</TableHead>
                         <TableHead className="text-right">Taxa</TableHead>
+                        <TableHead className="text-right">Produção</TableHead>
                         <TableHead className="text-right">Desconto</TableHead>
                         <TableHead className="text-right">Dev. Sábado</TableHead>
                         <TableHead>Lacre</TableHead>
@@ -124,6 +129,10 @@ function CreditCardTable({ sales }: CreditCardTableProps) {
                         const rows = grouped.get(terminal)!;
                         const subSale = rows.reduce((sum, s) => sum + s.sale_value, 0);
                         const subMaq = rows.reduce((sum, s) => sum + s.terminal_amount, 0);
+                        const subProducao = rows.reduce(
+                            (sum, s) => sum + calcProductionValue(s.sale_value, s.terminal_amount),
+                            0,
+                        );
                         const subDiscount = rows.reduce((sum, s) => sum + (s.discount_amount ?? 0), 0);
                         const subSatRefund = rows.reduce((sum, s) => sum + (s.saturday_refund ?? 0), 0);
                         return (
@@ -160,8 +169,17 @@ function CreditCardTable({ sales }: CreditCardTableProps) {
                                         <TableCell className="text-right text-sm font-mono">
                                             {formatCurrency(s.terminal_amount)}
                                         </TableCell>
-                                        <TableCell className="text-right text-sm font-mono text-destructive">
+                                        <TableCell className="text-right text-sm font-mono text-destructive whitespace-nowrap">
                                             {formatCurrency(s.terminal_amount - s.sale_value)}
+                                            <span className="ml-1 text-xs opacity-70">
+                                                {`(${calcSaleFeeRatePct(s.sale_value, s.terminal_amount).toFixed(1)}%)`}
+                                            </span>
+                                        </TableCell>
+                                        <TableCell className="text-right text-sm font-mono whitespace-nowrap">
+                                            {formatCurrency(calcProductionValue(s.sale_value, s.terminal_amount))}
+                                            <span className="ml-1 text-xs text-muted-foreground">
+                                                {`(${Math.round(getProductionFactor(calcSaleFeeRatePct(s.sale_value, s.terminal_amount)) * 100)}%)`}
+                                            </span>
                                         </TableCell>
                                         <TableCell className="text-right text-sm font-mono">
                                             {(s.discount_amount ?? 0) > 0
@@ -195,6 +213,9 @@ function CreditCardTable({ sales }: CreditCardTableProps) {
                                         {formatCurrency(subMaq - subSale)}
                                     </TableCell>
                                     <TableCell className="text-right font-mono">
+                                        {formatCurrency(subProducao)}
+                                    </TableCell>
+                                    <TableCell className="text-right font-mono">
                                         {subDiscount > 0 ? formatCurrency(subDiscount) : '—'}
                                     </TableCell>
                                     <TableCell className="text-right font-mono">
@@ -212,6 +233,9 @@ function CreditCardTable({ sales }: CreditCardTableProps) {
                         <TableCell className="text-right font-mono">{formatCurrency(grandTotalMaq)}</TableCell>
                         <TableCell className="text-right font-mono text-destructive">
                             {formatCurrency(grandTotalMaq - grandTotalSale)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                            {formatCurrency(grandTotalProducao)}
                         </TableCell>
                         <TableCell className="text-right font-mono text-destructive">
                             {grandTotalDiscount > 0 ? formatCurrency(grandTotalDiscount) : '—'}
@@ -481,6 +505,7 @@ function SellerBreakdownTable({ data }: SellerBreakdownTableProps) {
 
     const totCC = data.reduce((sum, r) => sum + r.cc_count, 0);
     const totCCVal = data.reduce((sum, r) => sum + r.cc_value, 0);
+    const totCCProd = data.reduce((sum, r) => sum + r.cc_producao, 0);
     const totDP = data.reduce((sum, r) => sum + r.dplus_count, 0);
     const totDPVal = data.reduce((sum, r) => sum + r.dplus_commission, 0);
     const totAll = data.reduce((sum, r) => sum + r.total, 0);
@@ -493,6 +518,7 @@ function SellerBreakdownTable({ data }: SellerBreakdownTableProps) {
                         <TableHead>Vendedor</TableHead>
                         <TableHead className="text-center">Cartão Qtd</TableHead>
                         <TableHead className="text-right">Cartão Valor</TableHead>
+                        <TableHead className="text-right">Cartão Produção</TableHead>
                         <TableHead className="text-center">D+ Qtd</TableHead>
                         <TableHead className="text-right">D+ Comissão</TableHead>
                         <TableHead className="text-right">Total Geral</TableHead>
@@ -504,6 +530,7 @@ function SellerBreakdownTable({ data }: SellerBreakdownTableProps) {
                             <TableCell className="font-medium">{r.seller_name}</TableCell>
                             <TableCell className="text-center">{r.cc_count}</TableCell>
                             <TableCell className="text-right font-mono">{formatCurrency(r.cc_value)}</TableCell>
+                            <TableCell className="text-right font-mono">{formatCurrency(r.cc_producao)}</TableCell>
                             <TableCell className="text-center">{r.dplus_count}</TableCell>
                             <TableCell className="text-right font-mono">{formatCurrency(r.dplus_commission)}</TableCell>
                             <TableCell className="text-right font-mono font-semibold">
@@ -515,6 +542,7 @@ function SellerBreakdownTable({ data }: SellerBreakdownTableProps) {
                         <TableCell>TOTAL</TableCell>
                         <TableCell className="text-center">{totCC}</TableCell>
                         <TableCell className="text-right font-mono">{formatCurrency(totCCVal)}</TableCell>
+                        <TableCell className="text-right font-mono">{formatCurrency(totCCProd)}</TableCell>
                         <TableCell className="text-center">{totDP}</TableCell>
                         <TableCell className="text-right font-mono">{formatCurrency(totDPVal)}</TableCell>
                         <TableCell className="text-right font-mono">{formatCurrency(totAll)}</TableCell>
@@ -690,16 +718,22 @@ export default function RelatorioVendas() {
                     <>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             <StatCard
-                                label="Total Bruto (Maquineta)"
+                                label="Total Bruto (Passado na Maquineta)"
                                 value={formatCurrency(data?.kpis.total_bruto ?? 0)}
                                 icon={CreditCard}
                                 variant="primary"
                             />
                             <StatCard
-                                label="Total Líquido (Venda)"
+                                label="Total Líquido (Em Vendas)"
                                 value={formatCurrency(data?.kpis.total_liquido ?? 0)}
                                 icon={TrendingUp}
                                 variant="income"
+                            />
+                            <StatCard
+                                label="Não Contabilizado (Produção)"
+                                value={formatCurrency(data?.kpis.total_nao_contabilizado ?? 0)}
+                                icon={TrendingDown}
+                                variant="default"
                             />
                             <StatCard
                                 label="Total de Taxas"

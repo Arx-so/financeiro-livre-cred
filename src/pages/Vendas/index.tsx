@@ -33,7 +33,10 @@ import {
 import { CreditCardSaleModal } from './CreditCardSaleModal';
 import { DPlusSaleModal } from './DPlusSaleModal';
 import { SaleReceipt } from './SaleReceipt';
-import { TERMINAL_LABELS, CARD_BRAND_LABELS, PAYMENT_METHOD_LABELS } from '@/constants/sales';
+import {
+    TERMINAL_LABELS, CARD_BRAND_LABELS, PAYMENT_METHOD_LABELS,
+    calcProductionValue, calcSaleFeeRatePct, getProductionFactor,
+} from '@/constants/sales';
 import { useBranchStore } from '@/stores';
 import {
     previewCreditCardSaleEntries,
@@ -93,7 +96,7 @@ const DPLUS_STATUS_COLORS: Record<string, string> = {
 function exportCCSalesCSV(sales: SalesCreditCardWithRelations[]) {
     const headers = [
         'Data', 'Cliente', 'Vendedor', 'Terminal', 'Bandeira', 'Pagamento',
-        'Valor Venda', 'Valor Maquineta', 'Taxa %', 'Status',
+        'Valor Venda', 'Valor Maquineta', 'Taxa %', 'Produção', 'Status',
     ];
     const rows = sales.map((s) => [
         formatDate(s.created_at),
@@ -105,6 +108,7 @@ function exportCCSalesCSV(sales: SalesCreditCardWithRelations[]) {
         s.sale_value.toFixed(2),
         s.terminal_amount.toFixed(2),
         (s.fee_rate * 100).toFixed(2),
+        calcProductionValue(s.sale_value, s.terminal_amount).toFixed(2),
         CC_STATUS_LABELS[s.status] ?? s.status,
     ]);
     const csv = [headers, ...rows].map((r) => r.join(';')).join('\n');
@@ -165,6 +169,7 @@ function CreditCardTab() {
 
     const totalValue = sales.reduce((sum, s) => sum + s.sale_value, 0);
     const totalTerminal = sales.reduce((sum, s) => sum + s.terminal_amount, 0);
+    const totalProducao = sales.reduce((sum, s) => sum + calcProductionValue(s.sale_value, s.terminal_amount), 0);
 
     const handleStatusChange = (id: string, status: string) => {
         updateStatus.mutate({ id, status }, {
@@ -194,9 +199,10 @@ function CreditCardTab() {
         <>
             <div className="space-y-4">
                 {/* KPI row */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
                     <StatCard label="Total de Vendas" value={sales.length} icon={CreditCard} />
-                    <StatCard label="Valor Total" value={formatCurrency(totalValue)} icon={CreditCard} variant="income" />
+                    <StatCard label="Valor Total" value={formatCurrency(totalValue)} icon={CreditCard} variant="default" />
+                    <StatCard label="Produção" value={formatCurrency(totalProducao)} icon={CreditCard} variant="income" />
                     <StatCard label="Total Maquineta" value={formatCurrency(totalTerminal)} icon={CreditCard} variant="primary" />
                     <StatCard
                         label="Total de Taxas"
@@ -283,6 +289,7 @@ function CreditCardTab() {
                                     <TableHead>Pagamento</TableHead>
                                     <TableHead className="text-right">Valor Venda</TableHead>
                                     <TableHead className="text-right">Maquineta</TableHead>
+                                    <TableHead className="text-right">Produção</TableHead>
                                     <TableHead>Status</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -310,6 +317,12 @@ function CreditCardTab() {
                                         </TableCell>
                                         <TableCell className="text-right font-mono-numbers text-sm">
                                             {formatCurrency(sale.terminal_amount)}
+                                        </TableCell>
+                                        <TableCell className="text-right font-mono-numbers text-sm whitespace-nowrap">
+                                            {formatCurrency(calcProductionValue(sale.sale_value, sale.terminal_amount))}
+                                            <span className="ml-1 text-xs text-muted-foreground">
+                                                {`(${Math.round(getProductionFactor(calcSaleFeeRatePct(sale.sale_value, sale.terminal_amount)) * 100)}%)`}
+                                            </span>
                                         </TableCell>
                                         <TableCell onClick={(e) => e.stopPropagation()}>
                                             <Select

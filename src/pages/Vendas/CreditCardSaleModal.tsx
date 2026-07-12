@@ -26,6 +26,7 @@ import {
     TRANSFER_SOURCES, TRANSFER_SOURCE_LABELS,
     SALE_TYPES, SALE_TYPE_LABELS,
     PAYMENT_METHODS_REQUIRING_ACCOUNT,
+    calcProductionValue, getProductionFactor,
 } from '@/constants/sales';
 
 interface CreditCardSaleModalProps {
@@ -242,6 +243,7 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
 
     const feeRate = calcFeeRate(formData.sale_value, formData.terminal_amount);
     const fee = formData.terminal_amount - formData.sale_value;
+    const producao = calcProductionValue(formData.sale_value, formData.terminal_amount);
     const requiresAccount = PAYMENT_METHODS_REQUIRING_ACCOUNT.includes(formData.payment_method);
 
     const handleSubmit = async () => {
@@ -384,6 +386,17 @@ export function CreditCardSaleModal({ open, onClose, onSaved }: CreditCardSaleMo
                                     </span>
                                     <span className="text-muted-foreground text-sm">
                                         {fee > 0 ? `+${formatCurrency(fee)}` : '—'}
+                                    </span>
+                                </div>
+                            </div>
+                            <div>
+                                <Label>Produção</Label>
+                                <div className="input-financial flex items-center justify-between bg-muted/50 cursor-default">
+                                    <span className="font-mono-numbers">
+                                        {formatCurrency(producao)}
+                                    </span>
+                                    <span className="text-muted-foreground text-sm">
+                                        {`${Math.round(getProductionFactor(feeRate) * 100)}% da venda`}
                                     </span>
                                 </div>
                             </div>

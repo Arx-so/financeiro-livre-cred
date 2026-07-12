@@ -79,6 +79,7 @@ import {
     TRANSFER_SOURCES, TRANSFER_SOURCE_LABELS,
     SALE_TYPES, SALE_TYPE_LABELS,
     PAYMENT_METHODS_REQUIRING_ACCOUNT,
+    calcProductionValue, calcSaleFeeRatePct, getProductionFactor,
 } from '@/constants/sales';
 import { FavorecidoForm } from '@/pages/Favorecidos/components/FavorecidoForm';
 import { ProductForm, type ProductFormData } from '@/pages/Produtos/components/ProductForm';
@@ -1591,11 +1592,12 @@ export default function Contratos() {
 
                 {/* Summary Cards */}
                 {summary && (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <StatCard label="Total Contratos" value={summary.total || 0} icon={FileText} />
                         <StatCard label="Ativos" value={summary.active || 0} icon={FileText} variant="income" />
                         <StatCard label="Pendentes" value={summary.pending || 0} icon={FileText} variant="pending" />
                         <StatCard label="Valor Total" value={formatCurrency(summary.totalValue || 0)} icon={FileText} variant="primary" />
+                        <StatCard label="Produção" value={formatCurrency(summary.totalProduction || 0)} icon={FileText} variant="income" />
                     </div>
                 )}
 
@@ -1730,9 +1732,33 @@ export default function Contratos() {
                                     </div>
                                     <div className="flex items-center gap-3">
                                         {getContractStatusBadge(contract.status as ContractStatusType)}
-                                        <span className="font-semibold font-mono text-foreground">
-                                            {formatCurrency(contract.value)}
-                                        </span>
+                                        <div className="text-right">
+                                            <span className="font-semibold font-mono text-foreground">
+                                                {formatCurrency(contract.value)}
+                                            </span>
+                                            {contract.cc_amount_released != null && (
+                                                <div className="text-xs text-muted-foreground whitespace-nowrap">
+                                                    Venda:
+                                                    {' '}
+                                                    <span className="font-mono">
+                                                        {formatCurrency(contract.cc_amount_released)}
+                                                    </span>
+                                                    {' · '}
+                                                    Produção:
+                                                    {' '}
+                                                    <span className="font-mono text-foreground">
+                                                        {formatCurrency(calcProductionValue(
+                                                            contract.cc_amount_released,
+                                                            contract.value,
+                                                        ))}
+                                                    </span>
+                                                    {` (${Math.round(getProductionFactor(calcSaleFeeRatePct(
+                                                        contract.cc_amount_released,
+                                                        contract.value,
+                                                    )) * 100)}%)`}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border">
